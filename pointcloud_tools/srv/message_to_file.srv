@@ -1,0 +1,9 @@
+# Full or relative filepath
+string filepath
+# Topic name
+string topic
+# Timeout (seconds)
+float64 timeout
+---
+# Result message
+string result_msg

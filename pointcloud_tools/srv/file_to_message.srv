@@ -1,0 +1,11 @@
+# Full or relative filepath
+string filepath
+# Topic name
+string topic
+# Frame id of message
+string frame_id
+# Latch message
+bool latch
+---
+# Result message
+string result_msg

@@ -1,0 +1,7 @@
+<launch>
+    <arg name="input"       default="input"/>
+
+    <node pkg="pointcloud_tools" type="pointcloud_analyser" name="analyser" ns="$(arg input)" output="screen">
+        <remap from="~input"    to="$(arg input)"/>
+    </node>
+</launch>
