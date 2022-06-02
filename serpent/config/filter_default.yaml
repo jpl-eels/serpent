@@ -1,0 +1,32 @@
+# Remove points within body region
+body_filter:
+  enabled: false
+  min:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  max:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  rotation:
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+
+# Remove points further than mean + stddev_mul_thresh * stddev where mean_k points are used for mean distance estimation
+statistical_outlier_removal:
+  enabled: false
+  mean_k: 1
+  stddev_mul_thresh: 0.0
+
+# Downsample points into cubic voxels of side length equal to leaf_size if at least the minimum points are present
+voxel_grid_filter:
+  enabled: true
+  leaf_size: 0.1
+  minimum_points_number_per_voxel: 1
+

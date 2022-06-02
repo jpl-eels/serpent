@@ -1,0 +1,78 @@
+<launch>
+    <!-- Launch Arguments -->
+    <arg name="imu_topic"               default="/imu"/>
+    <arg name="pointcloud_topic"        default="/pointcloud"/>
+    <arg name="robot_file"              default=""/>
+    <arg name="mission_file"            default="$(find serpent)/config/mission_default.yaml"/>
+    <arg name="filter_file"             default="$(find serpent)/config/filter_default.yaml"/>
+    <arg name="format_file"             default="$(find serpent)/config/format_default.yaml"/>
+    <arg name="normal_estimation_file"  default="$(find serpent)/config/normal_estimation_default.yaml"/>
+    <arg name="tuning_file"             default="$(find serpent)/config/tuning_default.yaml"/>
+    <arg name="debug_file"              default="$(find serpent)/config/debug_default.yaml"/>
+    <arg name="threads"                 default="4"/>
+
+    <!-- Visualisation Arguments -->
+    <arg name="rviz"                    default="false"/>
+    <arg name="rqt"                     default="true"/>
+
+    <!-- Debugging Arguments -->
+    <arg name="use_gdb"                 default="false"/>
+    <arg name="use_callgrind"           default="false"/>
+    <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
+    <!-- <env name="ROSCONSOLE_FORMAT"
+            value="[${severity}] [${time}] [${node}] [${file}/${function}:${line}]: ${message}"/> -->
+
+    <!-- Rosbag Playback Arguments-->
+    <arg name="use_sim_time"            default="false"/>
+
+    <!-- Debugging -->
+    <arg name="program_name" value="serpent"/>
+    <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
+    <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
+            value="valgrind --tool=callgrind --callgrind-out-file='callgrind.$(arg program_name).%p'"/>
+    <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
+    <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
+
+    <!-- Rosbag Playback -->
+    <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
+
+    <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
+            launch-prefix="$(arg launch_prefix)">
+        <!-- Topics -->
+        <remap from="~input/imu"          to="$(arg imu_topic)"/>
+        <remap from="~input/pointcloud"   to="$(arg pointcloud_topic)"/>
+
+        <!-- Robot Configuration -->
+        <rosparam if="$(eval robot_file != '')"             command="load" file="$(arg robot_file)"/>
+
+        <!-- Mission Configuration -->
+        <rosparam if="$(eval mission_file != '')"           command="load" file="$(arg mission_file)"/>
+
+        <!-- Filter Configuration -->
+        <rosparam if="$(eval filter_file != '')"            command="load" file="$(arg filter_file)"/>
+
+        <!-- Format Configuration -->
+        <rosparam if="$(eval format_file != '')"            command="load" file="$(arg format_file)"/>
+
+        <!-- Normal Estimation Configuration -->
+        <rosparam if="$(eval normal_estimation_file != '')" command="load" file="$(arg normal_estimation_file)"/>
+
+        <!-- Tuning Configuration -->
+        <rosparam if="$(eval tuning_file != '')"            command="load" file="$(arg tuning_file)"/>
+
+        <!-- Debug Configuration -->
+        <rosparam if="$(eval debug_file != '')"             command="load" file="$(arg debug_file)"/>
+
+        <!-- Parameters -->
+        <rosparam subst_value="true">
+            threads: $(arg threads)
+        </rosparam>
+    </node>
+
+    <!-- RVIZ -->
+    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+
+    <!-- RQT -->
+    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="rqt_gui" output="screen"
+            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
+</launch>
