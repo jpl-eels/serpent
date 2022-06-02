@@ -1,0 +1,23 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="indoor" default="false"/>
+
+    <!-- Parameters -->
+    <rosparam     if="$(arg indoor)" file="$(find snowboard)/config/liosam/snowboard_liosam_indoor.yaml" command="load"/>
+    <rosparam unless="$(arg indoor)" file="$(find snowboard)/config/liosam/snowboard_liosam.yaml"        command="load"/>
+
+    <!-- IMU Pre-Transform -->
+    <include file="$(find snowboard)/launch/snowboard_imu_transform.launch"/>
+
+    <!--- LOAM -->
+    <include file="$(find lio_sam)/launch/include/module_loam.launch" />
+
+    <!--- Robot State TF -->
+    <!-- <include file="$(find lio_sam)/launch/include/module_robot_state_publisher.launch" /> -->
+
+    <!--- Run Navsat -->
+    <!-- <include file="$(find lio_sam)/launch/include/module_navsat.launch" /> -->
+
+    <!--- Run Rviz-->
+    <include file="$(find lio_sam)/launch/include/module_rviz.launch" />
+</launch>

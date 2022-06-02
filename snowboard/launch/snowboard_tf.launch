@@ -1,0 +1,13 @@
+<launch>
+
+    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="ins_to_os_sensor"
+        args="-0.6 0.04 0 0 3.01942 0 ins os_sensor" /> -->
+
+    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_ins"
+        args="-0.6 -0.04 0 0 -3.01942 0 base_link ins" /> -->
+    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_ins"
+        args="-0.6 -0.04 0 0 0.122173 0 base_link ins" /> -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_os_sensor"
+        args="0 0 0 0 0 0 base_link os_sensor" />
+
+</launch>

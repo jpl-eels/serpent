@@ -1,0 +1,9 @@
+# Configuration file for all input formatting configuration for the pointcloud and IMU data
+
+# Pointcloud type
+pointcloud_type: OUSTER # Options: OUSTER, CUSTOM
+
+# Filter to remove points with a time field value above a threshold
+time_field_filter:
+  enabled: true
+  max: 0.1          # seconds

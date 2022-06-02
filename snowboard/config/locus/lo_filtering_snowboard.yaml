@@ -1,0 +1,9 @@
+# Configure body filter
+body_filter:
+  min_x: -2.0
+  max_x: 1.0
+  min_y: -0.3
+  max_y: 0.3
+  min_z: -0.5
+  max_z: 0.5
+  rotation: 0.0

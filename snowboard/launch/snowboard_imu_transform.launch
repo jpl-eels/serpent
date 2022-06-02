@@ -1,0 +1,12 @@
+<launch>
+    <arg name="overwrite_frame" default="false"/>
+    <arg name="new_frame"       default=""/>
+
+    <node pkg="imu_tools" type="imu_transform" name="imu_transform">
+        <param name="imu_topic"             value="/vectornav/imu"/>
+        <param name="imu_transformed_topic" value="/vectornav/imu_nwu"/>
+        <rosparam param="rotation">[1, 0, 0, 0, -1, 0, 0, 0, -1]</rosparam>
+        <param name="overwrite_frame"       value="$(arg overwrite_frame)"/>
+        <param name="new_frame"             value="$(arg new_frame)"/>
+    </node>
+</launch>

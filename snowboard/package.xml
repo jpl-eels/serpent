@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package>
+    <name>snowboard</name>
+    <version>1.0.0</version>
+    <description>The jpl_snowboard package</description>
+    <maintainer email="william.talbot97@gmail.com">William Talbot</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+</package>

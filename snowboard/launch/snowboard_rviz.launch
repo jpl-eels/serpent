@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rviz" type="rviz" name="snowboard_rviz" args="-d $(find snowboard)/rviz/snowboard.rviz"/>
+</launch>

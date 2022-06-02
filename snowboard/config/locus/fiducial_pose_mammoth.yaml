@@ -1,0 +1,34 @@
+fiducial_calibration:
+  position:
+    x: -4.867327213287
+    y: 5.195341587067
+    z: -0.496657669544
+  orientation:
+    w: 0.7802334
+    x: -0.0186914
+    y: -0.0644828
+    z: -0.6218749
+
+# (according to LIO-SAM)
+# fiducial_calibration:
+#   position:
+#     x: -4.815306663513
+#     y: 5.135149002075
+#     z: -0.509253561497
+#   orientation:
+#     w: 0.97659
+#     x: 0.0009166
+#     y: -0.0071253
+#     z: -0.2149893
+
+# (according to LIO-SAM inverse)
+# fiducial_calibration:
+#   position:
+#     x: -6.5329559647583559579
+#     y: 2.636025225440076832
+#     z: -0.4337488722680230023
+#   orientation:
+#     w: 0.97659
+#     x: -0.0009166
+#     y: 0.0071253
+#     z: 0.2149893

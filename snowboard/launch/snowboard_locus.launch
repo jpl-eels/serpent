@@ -1,0 +1,197 @@
+<launch>
+    <arg name="robot_namespace" default="snowboard"/>
+    <arg name="robot_type" value="snowboard"/>
+
+    <arg name="use_gdb" default="true"/>
+    <arg name="nodelet_manager" value="nodelet_manager"/>
+    <arg name="launch_prefix" value="gdb -ex run --args" if="$(arg use_gdb)"/>
+    <arg name="launch_prefix" value="" unless="$(arg use_gdb)"/>
+    <arg name="nodelet_args" value="--no-bond"/>
+    <arg name="respawn" value="false" if="$(arg use_gdb)"/>
+    <arg name="respawn" value="true" unless="$(arg use_gdb)"/>
+
+    <arg name="number_of_lidars" default="1" />
+    <arg name="b_use_multiple_pc" value="$(eval arg('number_of_lidars') > 1)"/>
+    <arg name="pc_input" value="locus_input"/>
+
+    <arg name="pc_0" default="/os_cloud_node/points"/>
+    <arg name="pc_1" default="/os_cloud_node_front/points"/>
+    <arg name="pc_2" default="/os_cloud_node_rear/points"/>
+
+    <!-- 0:TOP, 1:FRONT, 2:REAR -->
+    <arg name="pc_trans_in_0" default="$(arg pc_0)/transformed"/>
+    <arg name="pc_trans_in_1" default="$(arg pc_1)/transformed"/>
+    <arg name="pc_trans_in_2" default="$(arg pc_2)/transformed"/>
+
+    <arg name="imu_topic" default="/vectornav/imu_nwu"/>
+
+    <!-- rviz -->
+    <node pkg="rviz" type="rviz" name="rviz_locus" args="-d $(find snowboard)/rviz/locus.rviz"/>
+
+    <!-- Set the ouster frame as the base link -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_os_sensor"
+        args="0 0 0 0 0 0 base_link os_sensor" />
+
+    <!-- Transform the imu data into the base link (lidar frame) -->
+    <include file="$(find snowboard)/launch/snowboard_imu_transform.launch">
+        <arg name="overwrite_frame" value="true"/>
+        <arg name="new_frame"       value="base_link"/>
+    </include>
+
+    <group ns="$(arg robot_namespace)">
+
+        <!-- Load parameters -->
+        <rosparam file="$(find snowboard)/config/locus/lo_filtering_snowboard.yaml" subst_value="true"/>
+
+        <!-- Fiducial pose information -->
+        <rosparam file="$(find snowboard)/config/locus/fiducial_pose_mammoth.yaml"/>
+   
+        <node
+            pkg="lo_frontend"
+            name="lo_frontend"
+            type="lo_frontend_node"
+            output="screen">
+           
+            <remap from="~LIDAR_TOPIC" to="$(arg pc_input)"/>
+            <!-- <remap from="~ODOMETRY_TOPIC" to=""/> -->
+            <remap from="~IMU_TOPIC" to="$(arg imu_topic)"/>            
+            <remap from="~POSE_TOPIC" to="not_currently_used"/>
+            <remap from="~SPACE_MONITOR_TOPIC" to="localizer_space_monitor/xy_cross_section"/>
+
+            <!-- For Sim -->
+            <!-- <remap from="~ODOMETRY_TOPIC" to="wheel_odom"/> -->         
+
+            <remap from="/diagnostics" to="hero/diagnostics"/>
+
+            <param name="robot_name" value="$(arg robot_namespace)"/>
+            <param name="tf_prefix" value="$(arg robot_namespace)"/>
+
+            <param name="b_integrate_interpolated_odom" value="true"/>
+
+            <rosparam file="$(find snowboard)/config/locus/lo_settings_snowboard.yaml"/>
+
+            <param name="b_pub_odom_on_timer" value="false"/>
+
+            <rosparam file="$(find snowboard)/config/locus/lo_frames_snowboard.yaml" subst_value="true"/>
+            <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+            <rosparam file="$(find snowboard)/config/locus/lo_odometry_snowboard.yaml"/>          
+            <rosparam file="$(find snowboard)/config/locus/lo_localization_snowboard.yaml"/>
+            <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+
+            <param name="localization/num_threads"       value="4"/>
+            <param name="icp/num_threads"                value="4"/>
+            <param name="mapper/num_threads"             value="4"/>
+        </node>
+
+        <node pkg="lo_frontend" name="sensors_health_monitor" type="sensors_health_monitor.py" output="screen" if="$(eval number_of_lidars > 1)"> 
+            <remap from="failure_detection" to="point_cloud_merger_lo/failure_detection"/>
+            <remap from="resurrection_detection" to="point_cloud_merger_lo/resurrection_detection"/>
+        </node>
+
+        <node pkg="nodelet"
+            type="nodelet"
+            name="transform_points_base_link"
+            args="standalone pcl/PassThrough">
+            <remap from="~input" to="$(arg pc_0)"/>
+            <remap from="~output" to="$(arg pc_trans_in_0)"/>
+            <rosparam subst_value="true">
+                filter_field_name: z
+                filter_limit_min: -100
+                filter_limit_max: 100
+                output_frame: base_link
+            </rosparam>
+        </node>
+
+        <node if="$(eval arg('number_of_lidars') > 1)"
+            pkg="nodelet"
+            type="nodelet"
+            name="transform_points_base_link_front"
+            args="standalone pcl/PassThrough">
+            <remap from="~input" to="$(arg pc_1)"/>
+            <remap from="~output" to="$(arg pc_trans_in_1)"/>
+            <rosparam subst_value="true">
+                filter_field_name: z
+                filter_limit_min: -100
+                filter_limit_max: 100
+                output_frame: base_link
+            </rosparam>
+        </node>
+
+        <node if="$(eval arg('number_of_lidars') > 2)"
+            pkg="nodelet"
+            type="nodelet"
+            name="transform_points_base_link_rear"
+            args="standalone pcl/PassThrough">
+            <remap from="~input" to="$(arg pc_2)"/>
+            <remap from="~output" to="$(arg pc_trans_in_2)"/>
+            <rosparam subst_value="true">
+                filter_field_name: z
+                filter_limit_min: -100
+                filter_limit_max: 100
+                output_frame: base_link
+            </rosparam>
+        </node>
+
+        <node if="$(arg b_use_multiple_pc)" pkg="point_cloud_merger" type="point_cloud_merger_node" name="point_cloud_merger_lo" output="screen">
+            <rosparam file="$(find point_cloud_merger)/config/parameters.yaml"/>
+            <param name="merging/number_of_lidars" value="$(arg number_of_lidars)"/>
+            <remap from="~pcld0" to="$(arg pc_trans_in_0)"/>
+            <remap from="~pcld1" to="$(arg pc_trans_in_1)"/>
+            <remap from="~pcld2" to="$(arg pc_trans_in_2)"/>
+            <remap from="~combined_point_cloud" to="combined_point_cloud"/>
+        </node>    
+
+        <node pkg="nodelet"
+              type="nodelet"
+              name="$(arg nodelet_manager)"
+              launch-prefix="$(arg launch_prefix)"
+              args="manager"
+              respawn="$(arg respawn)"/>
+        
+        <node pkg="nodelet"
+              type="nodelet"
+              name="body_filter"
+              args="load point_cloud_filter/BodyFilter $(arg nodelet_manager) $(arg nodelet_args)"
+              respawn="$(arg respawn)">
+          <remap from="~input" to="combined_point_cloud" if="$(arg b_use_multiple_pc)"/>
+          <remap from="~input" to="$(arg pc_trans_in_0)" unless="$(arg b_use_multiple_pc)"/>
+        </node>
+
+<!-- old way. TODO: removing after locus testing-->
+<!--node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true"-->
+
+        <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load point_cloud_filter/CustomVoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+            <remap from="~input" to="body_filter/output" />
+
+            <rosparam subst_value="true">
+                filter_field_name: z
+                filter_limit_min: -100
+                filter_limit_max: 100
+                filter_limit_negative: False
+                leaf_size: 0.25
+                output_frame: base_link
+            </rosparam>
+        </node>
+
+        <node pkg="nodelet"
+            type="nodelet"
+            name="normal_computation"
+            args="load point_cloud_filter/NormalComputation $(arg nodelet_manager) $(arg nodelet_args)"
+            respawn="$(arg respawn)">
+            <remap from="~input" to="voxel_grid/output"/>
+            <remap from="~output" to="$(arg pc_input)" />
+
+           <param name="num_threads"                value="4"/>
+        </node>
+      
+    </group>
+
+    <!-- <include file="$(find localizer_space_monitor)/launch/space_monitor.launch">
+        <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include> -->
+
+    <!--include file="$(find lidar_slip_detection)/launch/lidar_slip_detection.launch">
+        <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include-->
+ 
+</launch>

@@ -1,0 +1,10 @@
+frame_id:
+  fixed: map #$(arg robot_namespace)/map
+  base: base_link #$(arg robot_namespace)/base_link
+  imu: base_link #$(arg robot_namespace)/imu
+  odometry: base_link_odom #$(arg robot_namespace)/base_link_blam_odometry
+  bd_odometry: odom #$(arg robot_namespace)/odom
+  artifacts_in_global: true
+
+frame_conversions: 
+  b_convert_imu_to_base_link_frame: false

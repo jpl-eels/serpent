@@ -1,0 +1,94 @@
+# Integration and Noise
+prior_noise:
+  position: 0.1
+  rotation: 0.1
+  linear_velocity: 0.1
+  accelometer_bias: 1.0e-2
+  gyroscope_bias: 1.0e-2
+imu_noise:
+  integration: 1.0e-4
+  integration_bias: 3.0e-3
+  accelerometer_bias: 1.25e-05
+  gyroscope_bias: 4.0e-05
+  overwrite: true # These imu noise values will only be used if overwrite set to true
+  accelerometer: 3.9e-03 # 3.92266e-04
+  gyroscope: 2.4e-04 # 2.42406840554768e-05
+
+# ISAM2 Optimisation
+isam2:
+  optimization: "GaussNewton"  # Options: GaussNewton, Dogleg
+  gauss_newton_params:
+    wildfire_threshold: 1.0e-3
+  dogleg_params:
+    initial_delta: 1.0
+    wildfire_threshold: 1.0e-5
+    trust_region_adaptation_mode: "SEARCH_EACH_ITERATION" # Options: SEARCH_EACH_ITERATION, ONE_STEP_PER_ITERATION
+    verbose: false
+  relinearize_threshold: 0.1
+  relinearize_skip: 10
+  enable_relinearization: true
+  evaluate_nonlinear_error: false
+  factorization: "CHOLESKY" # Options: CHOLESKY, QR
+  cache_linearized_factors: true
+
+# Registration
+s2s:
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  base:
+    maximum_iterations: 20
+    ransac_iterations: 0
+    ransac_outlier_rejection_threshold: 0.05
+    max_correspondence_distance: 2.5
+    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+  icp: # Uses base
+    use_reciprocal_correspondences: false
+  gicp: # Uses icp
+    rotation_epsilon: 2.0e-3
+    correspondence_randomness: 20
+    maximum_optimizer_iterations: 10
+    translation_gradient_tolerance: 1.0e-2  # PCL 1.11.0 onwards
+    rotation_gradient_tolerance: 1.0e-2     # PCL 1.11.0 onwards
+  lsq: # Uses base
+    rotation_epsilon: 2.0e-3
+    initial_lambda_factor: 1.0e-9
+    debug_print: false
+  fast_gicp: # Uses lsq
+    num_threads: 8
+    correspondence_randomness: 20
+    regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+
+s2m:
+  enabled: true
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  base:
+    maximum_iterations: 20
+    ransac_iterations: 0
+    ransac_outlier_rejection_threshold: 0.05
+    max_correspondence_distance: 2.5
+    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+  icp: # Uses base
+    use_reciprocal_correspondences: false
+  gicp: # Uses icp
+    rotation_epsilon: 2.0e-3
+    correspondence_randomness: 20
+    maximum_optimizer_iterations: 10
+    translation_gradient_tolerance: 1.0e-2  # PCL 1.11.0 onwards
+    rotation_gradient_tolerance: 1.0e-2     # PCL 1.11.0 onwards
+  lsq: # Uses base
+    rotation_epsilon: 2.0e-3
+    initial_lambda_factor: 1.0e-9
+    debug_print: false
+  fast_gicp: # Uses lsq
+    num_threads: 8
+    correspondence_randomness: 20
+    regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+
+# Mapping
+mapping:
+  frame_extraction_number: 20
+  distance_threshold: 0.1                   # metres
+  rotation_threshold: 0.05235987755982988   # radians
