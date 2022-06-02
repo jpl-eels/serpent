@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package>
+    <name>simulator_prcp_missions</name>
+    <version>1.0.0</version>
+    <description>The simulator_prcp_missions package</description>
+    <maintainer email="william.talbot97@gmail.com">William Talbot</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+</package>

@@ -1,0 +1,9 @@
+normal_estimation:
+  threads: 1
+  viewpoint:
+    x: 0.0
+    y: 0.0
+    z: 1.0e+9
+  method: "knn" # Options: knn, radius
+  k: 30
+  radius: 1.0

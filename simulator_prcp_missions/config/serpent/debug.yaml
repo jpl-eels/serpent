@@ -1,0 +1,3 @@
+debug:
+  publish_registration_clouds: true
+  publish_registration_clouds_alt: false

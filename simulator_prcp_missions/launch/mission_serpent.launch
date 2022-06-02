@@ -1,0 +1,36 @@
+<launch>
+    <!-- Playback -->
+    <arg name="mission"  default="surface_traverse_1"/>
+    <arg name="data_dir" default="$(env HOME)/data/simulator_prcp_gazebo/"/>
+    <arg name="rate"     default="1"/>
+
+    <!-- SERPENT -->
+    <arg name="use_sim_time"    default="true"/>
+    <arg name="use_gdb"         default="false"/>
+    <arg name="use_callgrind"   default="false"/>
+    <arg name="threads"         default="8"/>
+
+    <include file="$(find serpent)/launch/serpent.launch">
+        <arg name="imu_topic"               value="/imu"/>
+        <arg name="pointcloud_topic"        value="/points"/>
+        <arg name="robot_file"              value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
+        <arg name="mission_file"            value="$(find simulator_prcp_missions)/config/serpent//mission/$(arg mission).yaml"/>
+        <arg name="filter_file"             value="$(find simulator_prcp_missions)/config/serpent/filter.yaml"/>
+        <arg name="format_file"             value="$(find simulator_prcp_missions)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"  value="$(find simulator_prcp_missions)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"             value="$(find simulator_prcp_missions)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"              value="$(find simulator_prcp_missions)/config/serpent/debug.yaml"/>
+        <arg name="threads"                 value="$(arg threads)"/>
+        <arg name="rviz"                    value="false"/>
+        <arg name="rqt"                     value="true"/>
+        <arg name="use_sim_time"            value="$(arg use_sim_time)"/>
+        <arg name="use_gdb"                 value="$(arg use_gdb)"/>
+        <arg name="use_callgrind"           value="$(arg use_callgrind)"/>
+    </include>
+
+    <include file="$(find simulator_prcp_missions)/launch/mission.launch">
+        <arg name="mission"  default="$(arg mission)"/>
+        <arg name="data_dir" default="$(arg data_dir)"/>
+        <arg name="rate"     default="$(arg rate)"/>
+    </include>
+</launch>
