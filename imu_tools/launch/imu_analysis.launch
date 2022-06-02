@@ -1,0 +1,14 @@
+<launch>
+    <arg name="imu_topic"           default="imu"/>
+    <arg name="fixed_frame"         default="fixed"/>
+    <arg name="apply_transform"     default="false"/>
+    <arg name="transformed_frame"   default="imu_transformed"/>
+
+    <node pkg="imu_tools" type="imu_analysis" name="imu_analysis">
+        <param name="imu_topic"         value="$(arg imu_topic)"/>
+        <param name="fixed_frame"       value="$(arg fixed_frame)"/>
+        <param name="apply_transform"   value="$(arg apply_transform)"/>
+        <param name="transformed_frame" value="$(arg transformed_frame)"/>
+        <rosparam command="load" file="$(find imu_tools)/config/analysis.yaml"/>
+    </node>
+</launch>
