@@ -74,7 +74,6 @@ Optimisation::Optimisation():
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     // Deserialise imu array
-    ros::Time last_preint_imu_timestamp = msg->start_timestamp;
     std::deque<eigen_ros::Imu> imu_s2s;
     from_ros(msg->measurements, imu_s2s);
     if (imu_s2s.empty()) {
@@ -87,13 +86,28 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, imu_bias};
 
     // Preintegrate IMU measurements over sweep
-    for (const auto& imu : imu_s2s) {
-        double dt = (imu.timestamp - last_preint_imu_timestamp).toSec();
-        preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+    ros::Time last_preint_imu_timestamp = msg->start_timestamp;
+    for (std::size_t i = 0; i < imu_s2s.size(); ++i) {
+        const auto& imu = imu_s2s[i];
+        if (imu.timestamp < last_preint_imu_timestamp || imu.timestamp > msg->end_timestamp) {
+            throw std::runtime_error("IMU timestamp " + std::to_string(imu.timestamp.toSec()) + " was outside of "
+                    "expected range [" + std::to_string(last_preint_imu_timestamp.toSec()) + " - "
+                    + std::to_string(msg->end_timestamp.toSec()) + "]");
+        }
+        const double dt = ((i == imu_s2s.size() - 1 ? msg->end_timestamp : imu.timestamp)
+                - last_preint_imu_timestamp).toSec();
+        if (dt > 0.0) {
+            preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+        }
         last_preint_imu_timestamp = imu.timestamp;
     }
-    preintegrated_imu.integrateMeasurement(imu_s2s.back().linear_acceleration, imu_s2s.back().angular_velocity,
-            (msg->end_timestamp - imu_s2s.back().timestamp).toSec());
+    if (preintegrated_imu.preintMeasCov().hasNaN()) {
+        ROS_WARN_STREAM("Preintegrated Measurement Covariance:\n" << preintegrated_imu.preintMeasCov());
+        throw std::runtime_error("NaN found in preintegrated measurement covariance. Something went wrong.");
+    } else if (preintegrated_imu.preintMeasCov().diagonal().minCoeff() <= 0.0) {
+        ROS_WARN_STREAM("Preintegrated Measurement Covariance:\n" << preintegrated_imu.preintMeasCov());
+        throw std::runtime_error("Minimum coefficient in preintegrated measurement covariance was <= 0.0");
+    }
     
     // Predict change in pose from preintegration
     gtsam::NavState s2s_state = preintegrated_imu.predict(gtsam::NavState(), imu_bias);
