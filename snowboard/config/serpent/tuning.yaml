@@ -8,8 +8,8 @@ prior_noise:
 imu_noise:
   integration: 1.0e-4
   integration_bias: 3.0e-3
-  accelerometer_bias: 1.25e-05
-  gyroscope_bias: 4.0e-05
+  accelerometer_bias: 5.0e-05
+  gyroscope_bias: 2.4e-07
   overwrite: true # These imu noise values will only be used if overwrite set to true
   accelerometer: 3.9e-03 # 3.92266e-04
   gyroscope: 2.4e-04 # 2.42406840554768e-05
