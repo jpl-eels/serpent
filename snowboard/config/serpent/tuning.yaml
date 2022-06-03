@@ -3,7 +3,7 @@ prior_noise:
   position: 0.1
   rotation: 0.1
   linear_velocity: 0.1
-  accelometer_bias: 1.0e-2
+  accelerometer_bias: 1.0e-2
   gyroscope_bias: 1.0e-2
 imu_noise:
   integration: 1.0e-4
