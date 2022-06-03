@@ -11,6 +11,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 #include <map>
 #include <mutex>
 
@@ -39,15 +40,6 @@ private:
             const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud);
 
     /**
-     * @brief Correct the map according to a set of previous poses, then incorporate the new pointcloud into the map.
-     * 
-     * @param pointcloud_msg 
-     * @param path_changes_msg 
-     */
-    void map_update_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
-            const nav_msgs::Path::ConstPtr& path_changes_msg);
-
-    /**
      * @brief Generate a concatenated pointcloud consisting of the n last frames in the body frame.
      * 
      * @param n 
@@ -65,6 +57,17 @@ private:
      */
     const MapFrame& last_frame() const;
 
+        /**
+     * @brief Correct the map according to a set of previous poses, then incorporate the new pointcloud into the map.
+     * 
+     * @param pointcloud_msg 
+     * @param path_changes_msg 
+     */
+    void map_update_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
+            const nav_msgs::Path::ConstPtr& path_changes_msg);
+
+    bool publish_map_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+
     /**
      * @brief Check if a new frame should be added to the map.
      * 
@@ -78,9 +81,14 @@ private:
     //// ROS Communication
     ros::NodeHandle nh;
     ros::Publisher local_map_publisher;
+    ros::Publisher global_map_publisher;
     message_filters::Subscriber<pcl::PointCloud<pcl::PointNormal>> pointcloud_subscriber;
     message_filters::Subscriber<nav_msgs::Path> path_changes_subscriber;
     message_filters::TimeSynchronizer<pcl::PointCloud<pcl::PointNormal>, nav_msgs::Path> correct_map_sync;
+    ros::ServiceServer publish_map_server;
+
+    //// Thread Management
+    mutable std::mutex map_mutex;
 
     //// Configuration
     // Translation threshold (metres)

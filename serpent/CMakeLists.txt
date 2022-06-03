@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     pcl_ros
     roscpp
     sensor_msgs
+    std_srvs
     tf2_ros
 
     eigen_ros
@@ -49,6 +50,7 @@ catkin_package(
         pcl_ros
         roscpp
         sensor_msgs
+        std_srvs
         tf2_ros
 
         eigen_ros

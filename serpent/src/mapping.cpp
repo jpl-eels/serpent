@@ -14,12 +14,16 @@ Mapping::Mapping():
 {
     // Publishers
     local_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("mapping/local_map", 1);
+    global_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("output/global_map", 1, true);
 
     // Subscribers
     pointcloud_subscriber.subscribe(nh, "normal_estimation/pointcloud", 10);
     path_changes_subscriber.subscribe(nh, "optimisation/path_changes", 10);
     correct_map_sync.connectInput(pointcloud_subscriber, path_changes_subscriber);
     correct_map_sync.registerCallback(boost::bind(&Mapping::map_update_callback, this, _1, _2));
+
+    // Service servers
+    publish_map_server = nh.advertiseService("publish_map", &Mapping::publish_map_service_callback, this);
 
     // Configuration
     nh.param<double>("mapping/distance_threshold", distance_threshold, 1.0);
@@ -36,8 +40,45 @@ std::pair<std::map<ros::Time, MapFrame>::iterator, bool> Mapping::add_to_map(con
     return map.emplace(pose_stamped.timestamp, MapFrame{pose_stamped, pointcloud});
 }
 
+pcl::PointCloud<pcl::PointNormal>::Ptr Mapping::extract_past_frames(const std::size_t n,
+        const eigen_ros::PoseStamped& body_frame) {
+    auto it = map.rbegin();
+    while (it->first > body_frame.timestamp) {
+        ++it;
+    }
+    auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+    pointcloud->header.stamp = pcl_conversions::toPCL(body_frame.timestamp);
+    pointcloud->header.frame_id = "body_i-1";
+    // B_{i-1,s}^{W} = (B_{W}^{i-1,s})^-1
+    Eigen::Isometry3d body_frame_inv = to_transform(body_frame.data).inverse();
+    for (std::size_t i = 0; i < n; ++i) {
+        if (it->second.pose.timestamp > body_frame.timestamp) {
+            throw std::runtime_error("Timestamp in the future detected. Something went wrong.");
+        }
+        // B_{i-1,s}^{j,s} = B_{i-1,s}^{W} * B_{W}^{j,s}
+        Eigen::Isometry3d transform = body_frame_inv * to_transform(it->second.pose.data);
+        auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+        // p_{i-1,s} = B_{i-1,s}^{j,s} * p_{j,s}
+        pcl::transformPointCloudWithNormals(*it->second.pointcloud, *pointcloud_i, transform.matrix());
+        *pointcloud += *pointcloud_i;
+        if (++it == map.rend()) {
+            break;
+        }
+    }
+    return pointcloud;
+}
+
+const MapFrame& Mapping::last_frame() const {
+    const auto it = map.crbegin();
+    if (it == map.crend()) {
+        throw std::runtime_error("Failed to get last map frame. Is the map empty()?");
+    }
+    return it->second;
+}
+
 void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
         const nav_msgs::Path::ConstPtr& path_changes_msg) {
+    std::lock_guard<std::mutex> guard{map_mutex};
     if (path_changes_msg->poses.empty()) {
         throw std::runtime_error("path.poses was empty. Something went wrong.");
     }
@@ -80,40 +121,26 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
     local_map_publisher.publish(map_region);
 }
 
-pcl::PointCloud<pcl::PointNormal>::Ptr Mapping::extract_past_frames(const std::size_t n,
-        const eigen_ros::PoseStamped& body_frame) {
-    auto it = map.rbegin();
-    while (it->first > body_frame.timestamp) {
-        ++it;
-    }
-    auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-    pointcloud->header.stamp = pcl_conversions::toPCL(body_frame.timestamp);
-    pointcloud->header.frame_id = "body_i-1";
-    // B_{i-1,s}^{W} = (B_{W}^{i-1,s})^-1
-    Eigen::Isometry3d body_frame_inv = to_transform(body_frame.data).inverse();
-    for (std::size_t i = 0; i < n; ++i) {
-        if (it->second.pose.timestamp > body_frame.timestamp) {
-            throw std::runtime_error("Timestamp in the future detected. Something went wrong.");
-        }
-        // B_{i-1,s}^{j,s} = B_{i-1,s}^{W} * B_{W}^{j,s}
-        Eigen::Isometry3d transform = body_frame_inv * to_transform(it->second.pose.data);
-        auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-        // p_{i-1,s} = B_{i-1,s}^{j,s} * p_{j,s}
-        pcl::transformPointCloudWithNormals(*it->second.pointcloud, *pointcloud_i, transform.matrix());
-        *pointcloud += *pointcloud_i;
-        if (++it == map.rend()) {
-            break;
-        }
-    }
-    return pointcloud;
-}
+bool Mapping::publish_map_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+    std::lock_guard<std::mutex> guard{map_mutex};
 
-const MapFrame& Mapping::last_frame() const {
-    const auto it = map.crbegin();
-    if (it == map.crend()) {
-        throw std::runtime_error("Failed to get last map frame. Is the map empty()?");
+    // Assemble pointcloud
+    auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+    if (!map.empty()) {
+        pointcloud->header.stamp = pcl_conversions::toPCL(last_frame().pose.timestamp);
+        pointcloud->header.frame_id = "map";
+        for (const auto& map_frame_pair : map) {
+            const auto& map_frame = map_frame_pair.second;
+            auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+            pcl::transformPointCloudWithNormals(*map_frame.pointcloud, *pointcloud_i,
+                    eigen_ros::to_transform(map_frame.pose.data).matrix());
+            *pointcloud += *pointcloud_i;
+        }
     }
-    return it->second;
+
+    // Publish
+    global_map_publisher.publish(pointcloud);
+    return true;
 }
 
 bool Mapping::should_add_to_map(const eigen_ros::Pose& new_frame_pose, const eigen_ros::Pose& previous_frame_pose) {
