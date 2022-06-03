@@ -10,6 +10,22 @@ TEST(pose, equality) {
     }
 }
 
+TEST(pose, apply_transform) {
+    // NOTE: does not test covariance combination
+    eigen_ros::Pose identity;
+    for (unsigned int i = 0; i < 100; ++i) {
+        eigen_ros::Pose transform = test_pose(i);
+        eigen_ros::Pose transformed = apply_transform(identity, transform);
+        // TODO FIX: test covariances
+        EXPECT_TRUE(eigen_ros::to_transform(transform).isApprox(eigen_ros::to_transform(transformed)));
+        eigen_ros::Pose rotation{Eigen::Vector3d::Zero(), test_quaternion(i)};
+        eigen_ros::Pose translation{test_vector3(i)};
+        Eigen::Isometry3d pose_eigen = test_quaternion(i) * Eigen::Translation<double, 3>(test_vector3(i));
+        eigen_ros::Pose pose = apply_transform(rotation, translation);
+        EXPECT_TRUE(eigen_ros::to_transform(pose).isApprox(pose_eigen));
+    }
+}
+
 TEST(pose, to_transform) {
     Eigen::Isometry3d transform = to_transform(eigen_ros::Pose{});
     EXPECT_TRUE(transform.matrix().isApprox(Eigen::Matrix4d::Identity()));

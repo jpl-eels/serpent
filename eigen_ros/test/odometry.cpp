@@ -10,6 +10,20 @@ TEST(odometry, equality) {
     }
 }
 
+TEST(odometry, apply_transformation) {
+    eigen_ros::Odometry identity;
+    for (unsigned int i = 0; i < 100; ++i) {
+        eigen_ros::PoseStamped transform = test_pose_stamped(i);
+        eigen_ros::Odometry transformed = eigen_ros::apply_transform(identity, transform);
+        EXPECT_TRUE(eigen_ros::to_transform(transformed.pose).isApprox(eigen_ros::to_transform(transform.data)));
+        // TODO FIX: test covariances
+        EXPECT_EQ(transformed.twist, identity.twist);
+        EXPECT_EQ(transformed.timestamp, transform.timestamp);
+        EXPECT_EQ(transformed.frame, identity.frame);
+        EXPECT_EQ(transformed.child_frame, identity.child_frame);
+    }
+}
+
 int main(int argc, char** argv) {
     testing::InitGoogleTest(&argc, argv);
     ros::init(argc, argv, "odometry");

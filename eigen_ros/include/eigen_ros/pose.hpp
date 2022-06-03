@@ -12,6 +12,9 @@ public:
             Eigen::Quaterniond(1, 0, 0, 0), const Eigen::Matrix<double, 6, 6> covariance =
             Eigen::Matrix<double, 6, 6>::Zero());
 
+    Pose(const Eigen::Isometry3d& pose, const Eigen::Matrix<double, 6, 6> covariance =
+            Eigen::Matrix<double, 6, 6>::Zero());
+
     // Position
     Eigen::Vector3d position;
     // Orientation
@@ -26,9 +29,24 @@ bool operator==(const Pose& lhs, const Pose& rhs);
 
 std::ostream& operator<<(std::ostream& os, const Pose& pose);
 
-inline Eigen::Isometry3d to_transform(const Pose& pose) {
-    return Eigen::Translation<double, 3>(pose.position) * pose.orientation;
-}
+/**
+ * @brief Apply a transform to the current pose.
+ * 
+ * TODO FIX: The covariance is currently copied from the current pose, but should be concatenated correctly.
+ * 
+ * @param current_pose 
+ * @param transform 
+ * @return Pose 
+ */
+Pose apply_transform(const Pose& current_pose, const Pose& transform);
+
+/**
+ * @brief Obtain the pose in the form of a isometry transform (the covariance is ignored).
+ * 
+ * @param pose 
+ * @return Eigen::Isometry3d 
+ */
+Eigen::Isometry3d to_transform(const Pose& pose);
 
 }
 
