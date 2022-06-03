@@ -173,6 +173,7 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     const auto prior_imu_bias_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << prior_accel_bias_noise,
             prior_accel_bias_noise, prior_accel_bias_noise,  prior_gyro_bias_noise, prior_gyro_bias_noise,
             prior_gyro_bias_noise).finished());
+    ROS_INFO_STREAM("Prior bias sigmas: " << to_flat_string(prior_imu_bias_noise->sigmas()));
     new_factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0), imu_bias, prior_imu_bias_noise);
     ROS_INFO_STREAM("Added prior factor: B(" << 0 << ")");
     new_values.insert(B(0), imu_bias);
