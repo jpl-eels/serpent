@@ -31,6 +31,12 @@ isam2:
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
+# Optimisation
+optimisation:
+  factors:
+    imu: true
+    registration: true
+
 # Registration
 s2s:
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
@@ -60,7 +66,7 @@ s2s:
     regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
 
 s2m:
-  enabled: true
+  enabled: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
   base:
     maximum_iterations: 20
@@ -89,6 +95,6 @@ s2m:
 
 # Mapping
 mapping:
-  frame_extraction_number: 20
+  frame_extraction_number: 10000
   distance_threshold: 0.1                   # metres
   rotation_threshold: 0.05235987755982988   # radians

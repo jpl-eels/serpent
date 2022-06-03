@@ -20,8 +20,12 @@ namespace serpent {
  * graph with prior.
  */
 struct Keys {
+    // IMU factor key
     gtsam::Key imu{1};
-    gtsam::Key pointcloud{1};
+    // Registration key
+    gtsam::Key reg{1};
+    // Optimisation key
+    gtsam::Key opt{1};
 };
 
 bool operator==(const Keys& lhs, const Keys rhs);
@@ -66,8 +70,12 @@ private:
     ros::Subscriber initial_odometry_subscriber;
     ros::Subscriber registration_transform_subscriber;
 
-    // Thread Management
+    //// Thread Management
     mutable std::mutex graph_mutex;
+
+    //// Factor Configuration
+    bool add_imu_factors;
+    bool add_registration_factors;
 
     //// IMU Preintegration
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
@@ -93,7 +101,7 @@ nav_msgs::Path extract_changed_poses(const nav_msgs::Path& full_path, const gtsa
 /* Implementation ****************************************************************************************************/
 
 inline bool operator==(const Keys& lhs, const Keys rhs) {
-    return lhs.imu == rhs.imu && lhs.pointcloud == rhs.pointcloud;
+    return lhs.imu == rhs.imu && lhs.reg == rhs.reg && lhs.opt == rhs.opt;
 }
 
 inline bool operator!=(const Keys& lhs, const Keys rhs) {

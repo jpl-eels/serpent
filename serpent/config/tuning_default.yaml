@@ -31,6 +31,12 @@ isam2:
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
+# Optimisation
+optimisation:
+  factors:
+    imu: true
+    registration: true
+
 # Registration
 s2s:
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
