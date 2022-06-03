@@ -95,6 +95,6 @@ s2m:
 
 # Mapping
 mapping:
-  frame_extraction_number: 10000
+  frame_extraction_number: 10
   distance_threshold: 0.1                   # metres
   rotation_threshold: 0.05235987755982988   # radians
