@@ -1,0 +1,9 @@
+<launch>
+    <arg name="transform_topic"         default="transform"/>
+    <arg name="transform_type"          default="TransformStamped"/> <!-- TransformStamped, PoseStamped, PoseWithCovarianceStamped-->
+
+    <node pkg="navigation_tools" type="combine_transforms" name="combine_transforms" output="screen">
+        <remap from="~input"    to="$(arg transform_topic)"/>
+        <param name="transform_type" value="$(arg transform_type)"/>
+    </node>
+</launch>
