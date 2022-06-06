@@ -4,7 +4,7 @@
     <arg name="apply_transform"     default="false"/>
     <arg name="transformed_frame"   default="imu_transformed"/>
 
-    <node pkg="imu_tools" type="imu_analysis" name="imu_analysis">
+    <node pkg="imu_tools" type="imu_analysis" name="imu_analysis" output="screen">
         <param name="imu_topic"         value="$(arg imu_topic)"/>
         <param name="fixed_frame"       value="$(arg fixed_frame)"/>
         <param name="apply_transform"   value="$(arg apply_transform)"/>

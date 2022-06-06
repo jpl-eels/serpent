@@ -2,7 +2,7 @@
     <arg name="imu_topic"               default="imu"/>
     <arg name="imu_transformed_topic"   default="$(arg imu_topic)_transformed"/>
 
-    <node pkg="imu_tools" type="imu_transform" name="imu_transform">
+    <node pkg="imu_tools" type="imu_transform" name="imu_transform" output="screen">
         <param name="imu_topic"             value="$(arg imu_topic)"/>
         <param name="imu_transformed_topic" value="$(arg imu_transformed_topic)"/>
         <rosparam command="load" file="$(find imu_tools)/config/transform.yaml"/>
