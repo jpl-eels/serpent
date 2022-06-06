@@ -26,7 +26,6 @@
         <arg name="rosbag_mission"          value="$(arg mission)"/>
         <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
         <arg name="rosbag_rate"             value="$(arg rate)"/>
-        <arg name="rosbag_mission"          value="$(arg mission)"/>
         <arg name="use_gdb"                 value="$(arg use_gdb)"/>
         <arg name="use_callgrind"           value="$(arg use_callgrind)"/>
     </include>
