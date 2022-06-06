@@ -1,0 +1,10 @@
+<launch>
+    <arg name="mission"  default=""/>
+    <arg name="data_dir" default="$(env HOME)/data/"/>
+    <arg name="rate"     default="1"/>
+
+    <arg name="bagfile"  value="$(arg data_dir)/$(arg mission).bag"/>
+
+    <node pkg="rosbag" type="play" name="mission_play" output="screen"
+            args="$(arg bagfile) --clock -r $(arg rate) --pause"/>
+</launch>

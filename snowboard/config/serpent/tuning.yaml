@@ -34,7 +34,7 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: true
+    imu: false
     registration: true
 
 # Registration

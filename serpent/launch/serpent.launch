@@ -23,7 +23,12 @@
             value="[${severity}] [${time}] [${node}] [${file}/${function}:${line}]: ${message}"/> -->
 
     <!-- Rosbag Playback Arguments-->
-    <arg name="use_sim_time"            default="false"/>
+    <arg name="play_rosbag"             default="false"/>
+    <arg name="use_sim_time"            default="$(arg play_rosbag)"/>
+    <arg name="rosbag_mission"          default=""/>
+    <arg name="rosbag_data_dir"         default="$(env HOME)/data/"/>
+    <arg name="rosbag_rate"             default="1"/>
+    <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
     <arg name="program_name" value="serpent"/>
@@ -32,9 +37,6 @@
             value="valgrind --tool=callgrind --callgrind-out-file='callgrind.$(arg program_name).%p'"/>
     <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
     <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
-
-    <!-- Rosbag Playback -->
-    <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
@@ -68,6 +70,13 @@
             threads: $(arg threads)
         </rosparam>
     </node>
+
+    <!-- Rosbag -->
+    <include if="$(arg play_rosbag)" file="$(find serpent)/launch/rosbag.launch">
+        <arg name="mission"  default="$(arg rosbag_mission)"/>
+        <arg name="data_dir" default="$(arg rosbag_data_dir)"/>
+        <arg name="rate"     default="$(arg rosbag_rate)"/>
+    </include>
 
     <!-- RVIZ -->
     <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>

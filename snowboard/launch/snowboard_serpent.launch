@@ -1,5 +1,10 @@
 <launch>
-    <arg name="use_sim_time"    default="true"/>
+    <!-- Playback -->
+    <arg name="mission"  default="imu_prepared_fixed_points_night_lidar_no_images"/>
+    <arg name="data_dir" default="$(env HOME)/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/"/>
+    <arg name="rate"     default="1"/>
+
+    <!-- SERPENT -->
     <arg name="use_gdb"         default="false"/>
     <arg name="use_callgrind"   default="false"/>
     <arg name="threads"         default="8"/>
@@ -21,7 +26,10 @@
         <arg name="threads"                 value="$(arg threads)"/>
         <arg name="rviz"                    value="false"/>
         <arg name="rqt"                     value="true"/>
-        <arg name="use_sim_time"            value="$(arg use_sim_time)"/>
+        <arg name="play_rosbag"             value="true"/>
+        <arg name="rosbag_mission"          value="$(arg mission)"/>
+        <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
+        <arg name="rosbag_rate"             value="$(arg rate)"/>
         <arg name="use_gdb"                 value="$(arg use_gdb)"/>
         <arg name="use_callgrind"           value="$(arg use_callgrind)"/>
     </include>
