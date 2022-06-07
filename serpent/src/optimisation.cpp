@@ -79,6 +79,10 @@ Optimisation::Optimisation():
     isam2_params.setEvaluateNonlinearError(nh.param<bool>("isam2/evaluate_nonlinear_error", false));
     isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
     isam2_params.setCacheLinearizedFactors(nh.param<bool>("isam2/cache_linearized_factors", true));
+    if (isam2_params.isEvaluateNonlinearError()) {
+        ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error ="
+                " true). This incurs a computational cost, so should only be used while debugging.");
+    }
     optimiser = std::make_unique<gtsam::ISAM2>(isam2_params);
 }
 
@@ -161,10 +165,15 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
         throw std::runtime_error("Initialisation callback triggered after initialisation. Something went wrong!");
     }
 
+    // Odometry state
+    const eigen_ros::Odometry odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*msg);
+    optimised_state = gtsam::NavState(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position,
+            odometry.twist.linear);
+
     // Set initial pose prior
-    eigen_ros::Odometry odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*msg);
-    gtsam::Pose3 prior_pose = gtsam::Pose3(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position);
-    auto prior_pose_noise = gtsam::noiseModel::Gaussian::Covariance(reorder_pose_covariance(odometry.pose.covariance));
+    const gtsam::Pose3 prior_pose = optimised_state.pose();
+    const auto prior_pose_noise = gtsam::noiseModel::Gaussian::Covariance(
+            reorder_pose_covariance(odometry.pose.covariance));
     ROS_INFO_STREAM("Prior pose sigmas: " << to_flat_string(prior_pose_noise->sigmas()));
     if (prior_pose_noise->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Prior pose noise sigmas contained a zero.");
@@ -176,7 +185,7 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
 
     if (add_imu_factors) {
         // Set initial velocity prior
-        const gtsam::Vector3 prior_vel = odometry.twist.linear;
+        const gtsam::Vector3 prior_vel = optimised_state.velocity();
         const auto prior_vel_noise = gtsam::noiseModel::Gaussian::Covariance(
                 odometry.twist.covariance.block<3, 3>(0, 0));
         ROS_INFO_STREAM("Prior vel sigmas: " << to_flat_string(prior_vel_noise->sigmas()));
@@ -220,8 +229,6 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     imu_transform_publisher.publish(imu_transform);
 
     // Publish initial pose as optimised odometry
-    optimised_state = gtsam::NavState(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position,
-            odometry.twist.linear);
     optimised_odometry_publisher.publish(msg);
 
     // Publish IMU biases
@@ -261,21 +268,31 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
                 new_values.update(X(keys.reg), optimised_state.pose() * registration_pose_gtsam);
                 ROS_INFO_STREAM("Updated value X(" << keys.reg << ")");
             } else {
-                ROS_WARN_STREAM_ONCE("Update of value X(" << keys.reg << ") skipped because value was already added to "
-                        "iSAM2. Is this behaviour ok?");
+                ROS_WARN_STREAM_ONCE("Update of value X(" << keys.reg << ") skipped because value was already added to"
+                        " iSAM2. Is this behaviour ok?");
             }
         } else {
             new_values.insert(X(keys.reg), optimised_state.pose() * registration_pose_gtsam);
             ROS_INFO_STREAM("Added value: X(" << keys.reg << ")");
         }
+        ROS_DEBUG_STREAM("Last Optimised State: " << optimised_state.pose() << "\nRegistration Pose GTSAM: "
+                << registration_pose_gtsam);
+        ROS_DEBUG_STREAM("Initialisation of X(" << keys.reg << "):\n" << new_values.at<gtsam::Pose3>(X(keys.reg)));
         ++keys.reg;
     }
 
     // Optimise graph with iSAM2
+    const ros::WallTime tic = ros::WallTime::now();
     const gtsam::ISAM2Result optimisation_result = optimiser->update(new_factors, new_values);
-    ROS_INFO_STREAM("Optimisation Result: #Reeliminated = " << optimisation_result.getVariablesReeliminated()
-            << ", #Relinearized = " << optimisation_result.getVariablesRelinearized() << ", #Cliques = "
-            << optimisation_result.getCliques());
+    ROS_INFO_STREAM("Optimised in " << (ros::WallTime::now() - tic).toSec() << " seconds.\n#Reeliminated = "
+            << optimisation_result.getVariablesReeliminated() << ", #Relinearized = "
+            << optimisation_result.getVariablesRelinearized() << ", #Cliques = " << optimisation_result.getCliques()
+            << ", Factors Recalculated = " << optimisation_result.factorsRecalculated
+            << (optimisation_result.errorBefore && optimisation_result.errorAfter ? "\nError Before = "
+            + std::to_string(*optimisation_result.errorBefore) + ", Error After = "
+            + std::to_string(*optimisation_result.errorAfter) : ""));
+
+    // Extract values and update state
     const gtsam::Values optimised_values = optimiser->calculateEstimate();
     ROS_INFO_STREAM("Calculated optimiser estimate up for t = " << timestamps[keys.opt]);
     const gtsam::Pose3 optimised_pose = optimised_values.at<gtsam::Pose3>(X(keys.opt));
@@ -287,11 +304,13 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
         imu_bias = optimised_values.at<gtsam::imuBias::ConstantBias>(B(keys.opt));
         ROS_INFO_STREAM("Optimised Bias:\n" << imu_bias);
     }
+    optimised_state = gtsam::NavState(optimised_pose, optimised_vel);
     const Eigen::Matrix<double, 6, 6> optimised_pose_covariance = reorder_pose_covariance(
             optimiser->marginalCovariance(X(keys.opt)));
     auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(optimised_values, timestamps, keys.opt));
     ++keys.opt;
-    // Resetting factors and values for next update
+
+    // Reset factors and values for next update
     new_factors = gtsam::NonlinearFactorGraph();
     new_values = gtsam::Values();
     ROS_INFO_STREAM("Reset factors and values");
