@@ -91,7 +91,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
         ROS_INFO_STREAM("S2S aligning current cloud (" << current_pointcloud->size() << " points) to previous cloud ("
                 << previous_pointcloud->size() << ")");
-        ros::WallTime tic = ros::WallTime::now();
+        const ros::WallTime tic = ros::WallTime::now();
         s2s->align(*registered_pointcloud, tf_mat_float);
         registered_pointcloud->header.frame_id = "body_i-1";
         const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();
@@ -149,7 +149,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     s2m->setInputTarget(map);
     auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
     ROS_INFO_STREAM("S2M Aligning current cloud (" << pointcloud->size() << " points) to map (" << map->size() << ")");
-    ros::WallTime tic = ros::WallTime::now();
+    const ros::WallTime tic = ros::WallTime::now();
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
     registered_pointcloud->header.frame_id = "body_i-1";
     const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();
