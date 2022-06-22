@@ -1,0 +1,10 @@
+<launch>
+    <arg name="mission" default="surface_traverse_1"/>
+
+    <include file="$(find navigation_tools)/launch/integrate_imu.launch">
+        <arg name="imu_topic"       value="/imu"/>
+        <arg name="extrinsics_file" value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
+        <arg name="mission_file"    value="$(find simulator_prcp_missions)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="noise_file"      value="$(find simulator_prcp_missions)/config/serpent/tuning.yaml"/>
+    </include>
+</launch>
