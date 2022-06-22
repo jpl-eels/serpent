@@ -2,11 +2,8 @@
 #define SERPENT_OPTIMISATION_HPP
 
 #include "serpent/ImuArray.h"
+#include "serpent/graph_manager.hpp"
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
@@ -14,23 +11,6 @@
 #include <mutex>
 
 namespace serpent {
-
-/**
- * @brief A struct of key indices is kept to prevent race conditions between callbacks. Used after initialisation of
- * graph with prior.
- */
-struct Keys {
-    // IMU factor key
-    gtsam::Key imu{1};
-    // Registration key
-    gtsam::Key reg{1};
-    // Optimisation key
-    gtsam::Key opt{1};
-};
-
-bool operator==(const Keys& lhs, const Keys rhs);
-
-bool operator!=(const Keys& lhs, const Keys rhs);
 
 class Optimisation {
 public:
@@ -51,6 +31,14 @@ private:
      * @param msg 
      */
     void initial_odometry_callback(const nav_msgs::Odometry::ConstPtr& msg);
+
+    /**
+     * @brief Run optimisation and publish the ROS output (optimised odometry, IMU bias, global path and global path
+     * changes)
+     * 
+     * @param key max key for optimisation
+     */
+    void optimise_and_publish(const int key);
 
     /**
      * @brief Add transform factor between current and next graph node to graph, optimise, and publish results.
@@ -80,33 +68,13 @@ private:
     //// IMU Preintegration
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
 
-    //// GTSAM Optimisation
-    // Timestamps indexed by key
-    std::vector<ros::Time> timestamps;
-    gtsam::NonlinearFactorGraph new_factors;
-    gtsam::Values new_values;
-    std::unique_ptr<gtsam::ISAM2> optimiser;
-    Keys keys;
-    gtsam::NavState optimised_state;
-
-    //// Current State
-    gtsam::imuBias::ConstantBias imu_bias;
+    // Graph manager (tracks states, keys, factors, optimisation)
+    std::unique_ptr<ISAM2GraphManager> gm;
 };
 
-nav_msgs::Path convert_to_path(const gtsam::Values& values, const std::vector<ros::Time> timestamps,
-        const gtsam::Key max_key);
+nav_msgs::Path convert_to_path(const GraphManager& graph_manager, const int max_key);
 
 nav_msgs::Path extract_changed_poses(const nav_msgs::Path& full_path, const gtsam::ISAM2Result& optimisation_result);
-
-/* Implementation ****************************************************************************************************/
-
-inline bool operator==(const Keys& lhs, const Keys rhs) {
-    return lhs.imu == rhs.imu && lhs.reg == rhs.reg && lhs.opt == rhs.opt;
-}
-
-inline bool operator!=(const Keys& lhs, const Keys rhs) {
-    return !(lhs == rhs);
-}
 
 }
 

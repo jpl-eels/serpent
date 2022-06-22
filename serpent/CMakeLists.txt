@@ -63,6 +63,7 @@ catkin_package(
 set(NODE ${PROJECT_NAME}_node)
 
 set(NODE_SRC_FILES
+    src/graph_manager.cpp
     src/li_frontend.cpp
     src/mapping.cpp
     src/node.cpp
@@ -128,9 +129,14 @@ target_compile_definitions(${NODE} PUBLIC PCL_NO_PRECOMPILE)
 # Testing
 if(CATKIN_ENABLE_TESTING)
     catkin_add_gtest(test_${PROJECT_NAME}
+        src/graph_manager.cpp
         src/utilities.cpp
+        test/graph_manager.cpp
         test/serpent.cpp
+        test/test_main.cpp
         test/src/read_data.cpp
+        test/src/test_data.cpp
+        test/src/test_utils.cpp
     )
     target_include_directories(test_${PROJECT_NAME} SYSTEM PUBLIC
         ${NODE_SYSTEM_INCLUDE_DIRS}
@@ -145,4 +151,10 @@ if(CATKIN_ENABLE_TESTING)
         ${NODE_SYSTEM_LIBRARIES}
     )
     target_compile_definitions(test_${PROJECT_NAME} PRIVATE DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test/data")
+
+    set_target_properties(test_${PROJECT_NAME}
+        PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+    )
 endif(CATKIN_ENABLE_TESTING)

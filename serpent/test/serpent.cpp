@@ -1,7 +1,7 @@
 #include "test/read_data.hpp"
+#include "test/test_utils.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuBiases.h"
-#include <eigen_ros/sensor_msgs.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <gtest/gtest.h>
 #include <gtsam/inference/Symbol.h>
@@ -51,11 +51,7 @@ TEST(serpent, isam2_optimise) {
     gtsam::Key key{0};
 
     // IMU measurements, set preintegration noise
-    auto imu_measurements_ros = read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu");
-    std::vector<eigen_ros::Imu> imu_measurements;
-    for (const auto& imu_ros : imu_measurements_ros) {
-        imu_measurements.emplace_back(eigen_ros::from_ros<eigen_ros::Imu>(*imu_ros));
-    }
+    auto imu_measurements = from_ros(read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu"));
     EXPECT_EQ(imu_measurements.size(), 10);
 
     // Priors
@@ -148,10 +144,4 @@ TEST(reorder_covariance, reorder_covariance) {
                              10, 11, 12,  7,  8,  9,
                              16, 17, 18, 13, 14, 15;
     EXPECT_TRUE(pose_reordered.isApprox(pose_reordered_truth));
-}
-
-int main(int argc, char** argv) {
-    testing::InitGoogleTest(&argc, argv);
-    ros::init(argc, argv, "serpent");
-    return RUN_ALL_TESTS();
 }

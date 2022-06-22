@@ -1,17 +1,7 @@
 #include "serpent/optimisation.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuBiases.h"
-#include <eigen_ros/geometry_msgs.hpp>
-#include <eigen_ros/nav_msgs.hpp>
 #include <eigen_ros/eigen_ros.hpp>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/PriorFactor.h>
-
-using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
-using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 
 namespace serpent {
 
@@ -83,7 +73,7 @@ Optimisation::Optimisation():
         ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error ="
                 " true). This incurs a computational cost, so should only be used while debugging.");
     }
-    optimiser = std::make_unique<gtsam::ISAM2>(isam2_params);
+    gm = std::make_unique<ISAM2GraphManager>(isam2_params);
 }
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
@@ -94,10 +84,16 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         throw std::runtime_error("S2S imu array was empty");
     }
 
+    // Wait for imu bias to be optimised (when optimisation has run)
+    if (!protected_sleep(graph_mutex, 0.01, false, true, [this]()
+            { return gm->opt_key() != gm->key("imu"); })) {
+        return;
+    };
+
     // Create IMU preintegration
     update_preintegration_params(*preintegration_params, imu_s2s.front().linear_acceleration_covariance,
             imu_s2s.front().angular_velocity_covariance);
-    gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, imu_bias};
+    gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, gm->imu_bias("imu")};
 
     // Preintegrate IMU measurements over sweep
     ros::Time last_preint_imu_timestamp = msg->start_timestamp;
@@ -115,6 +111,8 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         }
         last_preint_imu_timestamp = imu.timestamp;
     }
+    ROS_INFO_STREAM("Preintegrated " << imu_s2s.size() << " IMU messages between t = " << msg->start_timestamp
+            << " and t = " << msg->end_timestamp);
     if (preintegrated_imu.preintMeasCov().hasNaN()) {
         ROS_WARN_STREAM("Preintegrated Measurement Covariance:\n" << preintegrated_imu.preintMeasCov());
         throw std::runtime_error("NaN found in preintegrated measurement covariance. Something went wrong.");
@@ -123,82 +121,79 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         throw std::runtime_error("Minimum coefficient in preintegrated measurement covariance was <= 0.0");
     }
     
-    // Predict change in pose from preintegration
-    const gtsam::NavState s2s_state = preintegrated_imu.predict(gtsam::NavState(), imu_bias);
-    std::lock_guard<std::mutex> guard(graph_mutex);
-    const gtsam::NavState state = preintegrated_imu.predict(optimised_state, imu_bias);
-    ROS_WARN_ONCE("DESIGN DECISION: should the registration module take incremental or world? If world, we can use the"
-            " predict function on optimised_state and then in registration module calculate the incremental");
-    const eigen_ros::Pose s2s_pose{s2s_state.pose().translation(), s2s_state.pose().rotation().toQuaternion()};
+    // Predict new pose from preintegration
+    gm->increment("imu");
+    gm->set_imu_bias("imu", gm->imu_bias("imu", -1));
+    gm->set_navstate("imu", preintegrated_imu.predict(gm->navstate("imu", -1), gm->imu_bias("imu", -1)));
+    gm->set_timestamp("imu", msg->end_timestamp);
+    if (gm->pose("imu").matrix().hasNaN()) {
+        ROS_WARN_STREAM("Preintegrated pose estimate:\n" << gm->pose("imu").matrix());
+        throw std::runtime_error("NaN found in preintegrated pose estimate.");
+    }
+    if (gm->velocity("imu").hasNaN()) {
+        ROS_WARN_STREAM("Preintegrated velocity estimate:" << to_flat_string(gm->velocity("imu")));
+        throw std::runtime_error("NaN found in preintegrated velocity estimate.");
+    }
+
+    // Calculate change in pose: T_{B_i-1}^{B_i} = T_{B_i-1}^W * T_W^{B_i} = (T_W^{B_i-1})^-1 * T_W^{B_i}
+    const eigen_ros::Pose s2s_pose{Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse()
+            * Eigen::Isometry3d(gm->pose("imu").matrix())};
     ROS_WARN_ONCE("DESIGN DECISION: change output to odometry to pass velocity & covariances to registration module");
 
     // Publish imu estimated transform
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
-    imu_transform->header.stamp = msg->end_timestamp;
+    imu_transform->header.stamp = gm->timestamp("imu");
     imu_transform->header.frame_id = "body_i-1";
     imu_transform->child_frame_id = "body_i";
     eigen_ros::to_ros(imu_transform->transform, s2s_pose);
     imu_transform_publisher.publish(imu_transform);
 
     // Add preintegration combined IMU factor (includes bias between factor) to graph
-    timestamps.emplace_back(msg->end_timestamp);
     if (add_imu_factors) {
-        new_factors.emplace_shared<gtsam::CombinedImuFactor>(X(keys.imu - 1), V(keys.imu - 1), X(keys.imu), V(keys.imu),
-                B(keys.imu - 1), B(keys.imu), preintegrated_imu);
-        ROS_INFO_STREAM("Added factor: X(" << keys.imu - 1 << "), V(" << keys.imu - 1  << "), B(" << keys.imu - 1 <<
-                ") => X(" << keys.imu << "), V(" << keys.imu << "), B(" << keys.imu << ")");
-        new_values.insert(X(keys.imu), state.pose());
-        ROS_INFO_STREAM("Added value: X(" << keys.imu << ")");
-        new_values.insert(V(keys.imu), state.v());
-        ROS_INFO_STREAM("Added value: V(" << keys.imu << ")");
-        new_values.insert(B(keys.imu), imu_bias);
-        ROS_INFO_STREAM("Added value: B(" << keys.imu << ")");
-        ++keys.imu;
+        const int imu_key = gm->key("imu");
+        gm->create_combined_imu_factor(imu_key, preintegrated_imu);
+        ROS_INFO_STREAM("Created factor: X(" << imu_key - 1 << "), V(" << imu_key - 1  << "), B(" << imu_key - 1 <<
+                ") => X(" << imu_key << "), V(" << imu_key << "), B(" << imu_key << ")");
     }
+    graph_mutex.unlock();
 }
 
 void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr& msg) {
-    std::lock_guard<std::mutex> guard(graph_mutex);
-
-    // Error Checking
-    if (keys != Keys()) {
-        throw std::runtime_error("Initialisation callback triggered after initialisation. Something went wrong!");
-    }
-
-    // Odometry state
+    // Initial odometry state
     const eigen_ros::Odometry odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*msg);
-    optimised_state = gtsam::NavState(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position,
-            odometry.twist.linear);
 
-    // Set initial pose prior
-    const gtsam::Pose3 prior_pose = optimised_state.pose();
+    // State manager
+    std::lock_guard<std::mutex> guard(graph_mutex);
+    gm->set_named_key("imu");
+    gm->set_named_key("reg");
+    gm->set_imu_bias(0, gtsam::imuBias::ConstantBias());
+    ROS_WARN_ONCE("DESIGN DECISION: can bias be estimated from initialisation procedure?");
+    gm->set_pose(0, gtsam::Pose3(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position));
+    gm->set_timestamp(0, msg->header.stamp);
+    gm->set_velocity(0, odometry.twist.linear);
+
+    // Prior noises
     const auto prior_pose_noise = gtsam::noiseModel::Gaussian::Covariance(
             reorder_pose_covariance(odometry.pose.covariance));
     ROS_INFO_STREAM("Prior pose sigmas: " << to_flat_string(prior_pose_noise->sigmas()));
     if (prior_pose_noise->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Prior pose noise sigmas contained a zero.");
     }
-    new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), prior_pose, prior_pose_noise);
-    ROS_INFO_STREAM("Added prior factor: X(" << 0 << ")");
-    new_values.insert(X(0), prior_pose);
-    ROS_INFO_STREAM("Added value: X(" << 0 << ")");
+    gm->create_prior_pose_factor(0, gm->pose(0), prior_pose_noise);
+    ROS_INFO_STREAM("Created prior factor: X(" << 0 << ")");
 
     if (add_imu_factors) {
-        // Set initial velocity prior
-        const gtsam::Vector3 prior_vel = optimised_state.velocity();
-        const auto prior_vel_noise = gtsam::noiseModel::Gaussian::Covariance(
+        // Prior velocity noise
+        auto prior_velocity_noise = gtsam::noiseModel::Gaussian::Covariance(
                 odometry.twist.covariance.block<3, 3>(0, 0));
-        ROS_INFO_STREAM("Prior vel sigmas: " << to_flat_string(prior_vel_noise->sigmas()));
-        if (prior_vel_noise->sigmas().minCoeff() == 0.0) {
+        ROS_INFO_STREAM("Prior vel sigmas: " << to_flat_string(prior_velocity_noise->sigmas()));
+        if (prior_velocity_noise->sigmas().minCoeff() == 0.0) {
             throw std::runtime_error("Prior vel noise sigmas contained a zero.");
         }
-        new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), prior_vel, prior_vel_noise);
-        ROS_INFO_STREAM("Added prior factor: V(" << 0 << ")");
-        new_values.insert(V(0), prior_vel);
-        ROS_INFO_STREAM("Added value: V(" << 0 << ")");
+        gm->create_prior_velocity_factor(0, gm->velocity(0), prior_velocity_noise);
+        ROS_INFO_STREAM("Created prior factor: V(" << 0 << ")");
 
-        // Set initial bias prior
-        ROS_WARN_ONCE("DESIGN DECISION: can bias be estimated from initialisation procedure?");
+        // Prior imu noise
         const double prior_accel_bias_noise = nh.param<double>("prior_noise/accelerometer_bias", 1.0e-3);
         const double prior_gyro_bias_noise = nh.param<double>("prior_noise/gyroscope_bias", 1.0e-3);
         if (prior_accel_bias_noise == 0.0) {
@@ -207,19 +202,13 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
         if (prior_gyro_bias_noise == 0.0) {
             throw std::runtime_error("Prior gyroscope bias noise should not be zero.");
         }
-        const auto prior_imu_bias_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << prior_accel_bias_noise,
-                prior_accel_bias_noise, prior_accel_bias_noise,  prior_gyro_bias_noise, prior_gyro_bias_noise,
+        auto prior_imu_bias_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << prior_accel_bias_noise,
+                prior_accel_bias_noise, prior_accel_bias_noise, prior_gyro_bias_noise, prior_gyro_bias_noise,
                 prior_gyro_bias_noise).finished());
         ROS_INFO_STREAM("Prior bias sigmas: " << to_flat_string(prior_imu_bias_noise->sigmas()));
-        new_factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0), imu_bias, prior_imu_bias_noise);
-        ROS_INFO_STREAM("Added prior factor: B(" << 0 << ")");
-        new_values.insert(B(0), imu_bias);
-        ROS_INFO_STREAM("Added value: B(" << 0 << ")");
-        ROS_WARN_ONCE("DESIGN DECISION: can bias noise be estimated from initialisation procedure?");
+        gm->create_prior_imu_bias_factor(0, gm->imu_bias(0), prior_imu_bias_noise);
+        ROS_INFO_STREAM("Created prior factor: B(" << 0 << ")");
     }
-
-    // Save timestamp
-    timestamps.emplace_back(msg->header.stamp);
 
     // Publish empty imu transform (no translation, identity rotation)
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
@@ -228,132 +217,94 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     eigen_ros::to_ros(imu_transform->transform, eigen_ros::Pose());
     imu_transform_publisher.publish(imu_transform);
 
-    // Publish initial pose as optimised odometry
-    optimised_odometry_publisher.publish(msg);
+    // Optimise and publish
+    optimise_and_publish(0);
+}
 
-    // Publish IMU biases
+void Optimisation::optimise_and_publish(const int key) {
+    // Optimise graph with iSAM2
+    const ros::WallTime tic = ros::WallTime::now();
+    const gtsam::ISAM2Result isam2_result = gm->optimise(key);
+    ROS_INFO_STREAM("Optimised and calculated estimate for key = " << key << ", t = " << gm->timestamp(key) << " in "
+            << (ros::WallTime::now() - tic).toSec() << " seconds.\n#Reeliminated = "
+            << isam2_result.getVariablesReeliminated() << ", #Relinearized = "
+            << isam2_result.getVariablesRelinearized() << ", #Cliques = " << isam2_result.getCliques()
+            << ", Factors Recalculated = " << isam2_result.factorsRecalculated
+            << (isam2_result.errorBefore && isam2_result.errorAfter ? "\nError Before = "
+            + std::to_string(*isam2_result.errorBefore) + ", Error After = "
+            + std::to_string(*isam2_result.errorAfter) : ""));
+
+    // Publish optimised pose
+    auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
+    optimised_odometry_msg->header.stamp = gm->timestamp(key);
+    optimised_odometry_msg->header.frame_id = "map";
+    optimised_odometry_msg->child_frame_id = "body_i-1";
+    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, gm->pose(key).translation());
+    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, gm->pose(key).rotation().toQuaternion());
+    eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, reorder_pose_covariance(gm->pose_covariance(key)));
+    eigen_ros::to_ros(optimised_odometry_msg->twist.twist.linear, gm->velocity(key));
+    ROS_WARN_ONCE("TODO: add angular velocity from IMU odometry to optimised odometry");
+    const Eigen::Matrix3d optimised_vel_covariance = add_imu_factors ? gm->velocity_covariance(key)
+            : Eigen::Matrix3d::Zero();
+    ROS_WARN_ONCE("TODO: add linear velocity covariance (optimised_vel_covariance) to optimised odometry");
+    ROS_WARN_ONCE("TODO: add angular velocity covariance from IMU odometry to optimised odometry");
+    optimised_odometry_publisher.publish(optimised_odometry_msg);
+    
+    // Publish optimised biases
     auto imu_bias_msg = boost::make_shared<serpent::ImuBiases>();
-    to_ros(*imu_bias_msg, imu_bias, msg->header.stamp);
+    to_ros(*imu_bias_msg, gm->imu_bias(key), gm->timestamp(key));
     imu_biases_publisher.publish(imu_bias_msg);
+    ROS_INFO_STREAM("Optimised Bias:\n" << gm->imu_bias(key));
 
-    // Compute and publish optimised path and changed path
-    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(new_values, timestamps, 0));
+    // Publish optimised path and changed path
+    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key));
+    auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path, isam2_result));
     path_publisher.publish(global_path);
-    path_changes_publisher.publish(global_path);
+    path_changes_publisher.publish(global_path_changes);
 }
 
 void Optimisation::registration_transform_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     // Add registration transform to graph, update value guess
-    graph_mutex.lock();
+    std::lock_guard<std::mutex> guard{graph_mutex};
+    gm->increment("reg");
     if (add_registration_factors) {
+        // Extract registration information
         const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
         const gtsam::Pose3 registration_pose_gtsam = gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation),
                 registration_pose.data.position);
-        if (timestamps.at(keys.reg) != msg->header.stamp) {
-            throw std::runtime_error("Timestamps did not match [Graph: " +
-                    std::to_string(timestamps.at(keys.reg).toSec()) + ", Transform:" +
-                    std::to_string(msg->header.stamp.toSec()) + "]. Something went wrong.");
-        }
         auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(reorder_pose_covariance(
             registration_pose.data.covariance));
         ROS_INFO_STREAM("Registration sigmas: " << to_flat_string(registration_covariance->sigmas()));
         if (registration_covariance->sigmas().minCoeff() == 0.0) {
             throw std::runtime_error("Registration noise sigmas contained a zero.");
         }
-        new_factors.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(keys.reg - 1), X(keys.reg),
-                registration_pose_gtsam, registration_covariance);
-        ROS_INFO_STREAM("Added factor: X(" << keys.reg - 1 << ") => X(" << keys.reg << ")");
-        if (add_imu_factors) {
-            if (new_values.exists(X(keys.reg))) {
-                new_values.update(X(keys.reg), optimised_state.pose() * registration_pose_gtsam);
-                ROS_INFO_STREAM("Updated value X(" << keys.reg << ")");
-            } else {
-                ROS_WARN_STREAM_ONCE("Update of value X(" << keys.reg << ") skipped because value was already added to"
-                        " iSAM2. Is this behaviour ok?");
-            }
-        } else {
-            new_values.insert(X(keys.reg), optimised_state.pose() * registration_pose_gtsam);
-            ROS_INFO_STREAM("Added value: X(" << keys.reg << ")");
+
+        // Update state
+        gm->set_pose("reg", gm->pose("reg", -1) * registration_pose_gtsam);
+        if (gm->timestamp("reg") != msg->header.stamp) {
+            throw std::runtime_error("Timestamps did not match [Graph: " + std::to_string(gm->timestamp("reg").toSec())
+                    + ", Transform:" + std::to_string(msg->header.stamp.toSec()) + "]. Something went wrong.");
         }
-        ROS_DEBUG_STREAM("Last Optimised State: " << optimised_state.pose() << "\nRegistration Pose GTSAM: "
-                << registration_pose_gtsam);
-        ROS_DEBUG_STREAM("Initialisation of X(" << keys.reg << "):\n" << new_values.at<gtsam::Pose3>(X(keys.reg)));
-        ++keys.reg;
+        
+        // Add the registration factor
+        const int reg_key = gm->key("reg");
+        gm->create_between_pose_factor(reg_key, registration_pose_gtsam, registration_covariance);
+        ROS_INFO_STREAM("Created factor: X(" << reg_key - 1 << ") => X(" << reg_key << ")");
     }
 
-    // Optimise graph with iSAM2
-    const ros::WallTime tic = ros::WallTime::now();
-    const gtsam::ISAM2Result optimisation_result = optimiser->update(new_factors, new_values);
-    ROS_INFO_STREAM("Optimised in " << (ros::WallTime::now() - tic).toSec() << " seconds.\n#Reeliminated = "
-            << optimisation_result.getVariablesReeliminated() << ", #Relinearized = "
-            << optimisation_result.getVariablesRelinearized() << ", #Cliques = " << optimisation_result.getCliques()
-            << ", Factors Recalculated = " << optimisation_result.factorsRecalculated
-            << (optimisation_result.errorBefore && optimisation_result.errorAfter ? "\nError Before = "
-            + std::to_string(*optimisation_result.errorBefore) + ", Error After = "
-            + std::to_string(*optimisation_result.errorAfter) : ""));
-
-    // Extract values and update state
-    const gtsam::Values optimised_values = optimiser->calculateEstimate();
-    ROS_INFO_STREAM("Calculated optimiser estimate up for t = " << timestamps[keys.opt]);
-    const gtsam::Pose3 optimised_pose = optimised_values.at<gtsam::Pose3>(X(keys.opt));
-    Eigen::Vector3d optimised_vel = Eigen::Vector3d::Zero();
-    Eigen::Matrix3d optimised_vel_covariance = Eigen::Matrix3d::Zero();
-    if (add_imu_factors) {
-        optimised_vel = optimised_values.at<gtsam::Vector3>(V(keys.opt));
-        optimised_vel_covariance = optimiser->marginalCovariance(V(keys.opt));
-        imu_bias = optimised_values.at<gtsam::imuBias::ConstantBias>(B(keys.opt));
-        ROS_INFO_STREAM("Optimised Bias:\n" << imu_bias);
-    }
-    optimised_state = gtsam::NavState(optimised_pose, optimised_vel);
-    const Eigen::Matrix<double, 6, 6> optimised_pose_covariance = reorder_pose_covariance(
-            optimiser->marginalCovariance(X(keys.opt)));
-    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(optimised_values, timestamps, keys.opt));
-    ++keys.opt;
-
-    // Reset factors and values for next update
-    new_factors = gtsam::NonlinearFactorGraph();
-    new_values = gtsam::Values();
-    ROS_INFO_STREAM("Reset factors and values");
-    graph_mutex.unlock();
-
-    // Publish optimised pose
-    auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
-    optimised_odometry_msg->header.stamp = msg->header.stamp;
-    optimised_odometry_msg->header.frame_id = "map";
-    optimised_odometry_msg->child_frame_id = "body_i-1";
-    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, optimised_pose.translation());
-    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, optimised_pose.rotation().toQuaternion());
-    eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, optimised_pose_covariance);
-    eigen_ros::to_ros(optimised_odometry_msg->twist.twist.linear, optimised_vel);
-    ROS_WARN_ONCE("TODO: add angular velocity from IMU odometry to optimised odometry");
-    ROS_WARN_ONCE("TODO: add twist covariance from IMU odometry to optimised odometry");
-    optimised_odometry_publisher.publish(optimised_odometry_msg);
-
-    // Publish optimised biases
-    auto imu_bias_msg = boost::make_shared<serpent::ImuBiases>();
-    to_ros(*imu_bias_msg, imu_bias, msg->header.stamp);
-    imu_biases_publisher.publish(imu_bias_msg);
-
-    // Publish optimised path and changed path
-    auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path,
-            optimisation_result));
-    path_publisher.publish(global_path);
-    path_changes_publisher.publish(global_path_changes);
+    // Optimise and publish
+    optimise_and_publish(gm->key("reg"));
 }
 
-nav_msgs::Path convert_to_path(const gtsam::Values& values, const std::vector<ros::Time> timestamps,
-        const gtsam::Key max_key) {
-    if (max_key >= timestamps.size()) {
-        throw std::runtime_error("Max key greater than timestamps size. Something went wrong.");
-    }
+nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key) {
     nav_msgs::Path path;
-    path.header.stamp = timestamps[max_key];
+    path.header.stamp = gm.timestamp(max_key);
     path.header.frame_id = "map";
-    for (gtsam::Key key = 0; key <= max_key; ++key) {
+    for (int key = 0; key <= max_key; ++key) {
         geometry_msgs::PoseStamped pose_msg;
-        pose_msg.header.stamp = timestamps[key];
+        pose_msg.header.stamp = gm.timestamp(key);
         pose_msg.header.frame_id = "body_" + std::to_string(key);
-        to_ros(pose_msg.pose, values.at<gtsam::Pose3>(X(key)));
+        to_ros(pose_msg.pose, gm.pose(key));
         path.poses.push_back(pose_msg);
     }
     return path;
