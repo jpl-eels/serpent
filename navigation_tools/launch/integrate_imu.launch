@@ -1,0 +1,19 @@
+<launch>
+    <arg name="imu_topic"       default="imu"/>
+    <arg name="extrinsics_file" default=""/>
+    <arg name="mission_file"    default=""/>
+    <arg name="noise_file"      default=""/>
+
+    <node pkg="navigation_tools" type="integrate_imu" name="integrate_imu" output="screen">
+        <remap from="~input"    to="$(arg imu_topic)"/>
+
+        <!-- Extrinsics -->
+        <rosparam if="$(eval extrinsics_file != '')"    command="load" file="$(arg extrinsics_file)"/>
+
+        <!-- Pose -->
+        <rosparam if="$(eval mission_file != '')"       command="load" file="$(arg mission_file)"/>
+
+        <!-- Noise -->
+        <rosparam if="$(eval noise_file != '')"         command="load" file="$(arg noise_file)"/>
+    </node>
+</launch>
