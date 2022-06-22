@@ -13,7 +13,7 @@
         <arg name="imu_topic"               value="/imu"/>
         <arg name="pointcloud_topic"        value="/points"/>
         <arg name="robot_file"              value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
-        <arg name="mission_file"            value="$(find simulator_prcp_missions)/config/serpent//mission/$(arg mission).yaml"/>
+        <arg name="mission_file"            value="$(find simulator_prcp_missions)/config/serpent/mission/$(arg mission).yaml"/>
         <arg name="filter_file"             value="$(find simulator_prcp_missions)/config/serpent/filter.yaml"/>
         <arg name="format_file"             value="$(find simulator_prcp_missions)/config/serpent/format.yaml"/>
         <arg name="normal_estimation_file"  value="$(find simulator_prcp_missions)/config/serpent/normal_estimation.yaml"/>
