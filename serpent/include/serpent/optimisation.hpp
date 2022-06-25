@@ -67,6 +67,8 @@ private:
 
     //// IMU Preintegration
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
+    // Temp integrator = todo: delete
+    std::unique_ptr<gtsam::PreintegratedCombinedMeasurements> test_preintegrator;
 
     // Graph manager (tracks states, keys, factors, optimisation)
     std::unique_ptr<ISAM2GraphManager> gm;

@@ -1,6 +1,7 @@
 #include "serpent/registration.hpp"
 #include "serpent/registration_methods.hpp"
 #include "serpent/utilities.hpp"
+#include <eigen_ext/covariance.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <pcl/common/transforms.h>
@@ -58,7 +59,7 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     transform_msg->header.stamp = timestamp;
     transform_msg->header.frame_id = "body_i-1"; // Child = "body_i"
     eigen_ros::to_ros(transform_msg->pose.pose, transform);
-    eigen_ros::to_ros(transform_msg->pose.covariance, covariance);
+    eigen_ros::to_ros(transform_msg->pose.covariance, eigen_ext::reorder_covariance(covariance, 3));
     refined_transform_publisher.publish(transform_msg);
 }
 

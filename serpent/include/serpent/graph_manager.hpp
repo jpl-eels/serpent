@@ -235,6 +235,8 @@ public:
      */
     int opt_key();
 
+    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key);
+
     Eigen::Matrix<double, 6, 6> pose_covariance(const int key);
 
     Eigen::Matrix3d velocity_covariance(const int key);

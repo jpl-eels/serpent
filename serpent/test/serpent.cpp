@@ -126,22 +126,3 @@ TEST(imu_bias, to_from_ros) {
     to_from_ros_check(gtsam::imuBias::ConstantBias{gtsam::Vector3{0.1, 0.1, 0.1}, gtsam::Vector3{0.2, 0.2, 0.2}});
     to_from_ros_check(gtsam::imuBias::ConstantBias{gtsam::Vector3{0.01, 0.02, 0.03}, gtsam::Vector3{0.04, 0.05, 0.06}});
 }
-
-TEST(reorder_covariance, reorder_covariance) {
-    Eigen::Matrix<double, 6, 6> pose_matrix;
-    pose_matrix <<  1,  2,  3,  4,  5,  6,
-                    7,  8,  9, 10, 11, 12,
-                   13, 14, 15, 16, 17, 18,
-                   19, 20, 21, 22, 23, 24,
-                   25, 26, 27, 28, 29, 30,
-                   31, 32, 33, 34, 35, 36;
-    Eigen::Matrix<double, 6, 6> pose_reordered = serpent::reorder_pose_covariance(pose_matrix);
-    Eigen::Matrix<double, 6, 6> pose_reordered_truth;
-    pose_reordered_truth <<  22, 23, 24, 19, 20, 21,
-                             28, 29, 30, 25, 26, 27,
-                             34, 35, 36, 31, 32, 33,
-                              4,  5,  6,  1,  2,  3,
-                             10, 11, 12,  7,  8,  9,
-                             16, 17, 18, 13, 14, 15;
-    EXPECT_TRUE(pose_reordered.isApprox(pose_reordered_truth));
-}

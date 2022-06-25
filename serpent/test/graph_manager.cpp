@@ -2,6 +2,9 @@
 #include "test/read_data.hpp"
 #include "test/test_data.hpp"
 #include "test/test_utils.hpp"
+#include <eigen_ext/covariance.hpp>
+#include <eigen_ext/geometry.hpp>
+#include <eigen_gtsam/eigen_gtsam.hpp>
 #include <gtest/gtest.h>
 #include <gtsam/inference/Symbol.h>
 
@@ -311,5 +314,88 @@ TEST(graph_manager, update_from_values) {
         EXPECT_TRUE(gm.imu_bias(i).vector().isApprox(test_imu_bias(i).vector()));
         EXPECT_TRUE(gm.pose(i).matrix().isApprox(test_pose(i).matrix()));
         EXPECT_TRUE(gm.velocity(i).isApprox(test_velocity(i)));
+    }
+}
+
+TEST(graph_manager, pose_graph_reg_optimise) {
+    // Setup
+    serpent::ISAM2GraphManager gm{test_isam2_params()};
+    const gtsam::Pose3 prior_pose = test_pose(0);
+    gm.set_pose(0, prior_pose);
+    const Eigen::Matrix<double, 6, 6> prior_cov = test_pose_covariance(0);
+    gm.create_prior_pose_factor(0, gm.pose(0), gtsam::noiseModel::Gaussian::Covariance(prior_cov));
+    const gtsam::Pose3 pose_1 = test_pose(1);
+    gm.set_pose(1, pose_1);
+    const gtsam::Pose3 transform = gm.pose(0).inverse() * gm.pose(1);
+    const Eigen::Matrix<double, 6, 6> relative_cov = test_pose_covariance(1);
+    gm.create_between_pose_factor(1, transform, gtsam::noiseModel::Gaussian::Covariance(relative_cov));
+
+    // Optimisation
+    auto result = gm.optimise(1);
+    EXPECT_NEAR(*result.errorBefore, 0.0, DOUBLE_PRECISION);
+    EXPECT_NEAR(*result.errorAfter, 0.0, DOUBLE_PRECISION);
+
+    // Covariances
+    Eigen::Matrix<double, 6, 6> pose_cov_0 = gm.pose_covariance(0);
+    EXPECT_TRUE(eigen_ext::is_valid_covariance(pose_cov_0, DOUBLE_PRECISION));
+    Eigen::Matrix<double, 6, 6> pose_cov_1 = gm.pose_covariance(1);
+    EXPECT_TRUE(eigen_ext::is_valid_covariance(pose_cov_1, DOUBLE_PRECISION));
+
+    // Check values
+    EXPECT_TRUE(gm.pose(0).matrix().isApprox(prior_pose.matrix()));
+    EXPECT_TRUE(gm.pose(1).matrix().isApprox(pose_1.matrix()));
+
+    // Check covariance 0
+    EXPECT_TRUE(pose_cov_0.isApprox(prior_cov));
+
+    // Check covariance 1 against composition
+    const Eigen::Isometry3d transform_ = eigen_gtsam::to_eigen<Eigen::Isometry3d>(transform);
+    EXPECT_TRUE(transform.matrix().isApprox(transform_.matrix()));
+    Eigen::Matrix<double, 6, 6> pose_cov_1_compose = eigen_ext::compose_transform_covariance(prior_cov, relative_cov,
+            transform_);
+    EXPECT_TRUE(eigen_ext::is_valid_covariance(pose_cov_1_compose, DOUBLE_PRECISION));
+    EXPECT_TRUE(pose_cov_1.isApprox(pose_cov_1_compose));
+}
+
+TEST(graph_manager, pose_graph_reg_optimise_multi) {
+    // Setup
+    serpent::ISAM2GraphManager gm{test_isam2_params()};
+    const gtsam::Pose3 prior_pose = test_pose(0);
+    gm.set_pose(0, prior_pose);
+    const Eigen::Matrix<double, 6, 6> prior_cov = test_pose_covariance(0);
+    gm.create_prior_pose_factor(0, gm.pose(0), gtsam::noiseModel::Gaussian::Covariance(prior_cov));
+
+    // Create
+    const int size{5};
+    std::vector<Eigen::Isometry3d> poses{size};
+    std::vector<Eigen::Matrix<double, 6, 6>> covariances{size};
+    poses.at(0) = eigen_gtsam::to_eigen<Eigen::Isometry3d>(prior_pose);
+    covariances.at(0) = prior_cov;
+    for (int i = 1; i < size; ++i) {
+        // Create value and factor
+        const gtsam::Pose3 pose_i = test_pose(i);
+        poses.at(i) = eigen_gtsam::to_eigen<Eigen::Isometry3d>(pose_i);
+        gm.set_pose(i, pose_i);
+        const gtsam::Pose3 transform = gm.pose(i - 1).inverse() * gm.pose(i);
+        const Eigen::Matrix<double, 6, 6> relative_cov = test_pose_covariance(i);
+        gm.create_between_pose_factor(i, transform, gtsam::noiseModel::Gaussian::Covariance(relative_cov));
+
+        // Compute real covariance
+        const Eigen::Isometry3d transform_ = eigen_gtsam::to_eigen<Eigen::Isometry3d>(transform);
+        EXPECT_TRUE(transform.matrix().isApprox(transform_.matrix()));
+        covariances.at(i) = eigen_ext::compose_transform_covariance(covariances.at(i - 1), relative_cov, transform_);
+        EXPECT_TRUE(eigen_ext::is_valid_covariance(covariances.at(i), DOUBLE_PRECISION));
+    }
+
+    // Optimisation
+    auto result = gm.optimise(size - 1);
+    EXPECT_NEAR(*result.errorBefore, 0.0, DOUBLE_PRECISION);
+    EXPECT_NEAR(*result.errorAfter, 0.0, DOUBLE_PRECISION);
+
+    // Check values and covariances
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_TRUE(gm.pose(i).matrix().isApprox(poses.at(i).matrix()));
+        EXPECT_TRUE(eigen_ext::is_valid_covariance(gm.pose_covariance(i), DOUBLE_PRECISION));
+        EXPECT_TRUE(gm.pose_covariance(i).isApprox(covariances.at(i)));
     }
 }

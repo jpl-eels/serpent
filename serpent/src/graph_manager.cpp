@@ -255,6 +255,10 @@ int ISAM2GraphManager::opt_key() {
     return opt_key_;
 }
 
+Eigen::Matrix<double, 6, 6> ISAM2GraphManager::imu_bias_covariance(const int key_) {
+    return optimiser.marginalCovariance(B(key_));
+}
+
 Eigen::Matrix<double, 6, 6> ISAM2GraphManager::pose_covariance(const int key_) {
     return optimiser.marginalCovariance(X(key_));
 }

@@ -1,6 +1,8 @@
 #include "serpent/li_frontend.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuArray.h"
+#include <eigen_ext/geometry.hpp>
+#include <eigen_gtsam/eigen_gtsam.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
 #include <eigen_ros/nav_msgs.hpp>
 #include <eigen_ros/eigen_ros.hpp>
@@ -94,9 +96,7 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         /* TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
         gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
         Eigen::Matrix<double, 6, 6> pose_covariance, twist_covariance;
-        pose_covariance = reorder_pose_covariance(state_covariance.block<6, 6>(0, 0));
-        // pose_covariance << state_covariance.block<3, 3>(3, 3), state_covariance.block<3, 3>(3, 0),
-        //         state_covariance.block<3, 3>(0, 3), state_covariance.block<3, 3>(0, 0);
+        pose_covariance = state_covariance.block<6, 6>(0, 0);
         twist_covariance << state_covariance.block<3, 3>(6, 6), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
                 imu.angular_velocity_covariance;
         */
@@ -110,11 +110,11 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
         // TODO: add pose_covariance
-        // eigen_ros::to_ros(odometry->pose.covariance, pose_covariance);
+        // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
         eigen_ros::to_ros(odometry->twist.twist.linear, state.velocity());
         eigen_ros::to_ros(odometry->twist.twist.angular, angular_velocity);
         // TODO: add twist_covariance
-        // eigen_ros::to_ros(odometry->twist.covariance, twist_covariance);
+        // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         ROS_WARN_ONCE("TODO: add correct covariances to IMU-rate odometry");
         odometry_publisher.publish(odometry);
 
@@ -170,25 +170,23 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     Eigen::Isometry3d deskew_transform;
     if (!initialised) {
         // Compute initial state using user-defined position & yaw, and gravity-defined roll and pitch
-        Eigen::Matrix<double, 6, 6> pose_covariance;
-        pose_covariance <<
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0),
-                Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        Eigen::Quaterniond imu_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
+        const Eigen::Matrix3d position_covariance = Eigen::Matrix3d::Identity()
+                * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
+        const Eigen::Matrix3d rotation_covariance = Eigen::Matrix3d::Identity()
+                * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
+        const Eigen::Quaterniond imu_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
                 Eigen::Quaterniond::Identity() : imu.orientation;
-        eigen_ros::Pose pose{Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0),
+        const eigen_ros::Pose pose{Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0),
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)),
-                imu_orientation, pose_covariance};
+                imu_orientation, position_covariance, rotation_covariance};
         ROS_WARN_ONCE("MUST FIX: initial pose based on orientation but should be based on gravity. Can't use"
                 " orientation for 6-axis IMU");
-        Eigen::Matrix<double, 6, 6> twist_covariance;
-        twist_covariance <<
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0),
-                Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(), imu.angular_velocity_covariance;
+        const Eigen::Matrix3d linear_twist_covariance = Eigen::Matrix3d::Identity()
+                * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
         const Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();
         ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
-        const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, twist_covariance};
+        const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
+                imu.angular_velocity_covariance};
         const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", "body_i"};
 
         // Publish initial state
@@ -199,7 +197,7 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         previous_pointcloud_start = pointcloud_start;
 
         // Deskew transform
-        deskew_transform = Eigen::Quaterniond::Identity();
+        deskew_transform = Eigen::Isometry3d::Identity();
         ROS_WARN_ONCE("DESIGN DECISION: Deskew transform from initialisation procedure is missing. Using identity.");
     }
 
@@ -215,7 +213,7 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     const ros::Duration sweep_duration = ros::Duration(pct::max_value<float>(*msg, "t"));
     if (sweep_duration == ros::Duration(0)) {
         // No sweep required
-        deskew_transform = Eigen::Quaterniond::Identity();
+        deskew_transform = Eigen::Isometry3d::Identity();
         ROS_INFO_STREAM("Pointcloud does not require deskewing");
     } else {
         const ros::Time pointcloud_end = pointcloud_start + sweep_duration;
@@ -250,8 +248,7 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
             // Generate transform from preintegration
             const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), imu_biases);
-            deskew_transform = Eigen::Translation<double, 3>(sweep_state.pose().translation()) *
-                    sweep_state.pose().rotation().toQuaternion();
+            deskew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
         }
     }
 

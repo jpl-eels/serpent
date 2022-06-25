@@ -88,6 +88,14 @@ private:
     std::deque<Eigen::Isometry3d> s2s_registrations;
 };
 
+/**
+ * @brief Returns covariance in order [R1, R2, R3, t1, t2, t3].
+ * 
+ * @tparam PointSource 
+ * @tparam PointTarget 
+ * @param registration 
+ * @return Eigen::Matrix<double, 6, 6> 
+ */
 template<typename PointSource, typename PointTarget>
 Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration) {
     ROS_WARN_ONCE("DESIGN DECISION: Use fitness score in registration covariance?");

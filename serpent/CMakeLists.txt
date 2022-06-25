@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
     std_srvs
     tf2_ros
 
+    eigen_ext
+    eigen_gtsam
     eigen_ros
     pointcloud_tools
 )
@@ -53,6 +55,8 @@ catkin_package(
         std_srvs
         tf2_ros
 
+        eigen_ext
+        eigen_gtsam
         eigen_ros
         pointcloud_tools
     DEPENDS

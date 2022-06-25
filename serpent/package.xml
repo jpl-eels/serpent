@@ -19,6 +19,8 @@
     <depend>std_srvs</depend>
     <depend>tf2_ros</depend>
 
+    <depend>eigen_ext</depend>
+    <depend>eigen_gtsam</depend>
     <depend>eigen_ros</depend>
     <depend>pointcloud_tools</depend>
 

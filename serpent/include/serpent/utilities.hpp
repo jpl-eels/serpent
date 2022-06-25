@@ -24,20 +24,6 @@ bool check_non_zero_diagonals(const Eigen::MatrixBase<Derived>& matrix) {
 
 bool check_valid(const gtsam::PreintegrationParams& params);
 
-/**
- * @brief Some systems use an x,y,z,r,p,y convention for the ordering of a pose covariance matrix (e.g. ROS), while
- * others use r,p,y,x,y,z (e.g. GTSAM). This function converts between the two by rearranging the blocks.
- * 
- * [P|A]     [R|B]
- * [---] <=> [---]
- * [B|R]     [A|P]
- * P and R are the position and rotation blocks, and A and B are the P-R covariance blocks.
- * 
- * @param covariance 
- * @return Eigen::Matrix<double, 6, 6> 
- */
-Eigen::Matrix<double, 6, 6> reorder_pose_covariance(const Eigen::Matrix<double, 6, 6>& covariance);
-
 void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& messages);
 
 std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,

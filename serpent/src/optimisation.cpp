@@ -1,6 +1,7 @@
 #include "serpent/optimisation.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuBiases.h"
+#include <eigen_ext/covariance.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 
 namespace serpent {
@@ -94,6 +95,10 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     update_preintegration_params(*preintegration_params, imu_s2s.front().linear_acceleration_covariance,
             imu_s2s.front().angular_velocity_covariance);
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, gm->imu_bias("imu")};
+    if (!test_preintegrator) {
+        test_preintegrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params,
+                gm->imu_bias(0));
+    }
 
     // Preintegrate IMU measurements over sweep
     ros::Time last_preint_imu_timestamp = msg->start_timestamp;
@@ -108,6 +113,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
                 - last_preint_imu_timestamp).toSec();
         if (dt > 0.0) {
             preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+            test_preintegrator->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
         }
         last_preint_imu_timestamp = imu.timestamp;
     }
@@ -120,6 +126,15 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         ROS_WARN_STREAM("Preintegrated Measurement Covariance:\n" << preintegrated_imu.preintMeasCov());
         throw std::runtime_error("Minimum coefficient in preintegrated measurement covariance was <= 0.0");
     }
+
+    const gtsam::NavState test_state = test_preintegrator->predict(gm->navstate(0), gm->imu_bias(0));
+    const Eigen::Matrix<double, 15, 15> test_cov = test_preintegrator->preintMeasCov();
+    const Eigen::Matrix<double, 6, 6> test_cov_pose = test_cov.block<6, 6>(0, 0);
+    const Eigen::Matrix<double, 3, 3> test_cov_vel = test_cov.block<3, 3>(6, 6);
+    ROS_INFO_STREAM("Test pose:\n" << test_state.pose().matrix());
+    ROS_INFO_STREAM("Test pose covariance:\n" << test_cov_pose);
+    ROS_INFO_STREAM("Test vel:\n" << test_state.velocity());
+    ROS_INFO_STREAM("Test vel covariance:\n" << test_cov_vel);
     
     // Predict new pose from preintegration
     gm->increment("imu");
@@ -173,8 +188,7 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     gm->set_velocity(0, odometry.twist.linear);
 
     // Prior noises
-    const auto prior_pose_noise = gtsam::noiseModel::Gaussian::Covariance(
-            reorder_pose_covariance(odometry.pose.covariance));
+    const auto prior_pose_noise = gtsam::noiseModel::Gaussian::Covariance(odometry.pose.covariance);
     ROS_INFO_STREAM("Prior pose sigmas: " << to_flat_string(prior_pose_noise->sigmas()));
     if (prior_pose_noise->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Prior pose noise sigmas contained a zero.");
@@ -185,7 +199,7 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     if (add_imu_factors) {
         // Prior velocity noise
         auto prior_velocity_noise = gtsam::noiseModel::Gaussian::Covariance(
-                odometry.twist.covariance.block<3, 3>(0, 0));
+                odometry.twist.linear_velocity_covariance());
         ROS_INFO_STREAM("Prior vel sigmas: " << to_flat_string(prior_velocity_noise->sigmas()));
         if (prior_velocity_noise->sigmas().minCoeff() == 0.0) {
             throw std::runtime_error("Prior vel noise sigmas contained a zero.");
@@ -241,7 +255,8 @@ void Optimisation::optimise_and_publish(const int key) {
     optimised_odometry_msg->child_frame_id = "body_i-1";
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, gm->pose(key).translation());
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, gm->pose(key).rotation().toQuaternion());
-    eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, reorder_pose_covariance(gm->pose_covariance(key)));
+    eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, eigen_ext::reorder_covariance(
+            gm->pose_covariance(key), 3));
     eigen_ros::to_ros(optimised_odometry_msg->twist.twist.linear, gm->velocity(key));
     ROS_WARN_ONCE("TODO: add angular velocity from IMU odometry to optimised odometry");
     const Eigen::Matrix3d optimised_vel_covariance = add_imu_factors ? gm->velocity_covariance(key)
@@ -249,6 +264,12 @@ void Optimisation::optimise_and_publish(const int key) {
     ROS_WARN_ONCE("TODO: add linear velocity covariance (optimised_vel_covariance) to optimised odometry");
     ROS_WARN_ONCE("TODO: add angular velocity covariance from IMU odometry to optimised odometry");
     optimised_odometry_publisher.publish(optimised_odometry_msg);
+    ROS_INFO_STREAM("Pose:\n" << gm->pose(key).matrix());
+    ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << gm->pose_covariance(key));
+    ROS_INFO_STREAM("Velocity:\n" << gm->velocity(key));
+    ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
+    ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
+    ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
     
     // Publish optimised biases
     auto imu_bias_msg = boost::make_shared<serpent::ImuBiases>();
@@ -272,8 +293,7 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
         const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
         const gtsam::Pose3 registration_pose_gtsam = gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation),
                 registration_pose.data.position);
-        auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(reorder_pose_covariance(
-            registration_pose.data.covariance));
+        auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
         ROS_INFO_STREAM("Registration sigmas: " << to_flat_string(registration_covariance->sigmas()));
         if (registration_covariance->sigmas().minCoeff() == 0.0) {
             throw std::runtime_error("Registration noise sigmas contained a zero.");
