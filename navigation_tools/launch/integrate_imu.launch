@@ -1,8 +1,8 @@
 <launch>
-    <arg name="imu_topic"       default="imu"/>
-    <arg name="extrinsics_file" default=""/>
-    <arg name="mission_file"    default=""/>
-    <arg name="noise_file"      default=""/>
+    <arg name="imu_topic"               default="imu"/>
+    <arg name="extrinsics_file"         default=""/>
+    <arg name="mission_file"            default=""/>
+    <arg name="noise_file"              default=""/>
 
     <node pkg="navigation_tools" type="integrate_imu" name="integrate_imu" output="screen">
         <remap from="~input"    to="$(arg imu_topic)"/>

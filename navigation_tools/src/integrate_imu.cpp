@@ -1,4 +1,7 @@
 #include "navigation_tools/integrate_imu.hpp"
+#include <eigen_ext/covariance.hpp>
+#include <eigen_ext/geometry.hpp>
+#include <eigen_gtsam/eigen_gtsam.hpp>
 #include <nav_msgs/Odometry.h>
 
 IntegrateImu::IntegrateImu():
@@ -37,6 +40,9 @@ IntegrateImu::IntegrateImu():
     preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
             std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
 
+    // IMU noise
+    nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
+
     // IMU integrator
     integrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias);
 
@@ -60,11 +66,16 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
 
         // Predict
         state = integrator->predict(state, imu_bias);
-        auto pose = state.pose();
-        auto vel = state.velocity();
+        const auto& pose = state.pose();
+        const auto& vel = state.velocity();
 
-        // Reset
-        integrator->resetIntegrationAndSetBias(imu_bias);
+        // Covariance
+        const Eigen::Matrix<double, 15, 15> integration_covariance = integrator->preintMeasCov();
+        Eigen::Matrix<double, 6, 6> pose_covariance = integration_covariance.block<6, 6>(0, 0);
+        const Eigen::Matrix3d linear_velocity_covariance = integration_covariance.block<3, 3>(6, 6);
+        Eigen::Matrix<double, 6, 6> velocity_covariance;
+        velocity_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
+                linear_velocity_covariance;
 
         // Publish odometry
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
@@ -73,9 +84,10 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
         odometry->child_frame_id = "body_i-1";
         eigen_ros::to_ros(odometry->pose.pose.position, pose.translation());
         eigen_ros::to_ros(odometry->pose.pose.orientation, pose.rotation().toQuaternion());
-        // eigen_ros::to_ros(odometry->pose.covariance, covariance);
-        ROS_WARN_ONCE("Odometry covariance currently not set.");
+        eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
         eigen_ros::to_ros(odometry->twist.twist.linear, vel);
+        eigen_ros::to_ros(odometry->twist.twist.angular, imu.angular_velocity);
+        eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(velocity_covariance, 3));
         odometry_publisher.publish(odometry);
 
         // Publish path
@@ -89,9 +101,11 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
     } else {
         const Eigen::Quaterniond orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
                 Eigen::Quaterniond::Identity() : imu.orientation;
-        const Eigen::Vector3d position{nh.param<double>("pose/position/x", 0.0),
+        const gtsam::Point3 position{nh.param<double>("pose/position/x", 0.0),
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)};
-        state = gtsam::NavState{gtsam::Rot3(orientation), position, gtsam::Velocity3(0.0, 0.0, 0.0)};
+        const gtsam::Velocity3 linear_velocity{nh.param<double>("velocity/linear/x", 0.0),
+                nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
+        state = gtsam::NavState{gtsam::Rot3(orientation), position, linear_velocity};
     }
     integration_timestamp = imu.timestamp;
 }

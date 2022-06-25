@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     tf2_ros
 
+    eigen_ext
+    eigen_gtsam
     eigen_ros
 )
 find_package(Eigen3 REQUIRED)
@@ -21,6 +23,8 @@ catkin_package(
         sensor_msgs
         tf2_ros
 
+        eigen_ext
+        eigen_gtsam
         eigen_ros
 )
 find_package(GTSAM REQUIRED)
