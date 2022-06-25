@@ -40,9 +40,6 @@ IntegrateImu::IntegrateImu():
     preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
             std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
 
-    // IMU noise
-    nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
-
     // IMU integrator
     integrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias);
 
