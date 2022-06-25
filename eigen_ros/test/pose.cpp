@@ -20,8 +20,8 @@ TEST(pose, apply_transform) {
         EXPECT_TRUE(eigen_ros::to_transform(transform).isApprox(eigen_ros::to_transform(transformed)));
         eigen_ros::Pose rotation{Eigen::Vector3d::Zero(), test_quaternion(i)};
         eigen_ros::Pose translation{test_vector3(i)};
-        Eigen::Isometry3d pose_eigen = test_quaternion(i) * Eigen::Translation<double, 3>(test_vector3(i));
-        eigen_ros::Pose pose = apply_transform(rotation, translation);
+        Eigen::Isometry3d pose_eigen = eigen_ros::to_transform(rotation) * to_transform(translation);
+        eigen_ros::Pose pose = eigen_ros::apply_transform(rotation, translation);
         EXPECT_TRUE(eigen_ros::to_transform(pose).isApprox(pose_eigen));
     }
 }
@@ -30,10 +30,10 @@ TEST(pose, to_transform) {
     Eigen::Isometry3d transform = to_transform(eigen_ros::Pose{});
     EXPECT_TRUE(transform.matrix().isApprox(Eigen::Matrix4d::Identity()));
     for (unsigned int i = 0; i < 100; ++i) {
-        eigen_ros::Pose pose = test_pose(i);
-        Eigen::Isometry3d transform = to_transform(pose);
-        Eigen::Vector3d translation = transform.translation();
-        Eigen::Quaterniond rotation{transform.rotation()};
+        const eigen_ros::Pose pose = test_pose(i);
+        const Eigen::Isometry3d transform = to_transform(pose);
+        const Eigen::Vector3d translation = transform.translation();
+        const Eigen::Quaterniond rotation{transform.rotation()};
         EXPECT_TRUE(pose.position.isApprox(translation));
         // We convert the quaternion to a rotation matrix first to avoid the q == -q issue
         EXPECT_TRUE(pose.orientation.toRotationMatrix().isApprox(rotation.toRotationMatrix()));

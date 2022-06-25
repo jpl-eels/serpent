@@ -1,4 +1,5 @@
 #include "test/test_instances.hpp"
+#include <eigen_ext/geometry.hpp>
 
 Eigen::Matrix3d test_covariance_3x3(const unsigned int i) {
     Eigen::Matrix3d cov;
@@ -14,14 +15,14 @@ Eigen::Matrix3d test_covariance_3x3(const unsigned int i) {
                    0.0, 0.0, 0.3;
             break;
         case 2:
-            cov << 0.1,   0.01,  0.02,
-                   0.06,  0.2,   0.07,
-                   0.012, 0.013, 0.3;
+            cov << 0.10, 0.01, 0.02,
+                   0.01, 0.20, 0.07,
+                   0.02, 0.07, 0.30;
             break;
         default:
             cov << 0.001, 0.002, 0.003,
-                   0.004, 0.005, 0.006,
-                   0.007, 0.008, 0.009;
+                   0.002, 0.005, 0.006,
+                   0.003, 0.006, 0.009;
             cov *= static_cast<double>(i);
             break;
     }
@@ -48,20 +49,20 @@ Eigen::Matrix<double, 6, 6> test_covariance_6x6(const unsigned int i) {
                    0.0, 0.0, 0.0, 0.0, 0.0, 0.6;
             break;
         case 2:
-            cov << 0.1, 0.01, 0.02, 0.03, 0.04, 0.05,
-                   0.06, 0.2, 0.07, 0.08, 0.09, 0.011,
-                   0.012, 0.013, 0.3, 0.014, 0.015, 0.016,
-                   0.017, 0.018, 0.019, 0.4, 0.021, 0.022,
-                   0.023, 0.024, 0.025, 0.026, 0.5, 0.027,
-                   0.028, 0.029, 0.031, 0.032, 0.033, 0.6;
+            cov << 0.10, 0.01, 0.02, 0.03, 0.04, 0.05,
+                   0.01, 0.20, 0.06, 0.07, 0.08, 0.09,
+                   0.02, 0.06, 0.30, 0.011, 0.012, 0.013,
+                   0.03, 0.07, 0.011, 0.40, 0.014, 0.015,
+                   0.04, 0.08, 0.012, 0.014, 0.50, 0.016,
+                   0.05, 0.09, 0.013, 0.015, 0.016, 0.60;
             break;
         default:
             cov << 0.001, 0.002, 0.003, 0.004, 0.005, 0.006,
-                   0.007, 0.008, 0.009, 0.010, 0.011, 0.012,
-                   0.013, 0.014, 0.015, 0.016, 0.017, 0.018,
-                   0.019, 0.020, 0.021, 0.022, 0.023, 0.024,
-                   0.025, 0.026, 0.027, 0.028, 0.029, 0.030,
-                   0.031, 0.032, 0.033, 0.034, 0.035, 0.036;
+                   0.002, 0.007, 0.008, 0.009, 0.010, 0.011,
+                   0.003, 0.008, 0.012, 0.013, 0.014, 0.015,
+                   0.004, 0.009, 0.013, 0.016, 0.017, 0.018,
+                   0.005, 0.010, 0.014, 0.017, 0.019, 0.020,
+                   0.006, 0.011, 0.015, 0.018, 0.020, 0.021;
             cov *= static_cast<double>(i);
             break;
     }
@@ -74,7 +75,7 @@ eigen_ros::Imu test_imu(const unsigned int i) {
 }
 
 Eigen::Isometry3d test_isometry3(const unsigned int i) {
-    return Eigen::Translation<double, 3>(test_vector3(i)) * test_quaternion(i);
+    return eigen_ext::to_transform(test_vector3(i), test_quaternion(i));
 }
 
 eigen_ros::Odometry test_odometry(const unsigned int i) {

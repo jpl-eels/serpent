@@ -13,4 +13,6 @@
     <depend>roscpp</depend>
     <depend>sensor_msgs</depend>
     <depend>tf2_ros</depend>
+
+    <depend>eigen_ext</depend>
 </package>

@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     sensor_msgs
     tf2_ros
+
+    eigen_ext
 )
 find_package(Eigen3 REQUIRED)
 
@@ -22,6 +24,8 @@ catkin_package(
         roscpp
         sensor_msgs
         tf2_ros
+
+        eigen_ext
     DEPENDS
         EIGEN3
     LIBRARIES

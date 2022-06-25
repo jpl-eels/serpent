@@ -9,17 +9,20 @@ namespace eigen_ros {
 class Pose {
 public:
     Pose(const Eigen::Vector3d& position = Eigen::Vector3d::Zero(), const Eigen::Quaterniond& orientation = 
-            Eigen::Quaterniond(1, 0, 0, 0), const Eigen::Matrix<double, 6, 6> covariance =
+            Eigen::Quaterniond(1, 0, 0, 0), const Eigen::Matrix<double, 6, 6>& covariance =
             Eigen::Matrix<double, 6, 6>::Zero());
+    
+    Pose(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation,
+            const Eigen::Matrix3d& position_covariance, const Eigen::Matrix3d& orientation_covariance);
 
-    Pose(const Eigen::Isometry3d& pose, const Eigen::Matrix<double, 6, 6> covariance =
+    Pose(const Eigen::Isometry3d& pose, const Eigen::Matrix<double, 6, 6>& covariance =
             Eigen::Matrix<double, 6, 6>::Zero());
 
     // Position
     Eigen::Vector3d position;
     // Orientation
     Eigen::Quaterniond orientation;
-    // Covariance. Order is position then orientation, i.e. XYZRPY
+    // Covariance matrix with order [R1, R2, R3, t1, t2, t3], i.e. orientation (rad), position (m)
     Eigen::Matrix<double, 6, 6> covariance;
 };
 

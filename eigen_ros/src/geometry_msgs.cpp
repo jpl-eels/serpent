@@ -1,5 +1,6 @@
 #include "eigen_ros/geometry_msgs.hpp"
 #include "eigen_ros/eigen_ros.hpp"
+#include <eigen_ext/covariance.hpp>
 
 namespace eigen_ros {
 
@@ -28,11 +29,12 @@ void to_ros(geometry_msgs::PoseWithCovarianceStamped& msg, const PoseStamped& po
 void from_ros(const geometry_msgs::PoseWithCovariance& msg, Pose& pose) {
     from_ros(msg.pose, pose);
     from_ros(msg.covariance, pose.covariance);
+    pose.covariance = eigen_ext::reorder_covariance(pose.covariance, 3);
 }
 
 void to_ros(geometry_msgs::PoseWithCovariance& msg, const Pose& pose) {
     to_ros(msg.pose, pose);
-    to_ros(msg.covariance, pose.covariance);
+    to_ros(msg.covariance, eigen_ext::reorder_covariance(pose.covariance, 3));
 }
 
 void from_ros(const geometry_msgs::PoseStamped& msg, PoseStamped& pose) {
@@ -152,11 +154,12 @@ void to_ros(geometry_msgs::Quaternion& msg, const Eigen::Matrix3d& matrix) {
 void from_ros(const geometry_msgs::TwistWithCovariance& msg, Twist& twist) {
     from_ros(msg.twist, twist);
     from_ros(msg.covariance, twist.covariance);
+    twist.covariance = eigen_ext::reorder_covariance(twist.covariance, 3);
 }
 
 void to_ros(geometry_msgs::TwistWithCovariance& msg, const Twist& twist) {
     to_ros(msg.twist, twist);
-    to_ros(msg.covariance, twist.covariance);
+    to_ros(msg.covariance, eigen_ext::reorder_covariance(twist.covariance, 3));
 }
 
 void from_ros(const geometry_msgs::Twist& msg, Twist& twist) {

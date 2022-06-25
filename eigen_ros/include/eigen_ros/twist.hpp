@@ -10,12 +10,19 @@ public:
     Twist(const Eigen::Vector3d& linear = Eigen::Vector3d::Zero(), const Eigen::Vector3d& angular =
             Eigen::Vector3d::Zero(), const Eigen::Matrix<double, 6, 6>& covariance =
             Eigen::Matrix<double, 6, 6>::Zero());
+
+    Twist(const Eigen::Vector3d& linear, const Eigen::Vector3d& angular, const Eigen::Matrix3d& linear_covariance,
+            const Eigen::Matrix3d& angular_covariance);
+
+    Eigen::Matrix3d angular_velocity_covariance() const;
+
+    Eigen::Matrix3d linear_velocity_covariance() const;
     
     // Linear velocity
     Eigen::Vector3d linear;
     // Angular velocity
     Eigen::Vector3d angular;
-    // Covariance. Order is linear velocity then angular velocity
+    // Covariance. Order is [w1, w2, w3, v1, v2, v3], i.e. angular velocity then linear velocity
     Eigen::Matrix<double, 6, 6> covariance;
 };
 

@@ -1,12 +1,20 @@
 #include "eigen_ros/pose.hpp"
+#include <eigen_ext/geometry.hpp>
 
 namespace eigen_ros {
 
 Pose::Pose(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation,
-        const Eigen::Matrix<double, 6, 6> covariance):
+        const Eigen::Matrix<double, 6, 6>& covariance):
     position(position), orientation(orientation), covariance(covariance) {}
 
-Pose::Pose(const Eigen::Isometry3d& pose, const Eigen::Matrix<double, 6, 6> covariance):
+Pose::Pose(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, const Eigen::Matrix3d& position_covariance,
+        const Eigen::Matrix3d& orientation_covariance):
+    position(position), orientation(orientation)
+{
+    covariance << orientation_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(), position_covariance;
+}
+
+Pose::Pose(const Eigen::Isometry3d& pose, const Eigen::Matrix<double, 6, 6>& covariance):
     Pose(pose.translation(), Eigen::Quaterniond{pose.rotation()}, covariance) {}
 
 // We convert the quaternion to a rotation matrix first to avoid the q == -q issue
@@ -28,7 +36,7 @@ Pose apply_transform(const Pose& current_pose, const Pose& transform) {
 }
 
 Eigen::Isometry3d to_transform(const Pose& pose) {
-    return Eigen::Translation<double, 3>(pose.position) * pose.orientation;
+    return eigen_ext::to_transform(pose.position, pose.orientation);
 }
 
 }
