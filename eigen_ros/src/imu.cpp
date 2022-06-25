@@ -13,17 +13,22 @@ Imu::Imu(const Eigen::Quaterniond& orientation, const Eigen::Vector3d& angular_v
     linear_acceleration_covariance(linear_acceleration_covariance), timestamp(timestamp), frame(frame) {}
 
 void Imu::change_frame(const Eigen::Quaterniond& to_frame_ext, const Eigen::Quaterniond& from_frame_ext) {
+    const Eigen::Matrix3d to_frame_ext_m = to_frame_ext.matrix();
+    const Eigen::Matrix3d to_frame_ext_m_transpose = to_frame_ext_m.transpose();
+    const Eigen::Matrix3d from_frame_ext_m = from_frame_ext.matrix();
+    const Eigen::Matrix3d from_frame_ext_m_transpose = from_frame_ext_m.transpose();
+
     // Orientation
     orientation = orientation * to_frame_ext;
-    orientation_covariance = orientation_covariance * to_frame_ext;
+    orientation_covariance = to_frame_ext_m * orientation_covariance * to_frame_ext_m_transpose;
 
     // Angular velocity
     angular_velocity = from_frame_ext * angular_velocity;
-    angular_velocity_covariance = from_frame_ext * angular_velocity_covariance;
+    angular_velocity_covariance = from_frame_ext_m * angular_velocity_covariance * from_frame_ext_m_transpose;
 
     // Linear acceleration
     linear_acceleration = from_frame_ext * linear_acceleration;
-    linear_acceleration_covariance = from_frame_ext * linear_acceleration_covariance;
+    linear_acceleration_covariance = from_frame_ext_m * linear_acceleration_covariance * from_frame_ext_m_transpose;
 }
 
 void Imu::print(const unsigned int precision) const {
