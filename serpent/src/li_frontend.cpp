@@ -1,6 +1,7 @@
 #include "serpent/li_frontend.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuArray.h"
+#include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
@@ -93,14 +94,14 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
 
         // Calculate current state from previous state
         const gtsam::NavState state = preintegrated_imu->predict(world_state, imu_biases);
-        /* TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
-        gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
-        Eigen::Matrix<double, 6, 6> pose_covariance, twist_covariance;
-        pose_covariance = state_covariance.block<6, 6>(0, 0);
-        twist_covariance << state_covariance.block<3, 3>(6, 6), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
-                imu.angular_velocity_covariance;
-        */
-        Eigen::Vector3d angular_velocity = imu.angular_velocity + imu_biases.gyroscope();
+        // TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        const gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
+        const Eigen::Matrix<double, 6, 6> pose_covariance = state_covariance.block<6, 6>(0, 0);
+        const Eigen::Matrix3d linear_velocity_covariance = state_covariance.block<3, 3>(6, 6);
+        Eigen::Matrix<double, 6, 6> twist_covariance;
+        twist_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
+                linear_velocity_covariance;
+        const Eigen::Vector3d angular_velocity = imu.angular_velocity + imu_biases.gyroscope();
         
         // Publish current state as odometry output
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
@@ -109,23 +110,22 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         odometry->child_frame_id = "body";
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
-        // TODO: add pose_covariance
-        // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
+        eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
         eigen_ros::to_ros(odometry->twist.twist.linear, state.velocity());
         eigen_ros::to_ros(odometry->twist.twist.angular, angular_velocity);
-        // TODO: add twist_covariance
-        // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
-        ROS_WARN_ONCE("TODO: add correct covariances to IMU-rate odometry");
+        eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         odometry_publisher.publish(odometry);
 
         // Publish body_i-1 to body (IMU-rate frame) TF
-        const gtsam::NavState incremental_state = preintegrated_imu->predict(gtsam::NavState(), imu_biases);
+        const Eigen::Isometry3d pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(state.pose());
+        const Eigen::Isometry3d world_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(world_state.pose());
+        const Eigen::Isometry3d incremental_transform = world_pose.inverse() * pose;
         geometry_msgs::TransformStamped incremental_tf;
         incremental_tf.header.stamp = imu.timestamp;
         incremental_tf.header.frame_id = "body_i-1";
         incremental_tf.child_frame_id = "body";
-        eigen_ros::to_ros(incremental_tf.transform.translation, incremental_state.position());
-        eigen_ros::to_ros(incremental_tf.transform.rotation, incremental_state.attitude().toQuaternion());
+        eigen_ros::to_ros(incremental_tf.transform.translation, incremental_transform.translation());
+        eigen_ros::to_ros(incremental_tf.transform.rotation, incremental_transform.rotation());
         tf_broadcaster.sendTransform(incremental_tf);
     }
 }
