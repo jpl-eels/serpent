@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>eigen_gtsam</name>
+    <version>1.0.0</version>
+    <description>The eigen_gtsam package</description>
+    <maintainer email="william.talbot97@gmail.com">William Talbot</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <depend>EIGEN3</depend>
+</package>
