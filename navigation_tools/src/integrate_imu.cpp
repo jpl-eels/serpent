@@ -5,7 +5,7 @@
 #include <nav_msgs/Odometry.h>
 
 IntegrateImu::IntegrateImu():
-    nh("~"), integration_timestamp(ros::Time()), state(gtsam::NavState())
+    nh("~"), integration_timestamp(ros::Time()), initial_state(gtsam::NavState())
 {
     // Publishers
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("odometry", 1);
@@ -62,7 +62,7 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
         integrator->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
 
         // Predict
-        state = integrator->predict(state, imu_bias);
+        const auto state = integrator->predict(initial_state, imu_bias);
         const auto& pose = state.pose();
         const auto& vel = state.velocity();
 
@@ -102,7 +102,7 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)};
         const gtsam::Velocity3 linear_velocity{nh.param<double>("velocity/linear/x", 0.0),
                 nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
-        state = gtsam::NavState{gtsam::Rot3(orientation), position, linear_velocity};
+        initial_state = gtsam::NavState{gtsam::Rot3(orientation), position, linear_velocity};
     }
     integration_timestamp = imu.timestamp;
 }

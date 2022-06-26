@@ -38,7 +38,7 @@ private:
 
     // State
     ros::Time integration_timestamp;
-    gtsam::NavState state;
+    gtsam::NavState initial_state;
     nav_msgs::Path path;
 };
 
