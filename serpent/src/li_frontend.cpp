@@ -94,13 +94,14 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
 
         // Calculate current state from previous state
         const gtsam::NavState state = preintegrated_imu->predict(world_state, imu_biases);
-        // TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        /* TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
         const gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
         const Eigen::Matrix<double, 6, 6> pose_covariance = state_covariance.block<6, 6>(0, 0);
         const Eigen::Matrix3d linear_velocity_covariance = state_covariance.block<3, 3>(6, 6);
         Eigen::Matrix<double, 6, 6> twist_covariance;
         twist_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
                 linear_velocity_covariance;
+        */
         const Eigen::Vector3d angular_velocity = imu.angular_velocity + imu_biases.gyroscope();
         
         // Publish current state as odometry output
@@ -110,10 +111,11 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         odometry->child_frame_id = "body";
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
-        eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
+        // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
         eigen_ros::to_ros(odometry->twist.twist.linear, state.velocity());
         eigen_ros::to_ros(odometry->twist.twist.angular, angular_velocity);
-        eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
+        // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
+        ROS_WARN_ONCE("IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
 
         // Publish body_i-1 to body (IMU-rate frame) TF
