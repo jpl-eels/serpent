@@ -69,6 +69,8 @@ private:
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
     // Temp integrator = todo: delete
     std::unique_ptr<gtsam::PreintegratedCombinedMeasurements> test_preintegrator;
+    // Temp hold pose prior noise
+    // gtsam::SharedNoiseModel prior_pose_noise;
 
     // Graph manager (tracks states, keys, factors, optimisation)
     std::unique_ptr<ISAM2GraphManager> gm;

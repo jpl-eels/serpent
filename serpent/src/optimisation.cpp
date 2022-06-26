@@ -170,6 +170,15 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         ROS_INFO_STREAM("Created factor: X(" << imu_key - 1 << "), V(" << imu_key - 1  << "), B(" << imu_key - 1 <<
                 ") => X(" << imu_key << "), V(" << imu_key << "), B(" << imu_key << ")");
     }
+
+    /* TEST: Add prior if only imu factors
+    if (!add_registration_factors) {
+        const int imu_key = gm->key("imu");
+        gm->create_prior_pose_factor(imu_key, gm->pose("imu"), prior_pose_noise);
+        ROS_WARN_STREAM("Created pose prior factor: X(" << imu_key << ")");
+    }
+    */
+
     graph_mutex.unlock();
 }
 
