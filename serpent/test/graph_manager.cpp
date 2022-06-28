@@ -240,11 +240,14 @@ TEST(graph_manager, prior_velocity_set_get_factor) {
 
 TEST(graph_manager, combined_imu_with_priors_optimise) {
     serpent::ISAM2GraphManager gm{test_isam2_params()};
+
+    // IMU Measurements
+    auto imu_measurements = from_ros(read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu"));
     
     // Prior values
-    gm.set_timestamp(0, ros::Time(0));
+    gm.set_timestamp(0, imu_measurements.front().timestamp);
     gm.set_imu_bias(0, gtsam::imuBias::ConstantBias{});
-    gm.set_pose(0, gtsam::Pose3{});
+    gm.set_pose(0, gtsam::Pose3{gtsam::Rot3{imu_measurements.front().orientation}, gtsam::Point3{}});
     gm.set_velocity(0, gtsam::Velocity3{});
 
     // Priors
@@ -254,7 +257,6 @@ TEST(graph_manager, combined_imu_with_priors_optimise) {
     
     // Preintegration
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu = test_preintegrated_measurements();
-    auto imu_measurements = from_ros(read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu"));
     for (std::size_t i = 1; i < imu_measurements.size(); ++i) {
         const auto& previous = imu_measurements.at(i - 1);
         const auto& current = imu_measurements.at(i);
@@ -285,6 +287,70 @@ TEST(graph_manager, combined_imu_with_priors_optimise) {
     EXPECT_NEAR(*result.errorAfter, 0.0, DOUBLE_PRECISION);
     EXPECT_EQ(result.getVariablesReeliminated(), 6);
     EXPECT_EQ(result.getVariablesRelinearized(), 0);
+}
+
+TEST(graph_manager, combined_imu_each_measurement_with_priors_optimise) {
+    serpent::ISAM2GraphManager gm{test_isam2_params()};
+
+    // IMU Measurements
+    auto imu_measurements = from_ros(read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu"));
+
+    // Reference values
+    std::vector<gtsam::Pose3> poses;
+    std::vector<gtsam::Velocity3> velocities;
+    std::vector<gtsam::imuBias::ConstantBias> imu_biases;
+
+    // Prior values
+    gm.set_timestamp(0, imu_measurements.front().timestamp);
+    gm.set_imu_bias(0, gtsam::imuBias::ConstantBias{});
+    gm.set_pose(0, gtsam::Pose3{gtsam::Rot3{imu_measurements.front().orientation}, gtsam::Point3{}});
+    gm.set_velocity(0, gtsam::Velocity3{});
+    poses.push_back(gm.pose(0));
+    velocities.push_back(gm.velocity(0));
+    imu_biases.push_back(gm.imu_bias(0));
+
+    // Priors
+    gm.create_prior_imu_bias_factor(0, gm.imu_bias(0), test_imu_bias_noise_model(0));
+    gm.create_prior_pose_factor(0, gm.pose(0), test_pose_noise_model(0));
+    gm.create_prior_velocity_factor(0, gm.velocity(0), test_velocity_noise_model(0));
+    
+    // Preintegration
+    gtsam::PreintegratedCombinedMeasurements preintegrated_imu = test_preintegrated_measurements();
+    for (std::size_t i = 1; i < imu_measurements.size(); ++i) {
+        // Integrate
+        const auto& previous = imu_measurements.at(i - 1);
+        const auto& current = imu_measurements.at(i);
+        const double dt = (current.timestamp - previous.timestamp).toSec();
+        EXPECT_GT(dt, 0.0);
+        preintegrated_imu.integrateMeasurement(current.linear_acceleration, current.angular_velocity, dt);
+
+        // Predict and add factor
+        gm.set_timestamp(i, current.timestamp);
+        gm.set_imu_bias(i, gm.imu_bias(i - 1));
+        gm.set_navstate(i, preintegrated_imu.predict(gm.navstate(i - 1), gm.imu_bias(i - 1)));
+        poses.push_back(gm.pose(i));
+        velocities.push_back(gm.velocity(i));
+        imu_biases.push_back(gm.imu_bias(i));
+        gm.create_combined_imu_factor(i, preintegrated_imu);
+
+        // Reset integration
+        preintegrated_imu.resetIntegrationAndSetBias(gm.imu_bias(i));
+    }
+
+    // Optimise
+    const gtsam::ISAM2Result result = gm.optimise(imu_measurements.size() - 1);
+    EXPECT_NEAR(*result.errorBefore, 0.0, DOUBLE_PRECISION);
+    EXPECT_NEAR(*result.errorAfter, 0.0, DOUBLE_PRECISION);
+
+    // Check values
+    for (std::size_t i = 0; i < imu_measurements.size(); ++i) {
+        EXPECT_TRUE(gm.pose(i).matrix().isApprox(poses.at(i).matrix()));
+        EXPECT_TRUE(gm.velocity(i).isApprox(velocities.at(i)));
+        for (std::size_t b = 0; b < 6; ++b) {
+            EXPECT_NEAR(gm.imu_bias(i).vector()[b], imu_biases.at(i).vector()[b], DOUBLE_PRECISION);
+        }
+        // EXPECT_TRUE(gm.imu_bias(i).vector().isApprox(imu_biases.at(i).vector()));
+    }
 }
 
 TEST(graph_manager, update_from_values) {
@@ -398,4 +464,33 @@ TEST(graph_manager, pose_graph_reg_optimise_multi) {
         EXPECT_TRUE(eigen_ext::is_valid_covariance(gm.pose_covariance(i), DOUBLE_PRECISION));
         EXPECT_TRUE(gm.pose_covariance(i).isApprox(covariances.at(i)));
     }
+}
+
+TEST(graph_manager, two_pose_high_covariance) {
+    serpent::ISAM2GraphManager gm{test_isam2_params()};
+
+    const gtsam::Pose3 prior_pose = test_pose(0);
+    gm.set_pose(0, prior_pose);
+    const Eigen::Matrix<double, 6, 6> prior_cov = Eigen::Matrix<double, 6, 6>::Identity() * 1.0e9;
+    const gtsam::SharedNoiseModel prior_cov_noise = gtsam::noiseModel::Gaussian::Covariance(prior_cov);
+    gm.create_prior_pose_factor(0, gm.pose(0), prior_cov_noise);
+
+    const gtsam::Pose3 next_pose = test_pose(1);
+    gm.set_pose(1, next_pose);
+    const Eigen::Matrix<double, 6, 6> relative_cov = Eigen::Matrix<double, 6, 6>::Identity() * 1.0e9;
+    const gtsam::SharedNoiseModel relative_cov_noise = gtsam::noiseModel::Gaussian::Covariance(relative_cov);
+    const gtsam::Pose3 transform = gm.pose(0).inverse() * gm.pose(1);
+    const Eigen::Isometry3d transform_ = eigen_gtsam::to_eigen<Eigen::Isometry3d>(transform);
+    gm.create_between_pose_factor(1, transform, relative_cov_noise);
+    const Eigen::Matrix<double, 6, 6> next_cov_compose = eigen_ext::compose_transform_covariance(prior_cov,
+            relative_cov, transform_);
+
+    // Optimisation
+    auto result = gm.optimise(1);
+    EXPECT_NEAR(*result.errorBefore, 0.0, DOUBLE_PRECISION);
+    EXPECT_NEAR(*result.errorAfter, 0.0, DOUBLE_PRECISION);
+    EXPECT_TRUE(gm.pose(0).matrix().isApprox(prior_pose.matrix()));
+    EXPECT_TRUE(gm.pose_covariance(0).isApprox(prior_cov));
+    EXPECT_TRUE(gm.pose(1).matrix().isApprox(next_pose.matrix()));
+    EXPECT_TRUE(gm.pose_covariance(1).isApprox(next_cov_compose));
 }
