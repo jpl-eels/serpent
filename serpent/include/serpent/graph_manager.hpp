@@ -197,7 +197,7 @@ public:
 
     gtsam::Velocity3 velocity(const std::string name, const int offset = 0) const;
 
-private:
+protected:
     void add_factor(const int key, const boost::shared_ptr<gtsam::NonlinearFactor>& factor);
 
     template<typename ValueType>

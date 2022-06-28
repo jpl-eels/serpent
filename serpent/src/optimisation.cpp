@@ -254,10 +254,12 @@ void Optimisation::optimise_and_publish(const int key) {
     optimised_odometry_publisher.publish(optimised_odometry_msg);
     ROS_INFO_STREAM("Pose:\n" << gm->pose(key).matrix());
     ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << gm->pose_covariance(key));
-    ROS_INFO_STREAM("Velocity:\n" << gm->velocity(key));
-    ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
-    ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
-    ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
+    if (add_imu_factors) {
+        ROS_INFO_STREAM("Velocity:\n" << gm->velocity(key));
+        ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
+        ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
+        ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
+    }
     
     // Publish optimised biases
     auto imu_bias_msg = boost::make_shared<serpent::ImuBiases>();
