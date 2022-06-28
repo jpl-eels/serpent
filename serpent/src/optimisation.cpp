@@ -74,6 +74,7 @@ Optimisation::Optimisation():
         ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error ="
                 " true). This incurs a computational cost, so should only be used while debugging.");
     }
+    isam2_params.print();
     gm = std::make_unique<ISAM2GraphManager>(isam2_params);
 }
 
@@ -95,10 +96,6 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     update_preintegration_params(*preintegration_params, imu_s2s.front().linear_acceleration_covariance,
             imu_s2s.front().angular_velocity_covariance);
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, gm->imu_bias("imu")};
-    if (!test_preintegrator) {
-        test_preintegrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params,
-                gm->imu_bias(0));
-    }
 
     // Preintegrate IMU measurements over sweep
     ros::Time last_preint_imu_timestamp = msg->start_timestamp;
@@ -113,7 +110,6 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
                 - last_preint_imu_timestamp).toSec();
         if (dt > 0.0) {
             preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-            test_preintegrator->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
         }
         last_preint_imu_timestamp = imu.timestamp;
     }
@@ -126,15 +122,6 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         ROS_WARN_STREAM("Preintegrated Measurement Covariance:\n" << preintegrated_imu.preintMeasCov());
         throw std::runtime_error("Minimum coefficient in preintegrated measurement covariance was <= 0.0");
     }
-
-    const gtsam::NavState test_state = test_preintegrator->predict(gm->navstate(0), gm->imu_bias(0));
-    const Eigen::Matrix<double, 15, 15> test_cov = test_preintegrator->preintMeasCov();
-    const Eigen::Matrix<double, 6, 6> test_cov_pose = test_cov.block<6, 6>(0, 0);
-    const Eigen::Matrix<double, 3, 3> test_cov_vel = test_cov.block<3, 3>(6, 6);
-    ROS_INFO_STREAM("Test pose:\n" << test_state.pose().matrix());
-    ROS_INFO_STREAM("Test pose covariance:\n" << test_cov_pose);
-    ROS_INFO_STREAM("Test vel:\n" << test_state.velocity());
-    ROS_INFO_STREAM("Test vel covariance:\n" << test_cov_vel);
     
     // Predict new pose from preintegration
     gm->increment("imu");
@@ -170,14 +157,6 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         ROS_INFO_STREAM("Created factor: X(" << imu_key - 1 << "), V(" << imu_key - 1  << "), B(" << imu_key - 1 <<
                 ") => X(" << imu_key << "), V(" << imu_key << "), B(" << imu_key << ")");
     }
-
-    /* TEST: Add prior if only imu factors
-    if (!add_registration_factors) {
-        const int imu_key = gm->key("imu");
-        gm->create_prior_pose_factor(imu_key, gm->pose("imu"), prior_pose_noise);
-        ROS_WARN_STREAM("Created pose prior factor: X(" << imu_key << ")");
-    }
-    */
 
     graph_mutex.unlock();
 }
@@ -284,7 +263,6 @@ void Optimisation::optimise_and_publish(const int key) {
     auto imu_bias_msg = boost::make_shared<serpent::ImuBiases>();
     to_ros(*imu_bias_msg, gm->imu_bias(key), gm->timestamp(key));
     imu_biases_publisher.publish(imu_bias_msg);
-    ROS_INFO_STREAM("Optimised Bias:\n" << gm->imu_bias(key));
 
     // Publish optimised path and changed path
     auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key));

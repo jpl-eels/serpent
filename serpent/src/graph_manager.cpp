@@ -71,7 +71,6 @@ void GraphManager::create_prior_imu_bias_factor(const int key_, const gtsam::imu
 void GraphManager::create_prior_pose_factor(const int key_, const gtsam::Pose3& pose,
         gtsam::SharedNoiseModel noise) {
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(key_), pose, noise));
-    
 }
 
 void GraphManager::create_prior_velocity_factor(const int key_, const gtsam::Velocity3& velocity,
