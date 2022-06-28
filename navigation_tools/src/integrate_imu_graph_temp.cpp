@@ -39,9 +39,25 @@ IntegrateImu::IntegrateImu():
             std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
             std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+    preintegration_params->print();
 
     // IMU integrator
     integrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias);
+    integrator_TEST = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias_TEST);
+
+    // Optimiser TEST
+    gtsam::ISAM2Params isam2_params;
+    gtsam::ISAM2GaussNewtonParams optimization_params = gtsam::ISAM2GaussNewtonParams();
+    optimization_params.setWildfireThreshold(1.0e-3);
+    isam2_params.setOptimizationParams(optimization_params);
+    isam2_params.setRelinearizeThreshold(0.1);
+    isam2_params.setRelinearizeSkip(10);
+    isam2_params.setEnableRelinearization(true);
+    isam2_params.setEvaluateNonlinearError(true);
+    isam2_params.setFactorization("CHOLESKY");
+    isam2_params.setCacheLinearizedFactors(true);
+    isam2_params.print();
+    optimiser_TEST = std::make_unique<gtsam::ISAM2>(isam2_params);
 
     // Path
     path.header.frame_id = "map";
@@ -60,11 +76,44 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
             throw std::runtime_error("Integration error: dt == 0.0");
         }
         integrator->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+        integrator_TEST->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
 
         // Predict
         const auto state = integrator->predict(initial_state, imu_bias);
         const auto& pose = state.pose();
         const auto& vel = state.velocity();
+
+        // Optimiser TEST
+        // static int counter = 0;
+        // if (++counter % 1 == 0) {
+        state_TEST = integrator_TEST->predict(state_TEST, imu_bias_TEST);
+        std::cerr << "Preintegrated Meas Cov:\n" << integrator_TEST->preintMeasCov() << std::endl;
+        std::cerr << "Preintegrated Meas Cov Diag:\n" << integrator_TEST->preintMeasCov().diagonal() << std::endl;
+        new_factors.emplace_shared<gtsam::CombinedImuFactor>(X(key - 1), V(key - 1), X(key), V(key), B(key - 1),
+                B(key), *integrator_TEST);
+        new_values.insert(X(key), state_TEST.pose());
+        new_values.insert(V(key), state_TEST.velocity());
+        new_values.insert(B(key), imu_bias_TEST);
+        auto result = optimiser_TEST->update(new_factors, new_values);
+        std::cerr << "optimiser before/after errors: " << *result.errorBefore << ", " << *result.errorAfter << "\n";
+        integrator_TEST->resetIntegrationAndSetBias(imu_bias_TEST);
+        //integrator_TEST = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias_TEST);
+        new_factors = gtsam::NonlinearFactorGraph();
+        new_values.clear();
+        gtsam::Pose3 pose_TEST = optimiser_TEST->calculateEstimate<gtsam::Pose3>(X(key));
+        Eigen::Quaterniond q = pose_TEST.rotation().toQuaternion();
+        Eigen::Matrix<double, 6, 6> pose_cov_TEST = optimiser_TEST->marginalCovariance(X(key));
+        std::cerr << "pose_TEST:\n" << pose_TEST.translation().vector() << "\n" << q.w() << ", " << q.x() << ", "
+                << q.y() << ", " << q.z() << "\n";
+        std::cerr << "pose_cov_TEST:\n" << pose_cov_TEST << "\n";
+        std::cerr << "pose_cov_TEST diag:\n" << pose_cov_TEST.diagonal() << "\n";
+        gtsam::Velocity3 vel_TEST = optimiser_TEST->calculateEstimate<gtsam::Velocity3>(V(key));
+        gtsam::Velocity3 vel_cov_TEST = optimiser_TEST->marginalCovariance(V(key));
+        std::cerr << "vel_TEST:\n" << vel_TEST << "\n";
+        std::cerr << "vel_cov_TEST:\n" << vel_cov_TEST << "\n";
+        std::cerr << "vel_cov_TEST diag:\n" << vel_cov_TEST.diagonal() << "\n";
+        ++key;
+        // }
 
         // Covariance
         const Eigen::Matrix<double, 15, 15> integration_covariance = integrator->preintMeasCov();
@@ -102,7 +151,22 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)};
         const gtsam::Velocity3 linear_velocity{nh.param<double>("velocity/linear/x", 0.0),
                 nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
-        initial_state = gtsam::NavState{gtsam::Rot3{orientation}, position, linear_velocity};
+        initial_state = gtsam::NavState{gtsam::Rot3(orientation), position, linear_velocity};
+
+        state_TEST = initial_state;
+        const gtsam::Pose3 initial_pose = gtsam::Pose3{gtsam::Rot3(orientation), position};
+        const gtsam::SharedNoiseModel pose_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+                0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
+        new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), initial_pose, pose_noise);
+        const gtsam::SharedNoiseModel vel_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(3) <<
+                0.1, 0.1, 0.1).finished());
+        new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Velocity3>>(V(0), linear_velocity, vel_noise);
+        const gtsam::SharedNoiseModel bias_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+                0.01, 0.01, 0.01, 0.01, 0.01, 0.01).finished());
+        new_factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0), imu_bias_TEST, bias_noise);
+        new_values.insert(X(0), initial_pose);
+        new_values.insert(V(0), linear_velocity);
+        new_values.insert(B(0), imu_bias_TEST);
     }
     integration_timestamp = imu.timestamp;
 }
