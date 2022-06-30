@@ -18,6 +18,55 @@ void check_transform_adjoint_blocks(const Eigen::Matrix<double, 6, 6>& transform
     EXPECT_TRUE(bottom_right.isApprox(R));
 }
 
+TEST(relative_transform, linear_rates_0) {
+    const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
+    const Eigen::Vector3d rotation_axis = Eigen::Vector3d(0.8, 0.1, 0.05).normalized();
+    const double rotation_angle_rate{0.492};
+    const Eigen::Vector3d linear_velocity{1.0, 2.0, 3.0};
+    const double dt = 1.0;
+    const Eigen::Vector3d angular_velocity = rotation_angle_rate * dt * rotation_axis;
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt}
+            * Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
+    Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(I, pose, dt);
+    const Eigen::Vector3d angular_velocity_out = rates.block<3, 1>(0, 0);
+    const Eigen::Vector3d linear_velocity_out = rates.block<3, 1>(3, 0);
+    EXPECT_TRUE(angular_velocity_out.isApprox(angular_velocity));
+    EXPECT_TRUE(linear_velocity_out.isApprox(linear_velocity));
+}
+
+TEST(relative_transform, linear_rates_1) {
+    const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
+    const Eigen::Vector3d rotation_axis = Eigen::Vector3d(0.8, 0.1, 0.05).normalized();
+    const double rotation_angle_rate{0.492};
+    const Eigen::Vector3d linear_velocity{1.0, 2.0, 3.0};
+    const double dt = M_PI / rotation_angle_rate; // Too large a dt will invalidate test because the rotation will wrap
+    const Eigen::Vector3d angular_velocity = rotation_angle_rate * rotation_axis;
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt}
+            * Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
+    Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(I, pose, dt);
+    const Eigen::Vector3d angular_velocity_out = rates.block<3, 1>(0, 0);
+    const Eigen::Vector3d linear_velocity_out = rates.block<3, 1>(3, 0);
+    EXPECT_TRUE(angular_velocity_out.isApprox(angular_velocity));
+    EXPECT_TRUE(linear_velocity_out.isApprox(linear_velocity));
+}
+
+TEST(relative_transform, transform_0) {
+    const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{1.0, 2.0, 3.0} *
+            Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized(); 
+    const Eigen::Isometry3d transform = eigen_ext::relative_transform(I, pose);
+    EXPECT_TRUE(transform.isApprox(pose));
+}
+
+TEST(relative_transform, transform_0_inv) {
+    const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
+    const Eigen::Vector3d translation{1.0, 2.0, 3.0};
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{translation} *
+            Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized(); 
+    const Eigen::Isometry3d transform = eigen_ext::relative_transform(pose, I);
+    EXPECT_TRUE(transform.isApprox(pose.inverse()));
+}
+
 TEST(transform_adjoint, rotation_only) {
     const Eigen::Isometry3d transform{Eigen::Quaterniond(0.17, 0.68, 0.55, 0.14).normalized()};
     Eigen::Matrix<double, 6, 6> transform_adjoint = eigen_ext::transform_adjoint(transform);

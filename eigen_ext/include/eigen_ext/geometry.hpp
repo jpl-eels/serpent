@@ -52,6 +52,34 @@ Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3> compose_transform_covariance(
         const Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3>& relative_cross_covariance = 
         Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3>::Zero());
 
+/**
+ * @brief Estimate the constant angular and linear velocities required to transform from pose_1 to pose_2 in time dt.
+ * 
+ * @tparam Scalar 
+ * @param pose_1 
+ * @param pose_2 
+ * @param dt 
+ * @return Eigen::Matrix<Scalar, 6, 1> rates in order of angular then linear, so [w1, w2, w2, v1, v2, v3]
+ */
+template<typename Scalar>
+Eigen::Matrix<Scalar, 6, 1> linear_rates(const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_1,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_2, const Scalar dt);
+
+/**
+ * @brief Compute the transform from pose_1 to pose_2.
+ * 
+ * This is a shortcut for pose_1.inverse() * pose_2;
+ * 
+ * @tparam Scalar 
+ * @param pose_1 
+ * @param pose_2 
+ * @return Eigen::Transform<Scalar, 3, Eigen::Isometry> 
+ */
+template<typename Scalar, int Dim>
+Eigen::Transform<Scalar, Dim, Eigen::Isometry> relative_transform(
+        const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_1,
+        const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_2);
+
 template<typename Scalar, int Dim>
 Eigen::Transform<Scalar, Dim, Eigen::Isometry> to_transform(const Eigen::Translation<Scalar, Dim>& t,
         const Eigen::Quaternion<Scalar>& q);
@@ -88,6 +116,26 @@ Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3> compose_transform_covariance(
     const Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3> adj_transpose = adj.transpose();
     return adj * previous_covariance * adj_transpose + relative_covariance
             + relative_cross_covariance * adj_transpose + adj * relative_cross_covariance.transpose();
+}
+
+template<typename Scalar>
+typename Eigen::Matrix<Scalar, 6, 1> linear_rates(const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_1,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_2, const Scalar dt) {
+    if (dt <= 0.0) {
+        throw std::runtime_error("dt must be > 0.0");
+    }
+    const typename Eigen::Transform<Scalar, 3, Eigen::Isometry> transform = relative_transform(pose_1, pose_2);
+    const typename Eigen::AngleAxis<Scalar> rotation{transform.rotation()};
+    typename Eigen::Matrix<Scalar, 6, 1> rates;
+    rates << rotation.axis() * rotation.angle() / dt, transform.translation() / dt;
+    return rates;
+}
+
+template<typename Scalar, int Dim>
+Eigen::Transform<Scalar, Dim, Eigen::Isometry> relative_transform(
+        const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_1,
+        const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_2) {
+    return pose_1.inverse() * pose_2;
 }
 
 template<typename Scalar, int Dim>
