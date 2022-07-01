@@ -1,7 +1,7 @@
 <launch>
     <!-- Playback -->
     <arg name="mission"  default="imu_prepared_fixed_points_night_lidar_no_images"/>
-    <arg name="data_dir" default="$(env HOME)/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/"/>
+    <arg name="data_dir" default="$(env HOME)/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31"/>
     <arg name="rate"     default="1"/>
 
     <!-- SERPENT -->
