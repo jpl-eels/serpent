@@ -2,6 +2,8 @@
 #include "serpent/utilities.hpp"
 #include "serpent/ImuBiases.h"
 #include <eigen_ext/covariance.hpp>
+#include <eigen_ext/geometry.hpp>
+#include <eigen_gtsam/eigen_gtsam.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 
 namespace serpent {
@@ -283,7 +285,7 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
         const gtsam::Pose3 registration_pose_gtsam = gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation),
                 registration_pose.data.position);
         auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
-        ROS_INFO_STREAM("Registration sigmas: " << to_flat_string(registration_covariance->sigmas()));
+        ROS_INFO_STREAM("Registration covariance sigmas: " << to_flat_string(registration_covariance->sigmas()));
         if (registration_covariance->sigmas().minCoeff() == 0.0) {
             throw std::runtime_error("Registration noise sigmas contained a zero.");
         }
@@ -303,6 +305,18 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
 
     // Optimise and publish
     optimise_and_publish(gm->key("reg"));
+
+    // Update values that weren't optimised
+    if (!add_imu_factors) {
+        // Set velocity based on transforms
+        const double dt = gm->time_between("reg", "reg", -1).toSec();
+        Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(
+                eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose("reg", -1)),
+                eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose("reg")), dt);
+        ROS_INFO_STREAM("Estimated angular and linear velocities from transforms as:\n" << rates);
+        const Eigen::Vector3d linear_velocity = rates.block<3, 1>(3, 0);
+        gm->set_velocity("reg", linear_velocity);
+    }
 }
 
 nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key) {
