@@ -3,6 +3,7 @@
 
 #include <fast_gicp/gicp/fast_gicp.hpp>
 #include <fast_gicp/gicp/fast_gicp_st.hpp>
+#include <fast_gicp/gicp/fast_vgicp.hpp>
 #include <fast_gicp/gicp/lsq_registration.hpp>
 #include <pcl/registration/gicp.h>
 #include <ros/ros.h>
@@ -10,6 +11,10 @@
 namespace fast_gicp {
 
 RegularizationMethod to_regularization_method(const std::string& method);
+
+VoxelAccumulationMode to_voxel_accumulation_mode(const std::string& mode);
+
+NeighborSearchMethod to_neighbor_search_method(const std::string& method);
 
 }
 
@@ -69,6 +74,17 @@ void set_fast_gicp_parameters(const ros::NodeHandle& nh, const std::string& pref
 }
 
 template<typename PointIn, typename PointOut>
+void set_fast_vgicp_parameters(const ros::NodeHandle& nh, const std::string& prefix,
+        typename fast_gicp::FastVGICP<PointIn, PointOut>& fast_vgicp) {
+    set_fast_gicp_parameters(nh, prefix, fast_vgicp);
+    fast_vgicp.setResolution(nh.param<double>(prefix + "fast_vgicp/resolution", 1.0));
+    fast_vgicp.setVoxelAccumulationMode(fast_gicp::to_voxel_accumulation_mode(
+            nh.param<std::string>(prefix + "fast_vgicp/voxel_accumulation_mode", "ADDITIVE")));
+    fast_vgicp.setNeighborSearchMethod(fast_gicp::to_neighbor_search_method(
+            nh.param<std::string>(prefix + "fast_vgicp/neighbor_search_method", "DIRECT1")));
+}
+
+template<typename PointIn, typename PointOut>
 void set_fast_gicp_st_parameters(const ros::NodeHandle& nh, const std::string& prefix,
         typename fast_gicp::FastGICPSingleThread<PointIn, PointOut>& fast_gicp_st) {
     set_fast_gicp_parameters(nh, prefix, fast_gicp_st);
@@ -96,6 +112,10 @@ typename pcl::Registration<PointIn, PointOut>::Ptr registration_method(const ros
         auto fast_gicp_st = boost::make_shared<typename fast_gicp::FastGICPSingleThread<PointIn, PointOut>>();
         set_fast_gicp_st_parameters(nh, prefix, *fast_gicp_st);
         registration = fast_gicp_st;
+    } else if (method == "fast_vgicp") {
+        auto fast_vgicp = boost::make_shared<typename fast_gicp::FastVGICP<PointIn, PointOut>>();
+        set_fast_vgicp_parameters(nh, prefix, *fast_vgicp);
+        registration = fast_vgicp;
     } else {
         throw std::runtime_error("Registration method \'" + method  + "\' not supported");
     }

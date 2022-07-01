@@ -39,7 +39,7 @@ optimisation:
 
 # Registration
 s2s:
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
   base:
     maximum_iterations: 10
     ransac_iterations: 0
@@ -64,10 +64,15 @@ s2s:
     num_threads: 4
     correspondence_randomness: 20
     regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
+
 
 s2m:
   enabled: true
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
   base:
     maximum_iterations: 10
     ransac_iterations: 0
@@ -92,6 +97,10 @@ s2m:
     num_threads: 4
     correspondence_randomness: 20
     regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
 
 # Mapping
 mapping:
