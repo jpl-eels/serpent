@@ -36,6 +36,7 @@ Registration::Registration():
     if (publish_registration_clouds) {
         debug_previous_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                 "debug/previous_pointcloud", 1);
+        debug_current_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/current_pointcloud", 1);
         debug_imu_guess_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                 "debug/imu_guess_pointcloud", 1);
         debug_s2s_transformed_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
@@ -73,20 +74,26 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         ROS_INFO_STREAM("S2S initial guess:\n" << tf_mat_float);
 
         if (publish_registration_clouds) {
-            // Publish previous cloud (unfortunately a copy is required to correct the frame id)
-            auto previous_pointcloud_frame_corrected = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(
-                    *previous_pointcloud);
-            previous_pointcloud_frame_corrected->header.frame_id = "body_i-1";
-            debug_previous_cloud_publisher.publish(previous_pointcloud_frame_corrected);
+            // Current pointcloud untransformed (must change timestamp for visualisation)
+            auto current_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*current_pointcloud);
+            current_pointcloud_->header.stamp = previous_pointcloud->header.stamp;
+            current_pointcloud_->header.frame_id = "body_i-1";
+            debug_current_cloud_publisher.publish(current_pointcloud_);
 
-            // Transform current scan to previous frame and publish
+            // Publish previous cloud (unfortunately a copy is required to correct the frame id)
+            auto previous_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*previous_pointcloud);
+            previous_pointcloud_->header.frame_id = "body_i-1";
+            debug_previous_cloud_publisher.publish(previous_pointcloud_);
+
+            // Transform current scan to previous frame and publish (must change timestamp for visualisation)
             auto imu_guess_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
             pcl::transformPointCloud(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
+            imu_guess_pointcloud->header.stamp = previous_pointcloud->header.stamp;
             imu_guess_pointcloud->header.frame_id = "body_i-1";
             debug_imu_guess_cloud_publisher.publish(imu_guess_pointcloud);
         }
 
-        // Refine registration with scan to scan matching
+        // Refine registration with scan to scan matching (must change timestamp for visualisation)
         s2s->setInputSource(current_pointcloud);
         s2s->setInputTarget(previous_pointcloud);
         auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
@@ -94,6 +101,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
                 << previous_pointcloud->size() << ")");
         const ros::WallTime tic = ros::WallTime::now();
         s2s->align(*registered_pointcloud, tf_mat_float);
+        registered_pointcloud->header.stamp = previous_pointcloud->header.stamp;
         registered_pointcloud->header.frame_id = "body_i-1";
         const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();
         const Eigen::Matrix4d s2s_transform = s2s_transform_float.cast<double>();
@@ -108,9 +116,11 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             debug_s2s_transformed_cloud_publisher.publish(registered_pointcloud);
 
             if (publish_registration_clouds_alt) {
-                // Alt: transform and publish
+                // Alt: transform and publish (must change timestamp for visualisation)
                 auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
                 pcl::transformPointCloud(*current_pointcloud, *registered_pointcloud_alt, s2s_transform_float);
+                registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
+                registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
                 debug_s2s_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);
             }
         }
@@ -144,7 +154,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     s2s_registrations.pop_front();
     s2s_mutex.unlock();
 
-    // Refine registration with scan to map matching
+    // Refine registration with scan to map matching (must change timestamp for visualisation)
     Eigen::Matrix4f s2s_tf_mat_float = s2s_transform.matrix().cast<float>();
     s2m->setInputSource(pointcloud);
     s2m->setInputTarget(map);
@@ -152,6 +162,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     ROS_INFO_STREAM("S2M Aligning current cloud (" << pointcloud->size() << " points) to map (" << map->size() << ")");
     const ros::WallTime tic = ros::WallTime::now();
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
+    registered_pointcloud->header.stamp = map->header.stamp;
     registered_pointcloud->header.frame_id = "body_i-1";
     const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();
     const Eigen::Matrix4d s2m_transform = s2m_transform_float.cast<double>();
@@ -165,9 +176,11 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         debug_s2m_transformed_cloud_publisher.publish(registered_pointcloud);
 
         if (publish_registration_clouds_alt) {
-            // Alt: transform and publish
+            // Alt: transform and publish (must change timestamp for visualisation)
             auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
             pcl::transformPointCloud(*pointcloud, *registered_pointcloud_alt, s2m_transform_float);
+            registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
+            registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
             debug_s2m_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);
         }
     }

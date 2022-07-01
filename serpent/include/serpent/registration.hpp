@@ -54,6 +54,7 @@ private:
     ros::NodeHandle nh;
     ros::Publisher refined_transform_publisher;
     ros::Publisher debug_previous_cloud_publisher;
+    ros::Publisher debug_current_cloud_publisher;
     ros::Publisher debug_imu_guess_cloud_publisher;
     ros::Publisher debug_s2s_transformed_cloud_publisher;
     ros::Publisher debug_s2m_transformed_cloud_publisher;
@@ -99,6 +100,13 @@ private:
 template<typename PointSource, typename PointTarget>
 Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration) {
     ROS_WARN_ONCE("DESIGN DECISION: Use fitness score in registration covariance?");
+    // Eigen::Matrix<double, 6, 6> covariance;
+    // covariance << Eigen::Matrix3d::Identity() * std::pow(1 * M_PI / 180.0, 2.0), Eigen::Matrix3d::Zero(),
+    //         Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(0.1, 2.0);
+    // // covariance << Eigen::Matrix3d::Identity() * std::pow(0.1 * M_PI / 180.0, 2.0), Eigen::Matrix3d::Zero(),
+    // //         Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(0.01, 2.0);
+    // ROS_INFO_STREAM("Registration cov:\n" << covariance);
+    // return covariance;
     return Eigen::Matrix<double, 6, 6>::Identity() * registration.getFitnessScore();
 }
 
