@@ -92,11 +92,15 @@ gtsam::imuBias::ConstantBias GraphManager::imu_bias(const int key_) const {
 }
 
 gtsam::imuBias::ConstantBias GraphManager::imu_bias(const std::string key_, const int offset) const {
-    return imu_bias(key(key_) + offset);
+    return imu_bias(key(key_, offset));
 }
 
-int GraphManager::key(const std::string& name) const {
-    return keys.at(name);
+int GraphManager::key(const std::string& name, const int offset) const {
+    const int key_ = keys.at(name) + offset;
+    if (key_ < 0) {
+        throw std::runtime_error("GraphManager: key < 0 detected - something went wrong.");
+    }
+    return key_;
 }
 
 void GraphManager::increment(const std::string& name) {
@@ -108,7 +112,7 @@ gtsam::NavState GraphManager::navstate(const int key_) const {
 }
 
 gtsam::NavState GraphManager::navstate(const std::string key_, const int offset) const {
-    return navstate(key(key_) + offset);
+    return navstate(key(key_, offset));
 }
 
 gtsam::Pose3 GraphManager::pose(const int key_) const {
@@ -117,7 +121,7 @@ gtsam::Pose3 GraphManager::pose(const int key_) const {
 }
 
 gtsam::Pose3 GraphManager::pose(const std::string key_, const int offset) const {
-    return pose(key(key_) + offset);
+    return pose(key(key_, offset));
 }
 
 RobotState GraphManager::state(const int key_) const {
@@ -125,8 +129,8 @@ RobotState GraphManager::state(const int key_) const {
     return RobotState{timestamp(key_), pose(key_), velocity(key_), imu_bias(key_)};
 }
 
-RobotState GraphManager::state(const std::string& name, const int offset) const {
-    return state(key(name) + offset);
+RobotState GraphManager::state(const std::string& key_, const int offset) const {
+    return state(key(key_, offset));
 }
 
 void GraphManager::set_imu_bias(const int key_, const gtsam::imuBias::ConstantBias& imu_bias) {
@@ -134,9 +138,9 @@ void GraphManager::set_imu_bias(const int key_, const gtsam::imuBias::ConstantBi
     set(B(key_), imu_bias);
 }
 
-void GraphManager::set_imu_bias(const std::string& name, const gtsam::imuBias::ConstantBias& imu_bias,
+void GraphManager::set_imu_bias(const std::string& key_, const gtsam::imuBias::ConstantBias& imu_bias,
         const int offset) {
-    set_imu_bias(key(name) + offset, imu_bias);
+    set_imu_bias(key(key_, offset), imu_bias);
 }
 
 void GraphManager::set_named_key(const std::string& name, const int value_) {
@@ -151,8 +155,8 @@ void GraphManager::set_navstate(const int key_, const gtsam::NavState& navstate)
     set(V(key_), navstate.velocity());
 }
 
-void GraphManager::set_navstate(const std::string& name, const gtsam::NavState& navstate, const int offset) {
-    set_navstate(key(name) + offset, navstate);
+void GraphManager::set_navstate(const std::string& key_, const gtsam::NavState& navstate, const int offset) {
+    set_navstate(key(key_, offset), navstate);
 }
 
 void GraphManager::set_pose(const int key_, const gtsam::Pose3& pose) {
@@ -160,8 +164,8 @@ void GraphManager::set_pose(const int key_, const gtsam::Pose3& pose) {
     set(X(key_), pose);
 }
 
-void GraphManager::set_pose(const std::string& name, const gtsam::Pose3& pose, const int offset) {
-    set_pose(key(name) + offset, pose);
+void GraphManager::set_pose(const std::string& key_, const gtsam::Pose3& pose, const int offset) {
+    set_pose(key(key_, offset), pose);
 }
 
 void GraphManager::set_timestamp(const int key_, const ros::Time& timestamp_) {
@@ -173,16 +177,25 @@ void GraphManager::set_timestamp(const int key_, const ros::Time& timestamp_) {
     }
 }
 
-void GraphManager::set_timestamp(const std::string& name, const ros::Time& timestamp_, const int offset) {
-    set_timestamp(key(name) + offset, timestamp_);
+void GraphManager::set_timestamp(const std::string& key_, const ros::Time& timestamp_, const int offset) {
+    set_timestamp(key(key_, offset), timestamp_);
 }
 
 void GraphManager::set_velocity(const int key_, const gtsam::Velocity3& velocity) {
     set(V(key_), velocity);
 }
 
-void GraphManager::set_velocity(const std::string& name, const gtsam::Velocity3& velocity, const int offset) {
-    set_velocity(key(name) + offset, velocity);
+void GraphManager::set_velocity(const std::string& key_, const gtsam::Velocity3& velocity, const int offset) {
+    set_velocity(key(key_, offset), velocity);
+}
+
+const ros::Duration GraphManager::time_between(const int key1, const int key2) const {
+    return timestamp(key2) - timestamp(key1);
+}
+
+const ros::Duration GraphManager::time_between(const std::string& key1_name, const std::string& key2_name,
+        const int key1_offset, const int key2_offset) const {
+    return time_between(key(key1_name, key1_offset), key(key2_name, key2_offset));
 }
 
 const ros::Time& GraphManager::timestamp(const int key_) const {
@@ -190,8 +203,8 @@ const ros::Time& GraphManager::timestamp(const int key_) const {
     return timestamps_.at(key_);
 }
 
-const ros::Time& GraphManager::timestamp(const std::string& name) const {
-    return timestamp(key(name));
+const ros::Time& GraphManager::timestamp(const std::string& key_, const int offset) const {
+    return timestamp(key(key_, offset));
 }
 
 const std::vector<ros::Time>& GraphManager::timestamps() const {
@@ -227,7 +240,7 @@ gtsam::Velocity3 GraphManager::velocity(const int key_) const {
 }
 
 gtsam::Velocity3 GraphManager::velocity(const std::string key_, const int offset) const {
-    return velocity(key(key_) + offset);
+    return velocity(key(key_, offset));
 }
 
 void GraphManager::add_factor(const int key_, const boost::shared_ptr<gtsam::NonlinearFactor>& factor_) {

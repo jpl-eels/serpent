@@ -101,7 +101,7 @@ public:
      * @param name 
      * @return int
      */
-    int key(const std::string& name) const;
+    int key(const std::string& name, const int offset = 0) const;
 
     gtsam::NavState navstate(const int key) const;
     
@@ -158,6 +158,11 @@ public:
 
     void set_velocity(const std::string& key, const gtsam::Velocity3& velocity, const int offset = 0);
 
+    const ros::Duration time_between(const int key1, const int key2) const;
+
+    const ros::Duration time_between(const std::string& key1_name, const std::string& key2_name,
+            const int key1_offset = 0, const int key2_offset = 0) const;
+
     const std::vector<ros::Time>& timestamps() const;
 
     /**
@@ -174,7 +179,7 @@ public:
      * @param name 
      * @return const ros::Time& 
      */
-    const ros::Time& timestamp(const std::string& name) const;
+    const ros::Time& timestamp(const std::string& key, const int offset = 0) const;
 
     /**
      * @brief Update values within the GraphManager. Any values present within the state manager not present in
