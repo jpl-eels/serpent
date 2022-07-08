@@ -8,6 +8,22 @@
 namespace eigen_ext {
 
 /**
+ * @brief Given a relative transform between any two timestamps in the reference frame of A, and a rigid body transform
+ * from some other fixed frame B on the body to A, this function computes the relative transform in the reference frame
+ * of B.
+ *      T_{B1}^{B2} = (T_{B2}^{A2} (T_{B1}^{A1} T_{A1}^{A2})^-1 )^-1 = (T_B^A (T_B^A T_{A1}^{A2})^-1 )^-1
+ * 
+ * @tparam Scalar 
+ * @param relative_transform_A 
+ * @param rigid_transform_B_A 
+ * @return Eigen::Transform<Scalar, 3, Eigen::Isometry> 
+ */
+template<typename Scalar>
+Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A);
+
+/**
  * @brief Given a transform T_a^b (i.e. b in the reference frame of a) and the twist in reference frame of b, compute
  * the twist in reference frame a. Internally, this function calculates and applies the pose adjoint:
  * 
@@ -106,6 +122,13 @@ Eigen::Matrix<Scalar, 6, 6> transform_adjoint(const Eigen::Transform<Scalar, 3, 
 
 /* Implementation */
 
+template<typename Scalar>
+Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A) {
+    return (rigid_transform_B_A * (rigid_transform_B_A * relative_transform_A).inverse()).inverse();
+}
+
 template<typename Scalar, int Dim>
 Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3> compose_transform_covariance(
         const Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3>& previous_covariance,
@@ -119,7 +142,7 @@ Eigen::Matrix<Scalar, (Dim-1)*3, (Dim-1)*3> compose_transform_covariance(
 }
 
 template<typename Scalar>
-typename Eigen::Matrix<Scalar, 6, 1> linear_rates(const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_1,
+Eigen::Matrix<Scalar, 6, 1> linear_rates(const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_1,
         const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& pose_2, const Scalar dt) {
     if (dt <= 0.0) {
         throw std::runtime_error("dt must be > 0.0");
