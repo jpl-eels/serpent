@@ -25,6 +25,24 @@ cd ~/catkin_ws
 catkin build
 ```
 
+## Plotting Results
+
+To generate plots for trials and compare to ground truth reference, first record the output odometry to file.
+
+Then run `main.m` from its directory with MATLAB after configuring the config and plot options to your datatset.
+
+To run from the command line:
+```bash
+matlab -nodisplay -nosplash -nodesktop -r "run('main.m'); exit;"
+```
+
+The following plots will be generated:
+
+ - position vs ground truth, position APE, position RPE
+ - orientation vs ground truth in angle-axis form, orientation APE, orientation RPE
+ - linear velocity vs ground truth, linear velocity AE, linear velocity RE
+ - angular velocity vs ground truth, angular velocity AE, angular velocity RE
+
 ## Authors
 
 Initial Author: William Talbot 347J (william.talbot@jpl.nasa.gov)
