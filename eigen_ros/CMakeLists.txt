@@ -33,6 +33,7 @@ catkin_package(
 )
 
 add_library(${LIBRARY_NAME}
+    src/body_frames.cpp
     src/eigen_ros.cpp
     src/geometry_msgs.cpp
     src/imu.cpp
