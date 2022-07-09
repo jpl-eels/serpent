@@ -34,6 +34,8 @@ function pose_data = compute_pose_data(data, align_first_pose)
             end
             if pose_data.gt.timestamps(gt_index) == entry.timestamps(1)
                 first_gt_T = pose_to_matrix(gt_poses(gt_index));
+                first_gt_position = first_gt_T(1:3, 4)';
+                first_gt_orientation = rotm2quat(first_gt_T(1:3, 1:3));
             else
                 [first_gt_position, first_gt_orientation] = ...
                     interp_transform(pose_data.gt.timestamps(gt_index - 1), ...

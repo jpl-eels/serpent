@@ -19,10 +19,12 @@ config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
 %     "surface_spiral_2_analysis/"], "");
 config.data_dir = join([config.gt.data_dir, ...
     "serpent_results/"], "");
-config.filenames = ["odometry_imu_int_2022-07-09-13-07-30.bag", ...
-    "odometry_imu_opt_2022-07-09-13-07-30.bag"];
-config.names = ["imu int", "imu opt"];
-config.odom_topics = ["/integrate_imu/odometry", "/serpent/optimisation/odometry"];
+config.filenames = ["odometry_imu_int_e0e8470fbdce3459961e9e0cf5d6a448965ace34_commit_2022-07-09-16-40-53.bag", ...
+    "odometry_imu_opt_e0e8470fbdce3459961e9e0cf5d6a448965ace34_commit_2022-07-09-16-28-45.bag", ...
+    "odometry_imu_int_2022-07-09-13-07-30.bag", "odometry_imu_opt_2022-07-09-13-07-30.bag"];
+config.names = ["imu int prev", "imu opt prev", "imu int", "imu opt"];
+config.odom_topics = ["/integrate_imu/odometry", "/serpent/optimisation/odometry", ...
+    "/integrate_imu/odometry", "/serpent/optimisation/odometry"];
 
 plot_opts.align_first_pose = true;
 plot_opts.start_from_time_zero = true;
@@ -33,7 +35,7 @@ plot_opts.filetypes = ["fig", "png"];
 % plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
 %     replace(config.gt.filename, ".bag", "/"), "serpent_imu/"], "");
 plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
-    "mammoth/", "serpent_imu/"], "");
+    "mammoth/", "serpent_imu_consistent/"], "");
 plot_opts.close_after_save = false;
 
 data = data_from_rosbags(config);
