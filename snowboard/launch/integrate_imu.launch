@@ -1,0 +1,10 @@
+<launch>
+    <arg name="mission" default="mammoth_outdoor"/>
+
+    <include file="$(find navigation_tools)/launch/integrate_imu.launch">
+        <arg name="imu_topic"       value="/vectornav/imu_nwu"/>
+        <arg name="extrinsics_file" value="$(find snowboard)/config/serpent/snowboard.yaml"/>
+        <arg name="mission_file"    value="$(find snowboard)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="noise_file"      value="$(find snowboard)/config/serpent/tuning.yaml"/>
+    </include>
+</launch>

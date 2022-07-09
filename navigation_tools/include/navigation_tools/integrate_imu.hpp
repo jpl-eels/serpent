@@ -1,13 +1,13 @@
 #ifndef NAVIGATION_TOOLS_INTEGRATE_IMU_HPP
 #define NAVIGATION_TOOLS_INTEGRATE_IMU_HPP
 
+#include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
 #include <ros/ros.h>
 #include <memory>
-
 
 class IntegrateImu {
 public:
@@ -26,11 +26,8 @@ private:
     // Transform subscriber
     ros::Subscriber imu_subscriber;
 
-    //// Extrinsics
-    // IMU to body frame extrinsic
-    Eigen::Quaterniond imu_to_body_ext;
-    // Body frame to IMU extrinsic (inverse of imu_to_body_ext)
-    Eigen::Quaterniond body_to_imu_ext;
+    // Extrinsics
+    const eigen_ros::BodyFrames body_frames;
 
     //// IMU Integration
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;

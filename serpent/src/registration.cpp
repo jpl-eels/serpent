@@ -2,7 +2,7 @@
 #include "serpent/registration_methods.hpp"
 #include "serpent/utilities.hpp"
 #include <eigen_ext/covariance.hpp>
-#include <eigen_ros/geometry_msgs.hpp>
+#include <eigen_ext/geometry.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <pcl/common/transforms.h>
 
@@ -56,10 +56,17 @@ Registration::Registration():
 
 void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
         const Eigen::Matrix<double, 6, 6> covariance, const ros::Time& timestamp) {
+    // Convert transform to body frame
+    const Eigen::Isometry3d transform_lidar{transform};
+    const Eigen::Isometry3d transform_body = eigen_ext::change_relative_transform_frame(transform_lidar,
+            body_frames.body_to_frame("lidar"));
+    ROS_WARN_ONCE("TODO: Covariance of transform needs to be transformed");
+
+    // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
     transform_msg->header.stamp = timestamp;
     transform_msg->header.frame_id = "body_i-1"; // Child = "body_i"
-    eigen_ros::to_ros(transform_msg->pose.pose, transform);
+    eigen_ros::to_ros(transform_msg->pose.pose, transform_body);
     eigen_ros::to_ros(transform_msg->pose.covariance, eigen_ext::reorder_covariance(covariance, 3));
     refined_transform_publisher.publish(transform_msg);
 }

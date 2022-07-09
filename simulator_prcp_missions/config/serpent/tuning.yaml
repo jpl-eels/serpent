@@ -27,19 +27,19 @@ isam2:
   relinearize_threshold: 0.1
   relinearize_skip: 10
   enable_relinearization: true
-  evaluate_nonlinear_error: false
+  evaluate_nonlinear_error: true
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
 # Optimisation
 optimisation:
   factors:
-    imu: true
+    imu: false
     registration: true
 
 # Registration
 s2s:
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
   base:
     maximum_iterations: 20
     ransac_iterations: 0
@@ -64,10 +64,14 @@ s2s:
     num_threads: 8
     correspondence_randomness: 20
     regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
 
 s2m:
-  enabled: true
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp)
+  enabled: false
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
   base:
     maximum_iterations: 20
     ransac_iterations: 0
@@ -92,6 +96,10 @@ s2m:
     num_threads: 8
     correspondence_randomness: 20
     regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
 
 # Mapping
 mapping:

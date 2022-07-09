@@ -1,5 +1,27 @@
-imu_to_body:
-  w: 0.0610485
-  x: 0.0
-  y: 0.9981348
-  z: 0.0
+# imu_to_body:
+#   w: 0.0610485
+#   x: 0.0
+#   y: 0.9981348
+#   z: 0.0
+# Body frame origin is at IMU, with a NWU (x-forward, y-left, z-up) orientation (tfs are body to frame)
+body_frames:
+  imu:
+    translation:
+      x: 0.0
+      y: 0.0
+      y: 0.0
+    rotation:
+      w: 0.0610485
+      x: 0.0
+      y: -0.9981348
+      z: 0.0
+  lidar:
+    translation:
+      x: 0.60
+      y: 0.04
+      z: 0.00
+    rotation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0

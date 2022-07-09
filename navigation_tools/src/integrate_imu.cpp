@@ -14,17 +14,6 @@ IntegrateImu::IntegrateImu():
     // Subscribers
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input", 100, &IntegrateImu::integrate, this);
 
-    // Extrinsics
-    imu_to_body_ext = Eigen::Quaterniond(nh.param<double>("imu_to_body/w", 1.0),
-            nh.param<double>("imu_to_body/x", 0.0), nh.param<double>("imu_to_body/y", 0.0),
-            nh.param<double>("imu_to_body/z", 0.0));
-    if (imu_to_body_ext.norm() < 0.99 || imu_to_body_ext.norm() > 1.01) {
-        ROS_WARN_STREAM("IMU to body extrinsic was not normalised (" << imu_to_body_ext.norm() << "). It will be "
-                "normalised.");
-    }
-    imu_to_body_ext.normalize();
-    body_to_imu_ext = imu_to_body_ext.inverse();
-
     // Integration parameters
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     preintegration_params->setAccelerometerCovariance(Eigen::Matrix3d::Identity() *
@@ -39,6 +28,9 @@ IntegrateImu::IntegrateImu():
             std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
             std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+    // pose of the sensor in the body frame
+    const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
+    preintegration_params->setBodyPSensor(body_to_imu);
 
     // IMU integrator
     integrator = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_bias);
@@ -50,8 +42,6 @@ IntegrateImu::IntegrateImu():
 void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
     // Prepare data
     eigen_ros::Imu imu = eigen_ros::from_ros<eigen_ros::Imu>(*msg);
-    imu.change_frame(imu_to_body_ext, body_to_imu_ext);
-    ROS_WARN_ONCE("IMU msg noise is ignored. Config noise parameters used instead.");
 
     if (integration_timestamp != ros::Time()) {
         // Integrate
@@ -96,13 +86,14 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
         path.poses.emplace_back(pose_stamped);
         path_publisher.publish(path);
     } else {
-        const Eigen::Quaterniond orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
-                Eigen::Quaterniond::Identity() : imu.orientation;
+        const Eigen::Quaterniond body_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
+                Eigen::Quaterniond::Identity() :
+                Eigen::Quaterniond{(imu.orientation * body_frames.frame_to_body("imu")).rotation()};
         const gtsam::Point3 position{nh.param<double>("pose/position/x", 0.0),
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)};
         const gtsam::Velocity3 linear_velocity{nh.param<double>("velocity/linear/x", 0.0),
                 nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
-        initial_state = gtsam::NavState{gtsam::Rot3{orientation}, position, linear_velocity};
+        initial_state = gtsam::NavState{gtsam::Rot3{body_orientation}, position, linear_velocity};
     }
     integration_timestamp = imu.timestamp;
 }

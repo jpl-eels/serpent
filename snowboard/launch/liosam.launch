@@ -7,7 +7,7 @@
     <rosparam unless="$(arg indoor)" file="$(find snowboard)/config/liosam/snowboard_liosam.yaml"        command="load"/>
 
     <!-- IMU Pre-Transform -->
-    <include file="$(find snowboard)/launch/snowboard_imu_transform.launch"/>
+    <include file="$(find snowboard)/launch/imu_transform.launch"/>
 
     <!--- LOAM -->
     <include file="$(find lio_sam)/launch/include/module_loam.launch" />

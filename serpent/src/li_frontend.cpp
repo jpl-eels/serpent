@@ -4,8 +4,7 @@
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
-#include <eigen_ros/geometry_msgs.hpp>
-#include <eigen_ros/nav_msgs.hpp>
+#include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 #include <geometry_msgs/TransformStamped.h>
@@ -32,17 +31,6 @@ LIFrontend::LIFrontend():
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
             &LIFrontend::pointcloud_callback, this);
 
-    // Extrinsics
-    imu_to_body_ext = Eigen::Quaterniond(nh.param<double>("imu_to_body/w", 1.0),
-            nh.param<double>("imu_to_body/x", 0.0), nh.param<double>("imu_to_body/y", 0.0),
-            nh.param<double>("imu_to_body/z", 0.0));
-    if (imu_to_body_ext.norm() < 0.99 || imu_to_body_ext.norm() > 1.01) {
-        ROS_WARN_STREAM("IMU to body extrinsic was not normalised (" << imu_to_body_ext.norm() << "). It will be "
-                "normalised.");
-    }
-    imu_to_body_ext.normalize();
-    body_to_imu_ext = imu_to_body_ext.inverse();
-
     // Preintegration parameters
     nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
@@ -66,15 +54,14 @@ LIFrontend::LIFrontend():
         update_preintegration_params(*preintegration_params, overwrite_accelerometer_covariance,
                 overwrite_gyroscope_covariance);
     }
+    // pose of the sensor in the body frame
+    const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
+    preintegration_params->setBodyPSensor(body_to_imu);
 }
 
 void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     // Convert IMU to pointcloud frame using extrinsics
     eigen_ros::Imu imu = eigen_ros::from_ros<eigen_ros::Imu>(*msg);
-    imu.change_frame(imu_to_body_ext, body_to_imu_ext);
-    ROS_WARN_ONCE("TODO: IMU change of frame currently breaks covariance. Need to find out how to correctly change"
-            " covariance reference frames");
-    ROS_WARN_ONCE("TODO: Sensor covariance should be before change of frame, once covariance change of frame is fixed");
     if (overwrite_imu_covariance) {
         imu.linear_acceleration_covariance = overwrite_accelerometer_covariance;
         imu.angular_velocity_covariance = overwrite_gyroscope_covariance;
@@ -102,6 +89,7 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         twist_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
                 linear_velocity_covariance;
         */
+        ROS_WARN_ONCE("TODO FIX: angular velocity must be converted from IMU frame to body frame");
         const Eigen::Vector3d angular_velocity = imu.angular_velocity + imu_biases.gyroscope();
         
         // Publish current state as odometry output
@@ -115,7 +103,7 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         eigen_ros::to_ros(odometry->twist.twist.linear, state.velocity());
         eigen_ros::to_ros(odometry->twist.twist.angular, angular_velocity);
         // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
-        ROS_WARN_ONCE("IMU-rate odometry is not valid");
+        ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
 
         // Publish body_i-1 to body (IMU-rate frame) TF
@@ -176,17 +164,19 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
         const Eigen::Matrix3d rotation_covariance = Eigen::Matrix3d::Identity()
                 * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        const Eigen::Quaterniond imu_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
-                Eigen::Quaterniond::Identity() : imu.orientation;
+        const Eigen::Quaterniond body_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
+                Eigen::Quaterniond::Identity() :
+                Eigen::Quaterniond{(imu.orientation * body_frames.frame_to_body("imu")).rotation()};
         const eigen_ros::Pose pose{Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0),
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)),
-                imu_orientation, position_covariance, rotation_covariance};
+                body_orientation, position_covariance, rotation_covariance};
         ROS_WARN_ONCE("MUST FIX: initial pose based on orientation but should be based on gravity. Can't use"
                 " orientation for 6-axis IMU");
         const Eigen::Matrix3d linear_twist_covariance = Eigen::Matrix3d::Identity()
                 * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
         const Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();
         ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
+        ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
                 imu.angular_velocity_covariance};
         const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", "body_i"};
@@ -249,10 +239,17 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             imu_mutex.unlock();
 
             // Generate transform from preintegration
+            ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
+                    " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
+                    " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
             const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), imu_biases);
             deskew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
         }
     }
+
+    // Transform deskew_transform from IMU frame to LIDAR frame
+    deskew_transform = eigen_ext::change_relative_transform_frame(deskew_transform,
+            body_frames.frame_to_frame("lidar", "imu"));
 
     // Deskew pointcloud
     pcl::PCLPointCloud2::Ptr deskewed_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();

@@ -33,7 +33,7 @@
         args="0 0 0 0 0 0 base_link os_sensor" />
 
     <!-- Transform the imu data into the base link (lidar frame) -->
-    <include file="$(find snowboard)/launch/snowboard_imu_transform.launch">
+    <include file="$(find snowboard)/launch/imu_transform.launch">
         <arg name="overwrite_frame" value="true"/>
         <arg name="new_frame"       value="base_link"/>
     </include>

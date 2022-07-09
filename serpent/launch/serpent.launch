@@ -2,7 +2,7 @@
     <!-- Launch Arguments -->
     <arg name="imu_topic"               default="/imu"/>
     <arg name="pointcloud_topic"        default="/pointcloud"/>
-    <arg name="robot_file"              default=""/>
+    <arg name="robot_file"              default="$(find serpent)/config/robot_default.yaml"/>
     <arg name="mission_file"            default="$(find serpent)/config/mission_default.yaml"/>
     <arg name="filter_file"             default="$(find serpent)/config/filter_default.yaml"/>
     <arg name="format_file"             default="$(find serpent)/config/format_default.yaml"/>

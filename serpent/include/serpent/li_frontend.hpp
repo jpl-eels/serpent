@@ -2,8 +2,9 @@
 #define SERPENT_LI_FRONTEND_HPP
 
 #include "serpent/ImuBiases.h"
-#include <eigen_ros/nav_msgs.hpp>
-#include <eigen_ros/sensor_msgs.hpp>
+#include <eigen_ros/body_frames.hpp>
+#include <eigen_ros/imu.hpp>
+#include <eigen_ros/odometry.hpp>
 #include <Eigen/Geometry>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <message_filters/subscriber.h>
@@ -69,11 +70,10 @@ private:
     mutable std::mutex imu_mutex;
     mutable std::mutex optimised_odometry_mutex;
 
+    // Body frames
+    const eigen_ros::BodyFrames body_frames;
+
     //// Configuration
-    // IMU to body frame extrinsic
-    Eigen::Quaterniond imu_to_body_ext;
-    // Body frame to IMU extrinsic (inverse of imu_to_body_ext)
-    Eigen::Quaterniond body_to_imu_ext;
     // Overwrite IMU covariance flag
     bool overwrite_imu_covariance;
     // Overwrite IMU accelerometer covariance

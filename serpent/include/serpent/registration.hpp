@@ -1,7 +1,7 @@
 #ifndef SERPENT_REGISTRATION_HPP
 #define SERPENT_REGISTRATION_HPP
 
-#include <eigen_ros/nav_msgs.hpp>
+#include <eigen_ros/body_frames.hpp>
 #include <geometry_msgs/TransformStamped.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
@@ -64,6 +64,9 @@ private:
     message_filters::Subscriber<geometry_msgs::TransformStamped> transform_subscriber;
     message_filters::TimeSynchronizer<pcl::PointCloud<pcl::PointNormal>, geometry_msgs::TransformStamped> s2s_sync;
     ros::Subscriber map_subscriber;
+
+    // Body frames
+    const eigen_ros::BodyFrames body_frames;
 
     // Thread Management
     mutable std::mutex s2s_mutex;
