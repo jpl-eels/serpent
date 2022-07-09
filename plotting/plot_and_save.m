@@ -1,9 +1,35 @@
 function plot_and_save(data, plot_opts)
-    pose_data = compute_pose_data(data);
+    pose_data = compute_pose_data(data, plot_opts.align_first_pose);
+    if plot_opts.start_from_time_zero
+        start_time = pose_data.gt.timestamps(1);
+        pose_data.gt.timestamps = pose_data.gt.timestamps - start_time;
+        for i = 1:length(pose_data.entries)
+            pose_data.entries{i}.timestamps = ...
+                pose_data.entries{i}.timestamps - start_time;
+            pose_data.entries{i}.ape.timestamps = ...
+                pose_data.entries{i}.ape.timestamps - start_time;
+            pose_data.entries{i}.rpe.timestamps = ...
+                pose_data.entries{i}.rpe.timestamps - start_time;
+
+        end
+    end
     fprintf("Finished computing pose data.\n");
     [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts);
     fprintf("Finished plotting pose data.\n");
     twist_data = compute_twist_data(data);
+    if plot_opts.start_from_time_zero
+        start_time = twist_data.gt.timestamps(1);
+        twist_data.gt.timestamps = twist_data.gt.timestamps - start_time;
+        for i = 1:length(twist_data.entries)
+            twist_data.entries{i}.timestamps = ...
+                twist_data.entries{i}.timestamps - start_time;
+            twist_data.entries{i}.ae.timestamps = ...
+                twist_data.entries{i}.ae.timestamps - start_time;
+            twist_data.entries{i}.re.timestamps = ...
+                twist_data.entries{i}.re.timestamps - start_time;
+
+        end
+    end
     fprintf("Finished computing twist data.\n");
     [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, plot_opts);
     fprintf("Finished plotting twist data.\n");

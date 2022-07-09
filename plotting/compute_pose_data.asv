@@ -45,24 +45,28 @@ function pose_data = compute_pose_data(data, align_first_pose)
             end
 
             % Align all poses
+%             aligned_poses = cell(length(poses), 1);
             entry.positions = zeros(length(poses), 3);
             quaternions = zeros(length(poses), 4);
+            aligned_poses(1) = matrix_to_pose(first_gt_T);
             entry.positions(1, :) = first_gt_position;
             quaternions(1, :) = first_gt_orientation;
             previous_T = pose_to_matrix(poses(1));
             previous_aligned_T = [quat2rotm(first_gt_orientation), ...
                 first_gt_position'; 0 0 0 1];
-            poses(1) = matrix_to_pose(first_gt_T);
             for j = 2:length(poses)
                 T = pose_to_matrix(poses(j));
                 relative_tf = previous_T \ T;
                 aligned_T = previous_aligned_T * relative_tf;
                 poses(j) = matrix_to_pose(aligned_T);
-                entry.positions(j, :) = extract_position(poses(j));
-                quaternions(j, :) = extract_quaternion(poses(j));
+                entry.positions(j, :) = extract_position(aligned_poses(j));
+                quaternions(j, :) = extract_quaternion(aligned_poses(j));
                 previous_T = T;
                 previous_aligned_T = aligned_T;
             end
+
+            % Overwrite poses
+            poses = aligned_poses;
         else
             entry.positions = extract_positions(poses);
             quaternions = extract_quaternions(poses);

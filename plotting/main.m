@@ -7,22 +7,33 @@ close all;
 % Configuration
 config = struct;
 config.gt = struct;
-config.gt.data_dir = "/home/william/data/simulator_prcp_gazebo/";
-config.gt.filename = "surface_spiral_2.bag";
-config.gt.topic = "/ground_truth";
+% config.gt.data_dir = "/home/william/data/simulator_prcp_gazebo/";
+config.gt.data_dir = "/home/william/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/";
+% config.gt.filename = "surface_spiral_2.bag";
+config.gt.filename = "locus_results/odometry_vs_gt_2022-04-19-12-07-58.bag";
+% config.gt.topic = "/ground_truth";
+config.gt.topic = "/snowboard/lo_frontend/odometry";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
-config.data_dir = "/home/william/data/simulator_prcp_gazebo/surface_spiral_2_analysis/";
-config.filenames = ["serpent_imu_opt_1/odometry.bag", "serpent_imu_opt_2/odometry.bag"];
-config.names = ["imu opt 1", "imu opt 2"];
-config.odom_topics = ["/serpent/optimisation/odometry", "/serpent/optimisation/odometry"];
+% config.data_dir = join([config.gt.data_dir, ...
+%     "surface_spiral_2_analysis/"], "");
+config.data_dir = join([config.gt.data_dir, ...
+    "serpent_results/"], "");
+config.filenames = ["odometry_imu_int_2022-07-09-13-07-30.bag", ...
+    "odometry_imu_opt_2022-07-09-13-07-30.bag"];
+config.names = ["imu int", "imu opt"];
+config.odom_topics = ["/integrate_imu/odometry", "/serpent/optimisation/odometry"];
 
+plot_opts.align_first_pose = true;
+plot_opts.start_from_time_zero = true;
 plot_opts.angle = "deg";
 plot_opts.figure_dims = [0, 0, 2400, 1600];
 plot_opts.save = true;
 plot_opts.filetypes = ["fig", "png"];
+% plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
+%     replace(config.gt.filename, ".bag", "/"), "serpent_imu/"], "");
 plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
-    replace(config.gt.filename, ".bag", "/"), "serpent_imu_opt/"], "");
+    "mammoth/", "serpent_imu/"], "");
 plot_opts.close_after_save = false;
 
 data = data_from_rosbags(config);

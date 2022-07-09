@@ -4,32 +4,43 @@
 % and an RE, except for the first vector for which there is no RE. Thus the
 % RE matrix will be one row shorter than the AE and starts at the second
 % timestamp.
-function [ae, re] = compute_vector_errors(reference_timestamps, ...
-        reference, timestamps, vectors)
-    timestamps = timestamps(timestamps <= reference_timestamps(end));
-    valid_size = length(timestamps);
+function [ae, ae_timestamps, re, re_timestamps] = compute_vector_errors(gt_timestamps, ...
+        gt_vectors, timestamps, vectors)
+    % Filter within gt bounds
+    timestamps_within_gt = timestamps <= gt_timestamps(end) & ...
+        timestamps >= gt_timestamps(1);
+    ae_timestamps = timestamps(timestamps_within_gt);
+    vectors = vectors(timestamps_within_gt, :);
+    re_timestamps = ae_timestamps(2:end);
+
+    % Setup
+    ae_size = length(ae_timestamps);
     vectors_size = size(vectors);
-    ae = zeros(valid_size, vectors_size(2));
-    re = zeros(valid_size - 1, vectors_size(2));
-    ref_index = 1;
+    ae = zeros(ae_size, vectors_size(2));
+    re = zeros(ae_size - 1, vectors_size(2));
+    gt_index = 1;
     prev_reference_vector = zeros(1, vectors_size(2));
     prev_vector = zeros(1, vectors_size(2));
-    for i = 1:valid_size
-        t = timestamps(i);
+
+    for i = 1:ae_size
+        t = ae_timestamps(i);
         vector = vectors(i, :);
-        while reference_timestamps(ref_index) < t
-            ref_index = ref_index + 1;
+        while gt_timestamps(gt_index) < t
+            gt_index = gt_index + 1;
         end
-        reference_vector = interp_vector( ...
-            reference_timestamps(ref_index - 1), ...
-            reference_timestamps(ref_index), ...
-            reference(ref_index - 1, :), reference(ref_index, :), t);
-        ae(i, :) = vector - reference_vector;
+        if gt_timestamps(gt_index) == t
+            gt_vector = gt_vectors(gt_index, :);
+        else
+            gt_vector = interp_vector(gt_timestamps(gt_index - 1), ...
+                gt_timestamps(gt_index), gt_vectors(gt_index - 1, :), ...
+                gt_vectors(gt_index, :), t);
+        end
+        ae(i, :) = vector - gt_vector;
         if i > 1
-            re(i - 1, :) = (reference_vector - prev_reference_vector) - ...
+            re(i - 1, :) = (gt_vector - prev_reference_vector) - ...
                 (vector - prev_vector);
         end
-        prev_reference_vector = reference_vector;
+        prev_reference_vector = gt_vector;
         prev_vector = vector;
     end
 end
