@@ -1,9 +1,14 @@
 function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     % Computation
     names_with_gt = ["Reference", pose_data.names];
+    gt_format = 'k--';
     gt_rots_axang = pose_data.gt.rots_axang;
+    gt_angles = pose_data.gt.angles;
+    angle_limits = [-pi, pi];
     if plot_opts.angle == "deg"
         gt_rots_axang = rad2deg(gt_rots_axang);
+        gt_angles = rad2deg(gt_angles);
+        angle_limits = rad2deg(angle_limits);
     end
 
     % Reference Position
@@ -13,7 +18,7 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     c = 3;
     title("Position");
     subplot(r,c,1);
-    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 1));
+    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 1), gt_format);
     xlabel("t (s)");
     ylabel("x (m)");
     grid on;
@@ -26,7 +31,7 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel("RPE x (m)");
     grid on;
     subplot(r,c,4);
-    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 2));
+    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 2), gt_format);
     xlabel("t (s)");
     ylabel("y (m)");
     grid on;
@@ -39,7 +44,7 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel("RPE y (m)");
     grid on;
     subplot(r,c,7);
-    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 3));
+    plot(pose_data.gt.timestamps, pose_data.gt.positions(:, 3), gt_format);
     xlabel("t (s)");
     ylabel("z (m)");
     grid on;
@@ -52,7 +57,7 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel("RPE z (m)");
     grid on;
     subplot(r,c,10);
-    plot(pose_data.gt.timestamps, pose_data.gt.distances);
+    plot(pose_data.gt.timestamps, pose_data.gt.distances, gt_format);
     xlabel("t (s)");
     ylabel("Distance (m)");
     grid on;
@@ -73,9 +78,10 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     c = 3;
     title("Orientation");
     subplot(r,c,1);
-    plot(pose_data.gt.timestamps, gt_rots_axang(:, 1));
+    plot(pose_data.gt.timestamps, gt_rots_axang(:, 1), gt_format);
     xlabel("t (s)");
     ylabel(join(["r_x (", plot_opts.angle, ")"], ""));
+    ylim(angle_limits);
     grid on;
     subplot(r,c,2);
     xlabel("t (s)");
@@ -86,9 +92,10 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel(join(["RPE r_x (", plot_opts.angle, ")"], ""));
     grid on;
     subplot(r,c,4);
-    plot(pose_data.gt.timestamps, gt_rots_axang(:, 2));
+    plot(pose_data.gt.timestamps, gt_rots_axang(:, 2), gt_format);
     xlabel("t (s)");
     ylabel(join(["r_y (", plot_opts.angle, ")"], ""));
+    ylim(angle_limits);
     grid on;
     subplot(r,c,5);
     xlabel("t (s)");
@@ -99,9 +106,10 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel(join(["RPE r_y (", plot_opts.angle, ")"], ""));
     grid on;
     subplot(r,c,7);
-    plot(pose_data.gt.timestamps, gt_rots_axang(:, 3));
+    plot(pose_data.gt.timestamps, gt_rots_axang(:, 3), gt_format);
     xlabel("t (s)");
     ylabel(join(["r_z (", plot_opts.angle, ")"], ""));
+    ylim(angle_limits);
     grid on;
     subplot(r,c,8);
     xlabel("t (s)");
@@ -112,9 +120,10 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     ylabel(join(["RPE r_z (", plot_opts.angle, ")"], ""));
     grid on;
     subplot(r,c,10);
-    plot(pose_data.gt.timestamps, pose_data.gt.angles);
+    plot(pose_data.gt.timestamps, gt_angles, gt_format);
     xlabel("t (s)");
     ylabel(join(["Angle (", plot_opts.angle, ")"], ""));
+    ylim([0, angle_limits(2)]);
     grid on;
     subplot(r,c,11);
     xlabel("t (s)");

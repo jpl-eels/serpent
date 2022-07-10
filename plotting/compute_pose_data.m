@@ -7,7 +7,7 @@ function pose_data = compute_pose_data(data, align_first_pose)
     gt_quaternions = extract_quaternions(gt_poses);
     gt_axang = quat2axang(gt_quaternions);
     pose_data.gt.rots_axang = gt_axang(:, 1:3) .* gt_axang(:, 4);
-    pose_data.gt.angles = gt_axang(:, 4);
+    pose_data.gt.angles = abs(gt_axang(:, 4));
 
     pose_data.num_odom = length(data.odoms);
     pose_data.names = data.names;
@@ -72,7 +72,7 @@ function pose_data = compute_pose_data(data, align_first_pose)
         entry.distances = vecnorm(entry.positions, 2, 2);
         axang = quat2axang(quaternions);
         entry.rots_axang = axang(:, 1:3) .* axang(:, 4);
-        entry.angles = axang(:, 4);
+        entry.angles = abs(gt_axang(:, 4));
         [apes, ape_timestamps, rpes, rpe_timestamps] = ...
             compute_pose_errors(pose_data.gt.timestamps, gt_poses, ...
             entry.timestamps, poses);
