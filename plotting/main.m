@@ -18,9 +18,13 @@ config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
 % config.data_dir = join([config.gt.data_dir, ...
 %     "surface_spiral_2_analysis/"], "");
 config.data_dir = join([config.gt.data_dir, "analysis/"], "");
-config.filenames = ["serpent_s2s_opt_2/odometry.bag"];
-config.names = ["s2s opt"];
-config.odom_topics = ["/serpent/optimisation/odometry"];
+config.filenames = ["serpent_s2s_3/odometry.bag", ...
+    "serpent_s2m_3/odometry.bag", "serpent_imu_s2s_3/odometry.bag", ...
+    "serpent_imu_s2m_3/odometry.bag"];
+config.names = ["s2s", "s2m", "imu s2s", "imu s2m"];
+config.odom_topics = ["/serpent/optimisation/odometry", ...
+    "/serpent/optimisation/odometry", "/serpent/optimisation/odometry", ...
+    "/serpent/optimisation/odometry"];
 
 plot_opts.align_first_pose = true;
 plot_opts.start_from_time_zero = true;
@@ -31,7 +35,7 @@ plot_opts.filetypes = ["fig", "png"];
 % plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
 %     replace(config.gt.filename, ".bag", "/"), "serpent_imu/"], "");
 plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
-    "mammoth/", "serpent_s2s_vs_body/"], "");
+    "mammoth/", "serpent_v3_vs_body/"], "");
 plot_opts.close_after_save = false;
 
 data = data_from_rosbags(config);
