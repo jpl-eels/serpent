@@ -72,7 +72,7 @@ function pose_data = compute_pose_data(data, align_first_pose)
         entry.distances = vecnorm(entry.positions, 2, 2);
         axang = quat2axang(quaternions);
         entry.rots_axang = axang(:, 1:3) .* axang(:, 4);
-        entry.angles = abs(gt_axang(:, 4));
+        entry.angles = abs(axang(:, 4));
         [apes, ape_timestamps, rpes, rpe_timestamps] = ...
             compute_pose_errors(pose_data.gt.timestamps, gt_poses, ...
             entry.timestamps, poses);
