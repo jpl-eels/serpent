@@ -145,16 +145,18 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     }
 
     // Calculate change in pose: T_{B_i-1}^{B_i} = T_{B_i-1}^W * T_W^{B_i} = (T_W^{B_i-1})^-1 * T_W^{B_i}
-    const eigen_ros::Pose s2s_pose{Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse()
-            * Eigen::Isometry3d(gm->pose("imu").matrix())};
-    ROS_WARN_ONCE("DESIGN DECISION: change output to odometry to pass velocity & covariances to registration module");
+    const Eigen::Isometry3d s2s_pose_imu = Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse()
+            * Eigen::Isometry3d(gm->pose("imu").matrix());
+    const eigen_ros::Pose s2s_pose_lidar{eigen_ext::change_relative_transform_frame(s2s_pose_imu,
+            body_frames.frame_to_frame("lidar", "imu"))};
+    ROS_WARN_ONCE("DESIGN DECISION: change output to odometry to pass velocity & covs to registration module?");
 
     // Publish imu estimated transform
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
     imu_transform->header.stamp = gm->timestamp("imu");
-    imu_transform->header.frame_id = "body_i-1";
-    imu_transform->child_frame_id = "body_i";
-    eigen_ros::to_ros(imu_transform->transform, s2s_pose);
+    imu_transform->header.frame_id = "lidar_i-1";
+    imu_transform->child_frame_id = "lidar_i";
+    eigen_ros::to_ros(imu_transform->transform, s2s_pose_lidar);
     imu_transform_publisher.publish(imu_transform);
 
     // Add preintegration combined IMU factor (includes bias between factor) to graph
