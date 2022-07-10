@@ -29,8 +29,10 @@
     <node pkg="rviz" type="rviz" name="rviz_locus" args="-d $(find snowboard)/rviz/locus.rviz"/>
 
     <!-- Set the ouster frame as the base link -->
+    <!--node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_os_sensor"
+        args="0 0 0 0 0 0 base_link os_sensor" /-->
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_os_sensor"
-        args="0 0 0 0 0 0 base_link os_sensor" />
+        args="0.60 0.04 0 0 0 0 base_link os_sensor" />
 
     <!-- Transform the imu data into the base link (lidar frame) -->
     <include file="$(find snowboard)/launch/imu_transform.launch">

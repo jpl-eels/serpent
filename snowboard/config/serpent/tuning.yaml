@@ -34,8 +34,8 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: true
-    registration: false
+    imu: false
+    registration: true
 
 # Registration
 s2s:
@@ -70,7 +70,7 @@ s2s:
     neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
 
 s2m:
-  enabled: false
+  enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
   base:
     maximum_iterations: 20
