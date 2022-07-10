@@ -4,7 +4,6 @@
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
-#include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 
 namespace serpent {
@@ -47,7 +46,6 @@ Optimisation::Optimisation():
             std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
             std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
-    const eigen_ros::BodyFrames body_frames;
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
     preintegration_params->setBodyPSensor(body_to_imu);

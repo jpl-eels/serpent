@@ -3,6 +3,7 @@
 
 #include "serpent/ImuArray.h"
 #include "serpent/graph_manager.hpp"
+#include <eigen_ros/body_frames.hpp>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
@@ -60,6 +61,9 @@ private:
 
     //// Thread Management
     mutable std::mutex graph_mutex;
+
+    // Extrinsics
+    const eigen_ros::BodyFrames body_frames;
 
     //// Factor Configuration
     bool add_imu_factors;
