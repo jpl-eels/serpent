@@ -12,7 +12,8 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
     end
 
     % Reference Position
-    fig_position = figure("Position", plot_opts.figure_dims, "Name", "Position");
+    fig_position = figure("Position", plot_opts.figure_dims, "Name", ...
+        "Position");
     set(0, "CurrentFigure", fig_position);
     r = 4;
     c = 3;
@@ -136,6 +137,7 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
 
     % Query Poses
     for i = 1:pose_data.num_odom
+        colour = plot_opts.colours{i};
         entry = pose_data.entries{i};
         timestamps = entry.timestamps;
         ape_timestamps = entry.ape.timestamps;
@@ -165,83 +167,83 @@ function [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts)
         set(0, "CurrentFigure", fig_position);
         subplot(r,c,1);
         hold on;
-        plot(timestamps, positions(:, 1));
+        plot(timestamps, positions(:, 1), 'color', colour);
         subplot(r,c,4);
         hold on;
-        plot(timestamps, positions(:, 2));
+        plot(timestamps, positions(:, 2), 'color', colour);
         subplot(r,c,7);
         hold on;
-        plot(timestamps, positions(:, 3));
+        plot(timestamps, positions(:, 3), 'color', colour);
         subplot(r,c,10);
         hold on;
-        plot(timestamps, distances);
+        plot(timestamps, distances, 'color', colour);
 
         subplot(r,c,2);
         hold on;
-        plot(ape_timestamps, position_apes(:, 1));
+        plot(ape_timestamps, position_apes(:, 1), 'color', colour);
         subplot(r,c,5);
         hold on;
-        plot(ape_timestamps, position_apes(:, 2));
+        plot(ape_timestamps, position_apes(:, 2), 'color', colour);
         subplot(r,c,8);
         hold on;
-        plot(ape_timestamps, position_apes(:, 3));
+        plot(ape_timestamps, position_apes(:, 3), 'color', colour);
         subplot(r,c,11);
         hold on;
-        plot(ape_timestamps, position_apes_norm);
+        plot(ape_timestamps, position_apes_norm, 'color', colour);
 
         subplot(r,c,3);
         hold on;
-        plot(rpe_timestamps, position_rpes(:, 1));
+        plot(rpe_timestamps, position_rpes(:, 1), 'color', colour);
         subplot(r,c,6);
         hold on;
-        plot(rpe_timestamps, position_rpes(:, 2));
+        plot(rpe_timestamps, position_rpes(:, 2), 'color', colour);
         subplot(r,c,9);
         hold on;
-        plot(rpe_timestamps, position_rpes(:, 3));
+        plot(rpe_timestamps, position_rpes(:, 3), 'color', colour);
         subplot(r,c,12);
         hold on;
-        plot(rpe_timestamps, position_rpes_norm);
+        plot(rpe_timestamps, position_rpes_norm, 'color', colour);
 
         % Orientation
         set(0, "CurrentFigure", fig_orientation);
         subplot(r,c,1);
         hold on;
-        plot(timestamps, rots_axang(:, 1));
+        plot(timestamps, rots_axang(:, 1), 'color', colour);
         subplot(r,c,4);
         hold on;
-        plot(timestamps, rots_axang(:, 2));
+        plot(timestamps, rots_axang(:, 2), 'color', colour);
         subplot(r,c,7);
         hold on;
-        plot(timestamps, rots_axang(:, 3));
+        plot(timestamps, rots_axang(:, 3), 'color', colour);
         subplot(r,c,10);
         hold on;
-        plot(timestamps, angles);
+        plot(timestamps, angles, 'color', colour);
 
         subplot(r,c,2);
         hold on;
-        plot(ape_timestamps, rot_axang_apes(:, 1));
+        plot(ape_timestamps, rot_axang_apes(:, 1), 'color', colour);
         subplot(r,c,5);
         hold on;
-        plot(ape_timestamps, rot_axang_apes(:, 2));
+        plot(ape_timestamps, rot_axang_apes(:, 2), 'color', colour);
         subplot(r,c,8);
         hold on;
-        plot(ape_timestamps, rot_axang_apes(:, 3));
+        plot(ape_timestamps, rot_axang_apes(:, 3), 'color', colour);
         subplot(r,c,11);
         hold on;
-        plot(ape_timestamps, rot_axang_apes_norm);
+        plot(ape_timestamps, rot_axang_apes_norm, 'color', colour);
 
         subplot(r,c,3);
         hold on;
-        plot(rpe_timestamps, rot_axang_rpes(:, 1));
+        plot(rpe_timestamps, rot_axang_rpes(:, 1), 'color', colour);
         subplot(r,c,6);
         hold on;
-        plot(rpe_timestamps, rot_axang_rpes(:, 2));
+        plot(rpe_timestamps, rot_axang_rpes(:, 2), 'color', colour);
         subplot(r,c,9);
         hold on;
-        plot(rpe_timestamps, rot_axang_rpes(:, 3));
+        plot(rpe_timestamps, rot_axang_rpes(:, 3), 'color', colour);
         subplot(r,c,12);
         hold on;
-        plot(rpe_timestamps, rot_axang_rpes_norm);
+        plot(rpe_timestamps, rot_axang_rpes_norm, 'color', colour);
     end
 
     % Legend

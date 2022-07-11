@@ -136,6 +136,7 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
 
     % Query Twists
     for i = 1:twist_data.num_odom
+        colour = plot_opts.colours{i};
         entry = twist_data.entries{i};
         timestamps = entry.timestamps;
         ae_timestamps = entry.ae.timestamps;
@@ -165,83 +166,83 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
         set(0, "CurrentFigure", fig_lin_vel);
         subplot(r,c,1);
         hold on;
-        plot(timestamps, linear_velocities(:, 1));
+        plot(timestamps, linear_velocities(:, 1), 'color', colour);
         subplot(r,c,4);
         hold on;
-        plot(timestamps, linear_velocities(:, 2));
+        plot(timestamps, linear_velocities(:, 2), 'color', colour);
         subplot(r,c,7);
         hold on;
-        plot(timestamps, linear_velocities(:, 3));
+        plot(timestamps, linear_velocities(:, 3), 'color', colour);
         subplot(r,c,10);
         hold on;
-        plot(timestamps, linear_speeds);
+        plot(timestamps, linear_speeds, 'color', colour);
 
         subplot(r,c,2);
         hold on;
-        plot(ae_timestamps, linear_velocity_aes(:, 1));
+        plot(ae_timestamps, linear_velocity_aes(:, 1), 'color', colour);
         subplot(r,c,5);
         hold on;
-        plot(ae_timestamps, linear_velocity_aes(:, 2));
+        plot(ae_timestamps, linear_velocity_aes(:, 2), 'color', colour);
         subplot(r,c,8);
         hold on;
-        plot(ae_timestamps, linear_velocity_aes(:, 3));
+        plot(ae_timestamps, linear_velocity_aes(:, 3), 'color', colour);
         subplot(r,c,11);
         hold on;
-        plot(ae_timestamps, linear_velocity_ae_norms);
+        plot(ae_timestamps, linear_velocity_ae_norms, 'color', colour);
 
         subplot(r,c,3);
         hold on;
-        plot(re_timestamps, linear_velocity_res(:, 1));
+        plot(re_timestamps, linear_velocity_res(:, 1), 'color', colour);
         subplot(r,c,6);
         hold on;
-        plot(re_timestamps, linear_velocity_res(:, 2));
+        plot(re_timestamps, linear_velocity_res(:, 2), 'color', colour);
         subplot(r,c,9);
         hold on;
-        plot(re_timestamps, linear_velocity_res(:, 3));
+        plot(re_timestamps, linear_velocity_res(:, 3), 'color', colour);
         subplot(r,c,12);
         hold on;
-        plot(re_timestamps, linear_velocity_re_norms);
+        plot(re_timestamps, linear_velocity_re_norms, 'color', colour);
 
         % Orientation
         set(0, "CurrentFigure", fig_ang_vel);
         subplot(r,c,1);
         hold on;
-        plot(timestamps, angular_velocities(:, 1));
+        plot(timestamps, angular_velocities(:, 1), 'color', colour);
         subplot(r,c,4);
         hold on;
-        plot(timestamps, angular_velocities(:, 2));
+        plot(timestamps, angular_velocities(:, 2), 'color', colour);
         subplot(r,c,7);
         hold on;
-        plot(timestamps, angular_velocities(:, 3));
+        plot(timestamps, angular_velocities(:, 3), 'color', colour);
         subplot(r,c,10);
         hold on;
-        plot(timestamps, angular_speeds);
+        plot(timestamps, angular_speeds, 'color', colour);
 
         subplot(r,c,2);
         hold on;
-        plot(ae_timestamps, angular_velocity_aes(:, 1));
+        plot(ae_timestamps, angular_velocity_aes(:, 1), 'color', colour);
         subplot(r,c,5);
         hold on;
-        plot(ae_timestamps, angular_velocity_aes(:, 2));
+        plot(ae_timestamps, angular_velocity_aes(:, 2), 'color', colour);
         subplot(r,c,8);
         hold on;
-        plot(ae_timestamps, angular_velocity_aes(:, 3));
+        plot(ae_timestamps, angular_velocity_aes(:, 3), 'color', colour);
         subplot(r,c,11);
         hold on;
-        plot(ae_timestamps, angular_velocity_ae_norms);
+        plot(ae_timestamps, angular_velocity_ae_norms, 'color', colour);
 
         subplot(r,c,3);
         hold on;
-        plot(re_timestamps, angular_velocity_res(:, 1));
+        plot(re_timestamps, angular_velocity_res(:, 1), 'color', colour);
         subplot(r,c,6);
         hold on;
-        plot(re_timestamps, angular_velocity_res(:, 2));
+        plot(re_timestamps, angular_velocity_res(:, 2), 'color', colour);
         subplot(r,c,9);
         hold on;
-        plot(re_timestamps, angular_velocity_res(:, 3));
+        plot(re_timestamps, angular_velocity_res(:, 3), 'color', colour);
         subplot(r,c,12);
         hold on;
-        plot(re_timestamps, angular_velocity_re_norms);
+        plot(re_timestamps, angular_velocity_re_norms, 'color', colour);
     end
 
     % Legend
