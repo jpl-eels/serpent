@@ -1,0 +1,50 @@
+<launch>
+    <arg name="stereo_camera" default="snowboard_left" />
+    <arg name="calib_path" default="$(find snowboard)/config/camera_calibration/stereo_left/omni-radtan-camchain.yaml"/>
+
+    <arg name="queue_size" default="10"/>
+    <arg name="input_camera_info_from_ros_params" default="true"/>
+    <arg name="first_camera_namespace" default="cam0"/>
+    <arg name="second_camera_namespace" default="cam1"/>
+    <arg name="scale" default="1.0"/>
+    <arg name="process_every_nth_frame" default="1"/>
+    <arg name="output_image_type" default=""/>
+    <arg name="T_invert" default="false"/>
+    <arg name="publish_tf" default="true"/>
+    <arg name="first_output_frame" default="left_stereo_left_cam_rect"/>
+    <arg name="second_output_frame" default="left_stereo_right_cam_rect"/>
+    <arg name="rename_input_frame" default="false"/>
+    <arg name="first_input_frame" default="left_stereo_left_cam"/>
+    <arg name="second_input_frame" default="left_stereo_right_cam"/>
+    <arg name="rename_radtan_plumb_bob" default="false"/>
+
+    <node name="undistort_$(arg stereo_camera)_left_cam" pkg="image_undistort" type="stereo_undistort_node">
+        <remap from="raw/first/image"           to="/$(arg stereo_camera)/left/image_raw"/>
+        <remap from="raw/second/image"          to="/$(arg stereo_camera)/right/image_raw"/>
+        <!-- <remap from="raw/first/camera_info"     to="/$(arg stereo_camera)/left/camera_info"/> -->
+        <!-- <remap from="raw/second/camera_info"    to="/$(arg stereo_camera)/right/camera_info"/> -->
+        <remap from="rect/first/image"          to="/$(arg stereo_camera)_rect/left/image"/>
+        <remap from="rect/second/image"         to="/$(arg stereo_camera)_rect/right/image"/>
+        <remap from="rect/first/camera_info"    to="/$(arg stereo_camera)_rect/left/camera_info"/>
+        <remap from="rect/second/camera_info"   to="/$(arg stereo_camera)_rect/right/camera_info"/>
+
+        <param name="queue_size"                        value="$(arg queue_size)"/>
+        <param name="input_camera_info_from_ros_params" value="$(arg input_camera_info_from_ros_params)"/>
+        <param name="first_camera_namespace"            value="$(arg first_camera_namespace)"/>
+        <param name="second_camera_namespace"           value="$(arg second_camera_namespace)"/>
+        <param name="scale"                             value="$(arg scale)"/>
+        <param name="process_every_nth_frame"           value="$(arg process_every_nth_frame)"/>
+        <param name="output_image_type"                 value="$(arg output_image_type)"/>
+        <param name="T_invert"                          value="$(arg T_invert)"/>
+        <param name="publish_tf"                        value="$(arg publish_tf)"/>
+        <param name="first_output_frame"                value="$(arg first_output_frame)"/>
+        <param name="second_output_frame"               value="$(arg second_output_frame)"/>
+        <param name="rename_input_frame"                value="$(arg rename_input_frame)"/>
+        <param name="first_input_frame"                 value="$(arg first_input_frame)"/>
+        <param name="second_input_frame"                value="$(arg second_input_frame)"/>
+        <param name="rename_radtan_plumb_bob"           value="$(arg rename_radtan_plumb_bob)"/>
+        
+        <rosparam file="$(arg calib_path)"/>
+    </node>
+
+</launch>
