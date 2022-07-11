@@ -1,5 +1,15 @@
 # Body frame origin is at IMU, with a NWU (x-forward, y-left, z-up) orientation (tfs are body to frame)
 # Cameras have x-right, y-down, z-forward convention
+# Before creation of body frame, IMU to lidar orientation was:
+# translation:
+#   x: -0.6
+#   y: 0.04
+#   z: 0.0
+# rotation:
+#   w: 0.0610485
+#   x: 0.0
+#   y: -0.9981348
+#   z: 0.0
 body_frames:
   imu:
     translation:
@@ -7,9 +17,9 @@ body_frames:
       y: 0.0
       z: 0.0
     rotation:
-      w: 0.0610485
+      w: 0.0
       x: 0.0
-      y: -0.9981348
+      y: 1.0
       z: 0.0
   lidar:
     translation:
@@ -17,15 +27,15 @@ body_frames:
       y: 0.04
       z: 0.00
     rotation:
-      w: 1.0
+      w: 0.9981348
       x: 0.0
-      y: 0.0
+      y: -0.0610485
       z: 0.0
   left_stereo:
     translation:
-      x: 0.45
-      y: 0.05
-      z: 0.05
+      x: 0.4225
+      y: 0.09
+      z: 0.04
     rotation:
       w: 0.7071068
       x: -0.7071068
@@ -33,9 +43,9 @@ body_frames:
       z: 0.0
   right_stereo:
     translation:
-      x: 0.45
-      y: -0.05
-      z: 0.05
+      x: 0.4225
+      y: -0.01
+      z: 0.04
     rotation:
       w: 0.0
       x: 0.0
@@ -43,19 +53,19 @@ body_frames:
       z: 0.7071068
   front_stereo:
     translation:
-      x: 0.5
-      y: 0.0
-      z: 0.05
+      x: 0.4725
+      y: 0.04
+      z: 0.04
     rotation:
       w: 0.5
       x: -0.5
       y: 0.5
       z: -0.5
-  front_stereo:
+  up_stereo:
     translation:
-      x: 0.45
-      y: 0.0
-      z: 0.1
+      x: 0.4225
+      y: 0.04
+      z: 0.09
     rotation:
       w: 1.0
       x: 0.0

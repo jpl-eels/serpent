@@ -29,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 2
-    SyncSource: ""
+    SyncSource: 3D Octree
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -319,7 +319,7 @@ Visualization Manager:
       Keep: 0
       Name: Odometry
       Position Tolerance: 0.10000000149011612
-      Queue Size: 10
+      Queue Size: 10000
       Shape:
         Alpha: 1
         Axes Length: 1
@@ -329,7 +329,7 @@ Visualization Manager:
         Head Radius: 0.10000000149011612
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
-        Value: Arrow
+        Value: Axes
       Topic: /snowboard/lo_frontend/odometry
       Unreliable: false
       Value: true

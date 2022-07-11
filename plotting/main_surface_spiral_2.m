@@ -1,5 +1,3 @@
-% Read rosbags and generate all plots
-
 clc;
 clear;
 close all;
@@ -7,16 +5,16 @@ close all;
 % Configuration
 config = struct;
 config.gt = struct;
-config.gt.data_dir = "/home/william/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/";
-config.gt.filename = "analysis/ground_truth/odometry.bag";
-config.gt.topic = "/snowboard/lo_frontend/odometry";
+config.gt.data_dir = "/home/william/data/simulator_prcp_gazebo/";
+config.gt.filename = "surface_spiral_2.bag";
+config.gt.topic = "/ground_truth";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
-config.data_dir = join([config.gt.data_dir, "analysis/"], "");
-config.filenames = ["serpent_s2s_3/odometry.bag", ...
-    "serpent_s2s_4/odometry.bag"];
-config.names = ["s2s v3", "s2s v4"];
-config.odom_topics = ["/serpent/optimisation/odometry", ...
+config.data_dir = join([config.gt.data_dir, ...
+    "surface_spiral_2_analysis/"], "");
+config.filenames = ["serpent_imu_int_2/odometry.bag", "serpent_imu_opt_2/odometry.bag"];
+config.names = ["imu int", "imu opt"];
+config.odom_topics = ["/integrate_imu/odometry", ...
     "/serpent/optimisation/odometry"];
 
 plot_opts.align_first_pose = true;
@@ -29,7 +27,7 @@ plot_opts.colours = {[0 0.4470 0.7410], [0.8500 0.3250 0.0980], ...
 plot_opts.save = true;
 plot_opts.filetypes = ["fig", "png"];
 plot_opts.save_dir = join([config.gt.data_dir, "matlab_analyis/", ...
-    "mammoth/", "serpent_s2s_v3_v4_gt_v4/"], "");
+    replace(config.gt.filename, ".bag", "/"), "serpent_imu_replot/"], "");
 plot_opts.close_after_save = false;
 
 data = data_from_rosbags(config);
