@@ -1,0 +1,89 @@
+images:
+  - topic: "/snowboard_front/left/image_raw"
+    frame_id: "front_stereo_left_cam"
+    info_topic: "/snowboard_front/left/camera_info"
+    region:
+      u: 0
+      v: 0
+      w: 1280
+      h: 800
+    operations:
+      flip: "vert"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 640
+      cy: 400
+  - topic: "/snowboard_front/right/image_raw"
+    frame_id: "front_stereo_right_cam"
+    info_topic: "/snowboard_front/right/camera_info"
+    region:
+      u: 1280
+      v: 0
+      w: 1280
+      h: 800
+    operations:
+      flip: "vert"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 640
+      cy: 400
+  - topic: "/snowboard_left/left/image_raw"
+    frame_id: "left_stereo_left_cam"
+    info_topic: "/snowboard_left/left/camera_info"
+    region:
+      u: 2560
+      v: 0
+      w: 1280
+      h: 800
+    operations:
+      flip: "vert"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 640
+      cy: 400
+  - topic: "/snowboard_left/right/image_raw"
+    frame_id: "left_stereo_right_cam"
+    info_topic: "/snowboard_left/right/camera_info"
+    region:
+      u: 3840
+      v: 0
+      w: 1280
+      h: 800
+    operations:
+      flip: "vert"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 640
+      cy: 400

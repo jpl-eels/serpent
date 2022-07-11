@@ -1,0 +1,8 @@
+<launch>
+    <arg name="image_group" default="kit0"/>
+    <include file="$(find camera_tools)/launch/split_image.launch">
+        <arg name="image_topic"     value="/$(arg image_group)/image"/>
+        <arg name="config_file"     value="$(find snowboard)/config/camera_tools/split_$(arg image_group).yaml"/>
+        <arg name="node_name"       value="split_image_$(arg image_group)"/>
+    </include>
+</launch>

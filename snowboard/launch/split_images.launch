@@ -1,0 +1,8 @@
+<launch>
+    <include file="$(find snowboard)/launch/split_image.launch">
+        <arg name="image_group" value="kit0"/>
+    </include>
+    <include file="$(find snowboard)/launch/split_image.launch">
+        <arg name="image_group" value="kit1"/>
+    </include>
+</launch>

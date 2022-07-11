@@ -1,11 +1,12 @@
 Panels:
   - Class: rviz/Displays
-    Help Height: 78
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /Up Left1/Status1
       Splitter Ratio: 0.5117647051811218
-    Tree Height: 1079
+    Tree Height: 539
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -24,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: OS0-128
+    SyncSource: Front Left
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -55,13 +56,33 @@ Visualization Manager:
       Frame Timeout: 999999
       Frames:
         All Enabled: true
+        base_link:
+          Value: true
+        front_stereo:
+          Value: true
+        front_stereo_left_cam:
+          Value: true
+        front_stereo_right_cam:
+          Value: true
         ins:
           Value: true
-        lidar:
+        left_stereo:
+          Value: true
+        left_stereo_left_cam:
+          Value: true
+        left_stereo_right_cam:
           Value: true
         ned:
           Value: true
         os_sensor:
+          Value: true
+        right_stereo:
+          Value: true
+        right_stereo_left_cam:
+          Value: true
+        right_stereo_right_cam:
+          Value: true
+        vn110:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -70,12 +91,26 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        ned:
-          ins:
-            os_sensor:
+        base_link:
+          front_stereo:
+            front_stereo_left_cam:
               {}
-          lidar:
+            front_stereo_right_cam:
+              {}
+          ins:
             {}
+          left_stereo:
+            left_stereo_left_cam:
+              {}
+            left_stereo_right_cam:
+              {}
+          os_sensor:
+            {}
+          right_stereo:
+            right_stereo_left_cam:
+              {}
+            right_stereo_right_cam:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 0.5
@@ -118,11 +153,203 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_front/left/image_raw
+      Name: Front Left
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Right: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_front/right/image_raw
+      Name: Front Right
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_left/left/image_raw
+      Name: Left Left
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_left/right/image_raw
+      Name: Left Right
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Left: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_right/left/image_raw
+      Name: Right Left
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_right/right/image_raw
+      Name: Right Right
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        TF: true
+        Up Left: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_up/left/image_raw
+      Name: Up Left
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Right: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /snowboard_up/right/image_raw
+      Name: Up Right
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+      Visibility:
+        Front Left: true
+        Front Right: true
+        Grid: true
+        Left Left: true
+        Left Right: true
+        OS0-128: true
+        Right Left: true
+        Right Right: true
+        TF: true
+        Up Left: true
+        Value: false
+        VectorNav 110: true
+      Zoom Factor: 1
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: ned
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -146,7 +373,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.270308494567871
+      Distance: 8.025490760803223
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -169,18 +396,34 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
+  Front Left:
+    collapsed: false
+  Front Right:
+    collapsed: false
   Height: 1376
   Hide Left Dock: false
-  Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000156000004c2fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000031500000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000004c2000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000004c2fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d000004c2000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000009b80000003efc0100000002fb0000000800540069006d00650100000000000009b8000002eb00fffffffb0000000800540069006d0065010000000000000450000000000000000000000747000004c200000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Hide Right Dock: true
+  Left Left:
+    collapsed: false
+  Left Right:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000400000000000002eb00000297fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000031500000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000016900000258000000c900fffffffb0000000800540069006d006501000003c7000000390000003900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000020100000297fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000016900000297000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b2000000000000000000000002000009b800000126fc0100000005fb0000001400460072006f006e00740020004c00650066007401000000000000026a0000007900fffffffb0000001600460072006f006e007400200052006900670068007401000002700000025b0000008100fffffffb0000000e005500700020004c00650066007401000004d10000028e0000006700fffffffb00000010005500700020005200690067006800740100000765000002530000007000fffffffb0000000a00560069006500770073030000004e00000080000002e10000019700000003000009b80000013dfc0100000005fb00000014004c00650066007400200052006900670068007401000000000000025c0000007800fffffffb00000012004c0065006600740020004c0065006600740100000262000002670000006f00fffffffb00000014005200690067006800740020004c00650066007401000004cf000002930000007800fffffffb00000016005200690067006800740020005200690067006800740100000768000002500000008100fffffffb0000000800540069006d00650100000000000004500000000000000000000006c70000029700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Right Left:
+    collapsed: false
+  Right Right:
+    collapsed: false
   Selection:
     collapsed: false
   Time:
     collapsed: false
   Tool Properties:
     collapsed: false
-  Views:
+  Up Left:
     collapsed: false
+  Up Right:
+    collapsed: false
+  Views:
+    collapsed: true
   Width: 2488
   X: 72
-  Y: 816
+  Y: 27

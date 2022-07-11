@@ -1,10 +1,11 @@
 # Body frame origin is at IMU, with a NWU (x-forward, y-left, z-up) orientation (tfs are body to frame)
+# Cameras have x-right, y-down, z-forward convention
 body_frames:
   imu:
     translation:
       x: 0.0
       y: 0.0
-      y: 0.0
+      z: 0.0
     rotation:
       w: 0.0610485
       x: 0.0
@@ -15,6 +16,46 @@ body_frames:
       x: 0.60
       y: 0.04
       z: 0.00
+    rotation:
+      w: 1.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+  left_stereo:
+    translation:
+      x: 0.45
+      y: 0.05
+      z: 0.05
+    rotation:
+      w: 0.7071068
+      x: -0.7071068
+      y: 0.0
+      z: 0.0
+  right_stereo:
+    translation:
+      x: 0.45
+      y: -0.05
+      z: 0.05
+    rotation:
+      w: 0.0
+      x: 0.0
+      y: -0.7071068
+      z: 0.7071068
+  front_stereo:
+    translation:
+      x: 0.5
+      y: 0.0
+      z: 0.05
+    rotation:
+      w: 0.5
+      x: -0.5
+      y: 0.5
+      z: -0.5
+  front_stereo:
+    translation:
+      x: 0.45
+      y: 0.0
+      z: 0.1
     rotation:
       w: 1.0
       x: 0.0
