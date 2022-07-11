@@ -1,0 +1,51 @@
+# Operations:
+# - rotate_cw: <0, 90, 180, 270>
+# - rotate_acw: <0, 90, 180, 270>
+# - flip: "horiz", "vert", "both"
+images:
+  - topic: "/camera1/image_raw"
+    frame_id: "camera1"
+    info_topic: "/camera1/camera_info"
+    region:
+      u: 0
+      v: 0
+      w: 800
+      h: 600
+    operations:
+      rotate_cw: 180
+      flip: "vert"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 400
+      cy: 300
+  - topic: "/camera2/image_raw"
+    frame_id: "camera2"
+    info_topic: "/camera2/camera_info"
+    region:
+      u: 800
+      v: 0
+      w: 800
+      h: 600
+    operations:
+      rotate_acw: 90
+      flip: "both"
+    distortion:
+      model: "plumb_bob"
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      t1: 0.0
+      t2: 0.0
+    intrinsic:
+      fx: 1.0
+      fy: 1.0
+      cx: 400
+      cy: 300

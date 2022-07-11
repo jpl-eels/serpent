@@ -1,0 +1,13 @@
+<launch>
+    <arg name="image_topic" default="/image"/>
+    <arg name="config_file" default="$(find camera_tools)/config/example.yaml"/>
+    <arg name="node_name"   default="split_image"/>
+
+    <node pkg="camera_tools" type="split_image" name="$(arg node_name)" output="screen">
+        <!-- Topics -->
+        <remap from="~input/image" to="$(arg image_topic)"/>
+
+        <!-- Configuration -->
+        <rosparam command="load" file="$(arg config_file)"/>
+    </node>
+</launch>
