@@ -143,10 +143,12 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     }
 
     // Calculate change in pose: T_{B_i-1}^{B_i} = T_{B_i-1}^W * T_W^{B_i} = (T_W^{B_i-1})^-1 * T_W^{B_i}
-    const Eigen::Isometry3d s2s_pose_imu = Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse()
+    // Note that result is in body frame because gm stores poses in body frame
+    const Eigen::Isometry3d s2s_pose_body = Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse()
             * Eigen::Isometry3d(gm->pose("imu").matrix());
-    const eigen_ros::Pose s2s_pose_lidar{eigen_ext::change_relative_transform_frame(s2s_pose_imu,
-            body_frames.frame_to_frame("lidar", "imu"))};
+    // Convert to the lidar frame
+    const eigen_ros::Pose s2s_pose_lidar{eigen_ext::change_relative_transform_frame(s2s_pose_body,
+            body_frames.frame_to_body("lidar"))};
     ROS_WARN_ONCE("DESIGN DECISION: change output to odometry to pass velocity & covs to registration module?");
 
     // Publish imu estimated transform
