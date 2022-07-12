@@ -9,29 +9,34 @@
     <arg name="use_gdb"         default="false"/>
     <arg name="use_callgrind"   default="false"/>
     <arg name="threads"         default="8"/>
+    <arg name="stereo_camera" default="snowboard_left"/>
 
     <!-- IMU transform -->
     <include file="$(find snowboard)/launch/imu_transform.launch"/>
 
     <!-- SERPENT -->
     <include file="$(find serpent)/launch/serpent.launch">
-        <arg name="imu_topic"               value="/vectornav/imu_nwu"/>
-        <arg name="pointcloud_topic"        value="/os_cloud_node/points"/>
-        <arg name="robot_file"              value="$(find snowboard)/config/serpent/snowboard.yaml"/>
-        <arg name="mission_file"            value="$(find snowboard)/config/serpent/mission/$(arg mission).yaml"/>
-        <arg name="filter_file"             value="$(find snowboard)/config/serpent/filter.yaml"/>
-        <arg name="format_file"             value="$(find snowboard)/config/serpent/format.yaml"/>
-        <arg name="normal_estimation_file"  value="$(find snowboard)/config/serpent/normal_estimation.yaml"/>
-        <arg name="tuning_file"             value="$(find snowboard)/config/serpent/tuning.yaml"/>
-        <arg name="debug_file"              value="$(find snowboard)/config/serpent/debug.yaml"/>
-        <arg name="threads"                 value="$(arg threads)"/>
-        <arg name="rviz"                    value="false"/>
-        <arg name="rqt"                     value="true"/>
-        <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag_mission"          value="$(arg rosbag_mission)"/>
-        <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
-        <arg name="rosbag_rate"             value="$(arg rate)"/>
-        <arg name="use_gdb"                 value="$(arg use_gdb)"/>
-        <arg name="use_callgrind"           value="$(arg use_callgrind)"/>
+        <arg name="imu_topic"                       value="/vectornav/imu_nwu"/>
+        <arg name="pointcloud_topic"                value="/os_cloud_node/points"/>
+        <arg name="stereo_left_cam_image_topic"     value="/$(arg stereo_camera)/left/rect/image"/>
+        <arg name="stereo_right_cam_image_topic"    value="/$(arg stereo_camera)/right/rect/image"/>
+        <arg name="stereo_left_cam_info_topic"      value="/$(arg stereo_camera)/left/rect/camera_info"/>
+        <arg name="stereo_right_cam_info_topic"     value="/$(arg stereo_camera)/right/rect/camera_info"/>
+        <arg name="robot_file"                      value="$(find snowboard)/config/serpent/snowboard.yaml"/>
+        <arg name="mission_file"                    value="$(find snowboard)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="filter_file"                     value="$(find snowboard)/config/serpent/filter.yaml"/>
+        <arg name="format_file"                     value="$(find snowboard)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"          value="$(find snowboard)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"                     value="$(find snowboard)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"                      value="$(find snowboard)/config/serpent/debug.yaml"/>
+        <arg name="threads"                         value="$(arg threads)"/>
+        <arg name="rviz"                            value="false"/>
+        <arg name="rqt"                             value="true"/>
+        <arg name="play_rosbag"                     value="true"/>
+        <arg name="rosbag_mission"                  value="$(arg rosbag_mission)"/>
+        <arg name="rosbag_data_dir"                 value="$(arg data_dir)"/>
+        <arg name="rosbag_rate"                     value="$(arg rate)"/>
+        <arg name="use_gdb"                         value="$(arg use_gdb)"/>
+        <arg name="use_callgrind"                   value="$(arg use_callgrind)"/>
     </include>
 </launch>

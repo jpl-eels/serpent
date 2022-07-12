@@ -8,8 +8,10 @@ project(serpent
 option(ENABLE_GPROF "gprof profiling will run during execution" OFF)
 
 find_package(catkin REQUIRED COMPONENTS
+    cv_bridge
     fast_gicp
     geometry_msgs
+    image_transport
     message_filters
     message_generation
     nav_msgs
@@ -27,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 
 add_message_files(
@@ -43,8 +46,10 @@ generate_messages(
 
 catkin_package(
     CATKIN_DEPENDS
+        cv_bridge
         fast_gicp
         geometry_msgs
+        image_transport
         message_filters
         message_runtime
         nav_msgs
@@ -61,6 +66,7 @@ catkin_package(
         pointcloud_tools
     DEPENDS
         EIGEN3
+        OpenCV
         PCL
 )
 
@@ -78,18 +84,21 @@ set(NODE_SRC_FILES
     src/registration_methods.cpp
     src/registration.cpp
     src/sensor_point_types.cpp
+    src/stereo_factor_finder.cpp
     src/utilities.cpp
 )
 
 set(NODE_SYSTEM_INCLUDE_DIRS
     ${EIGEN3_INCLUDE_DIRS}
     ${GTSAM_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
 set(NODE_SYSTEM_LIBRARIES
     ${EIGEN3_LIBRARIES}
     gtsam
+    ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
 )
 

@@ -5,6 +5,7 @@
 #include "serpent/pointcloud_formatter.hpp"
 #include "serpent/pointcloud_normal_estimation.hpp"
 #include "serpent/registration.hpp"
+#include "serpent/stereo_factor_finder.hpp"
 #include <ros/ros.h>
 
 int main(int argc, char** argv) {
@@ -19,6 +20,7 @@ int main(int argc, char** argv) {
     serpent::PointcloudFormatter pointcloud_formatter;
     serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
     serpent::Registration registration;
+    serpent::StereoFactorFinder stereo_factor_finder;
 
     // Start the Node
     ros::NodeHandle nh("~");
