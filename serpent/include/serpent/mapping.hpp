@@ -1,6 +1,7 @@
 #ifndef SERPENT_MAPPING_HPP
 #define SERPENT_MAPPING_HPP
 
+#include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/pose.hpp>
 #include <geometry_msgs/TransformStamped.h>
 #include <message_filters/subscriber.h>
@@ -20,6 +21,8 @@ namespace serpent {
 struct MapFrame {
     explicit MapFrame(const eigen_ros::PoseStamped& pose, const pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud);
 
+    // Origin of pointcloud with respect to the map/world, i.e. T_W^{L_i} where the pointcloud origin is at the lidar 
+    // frame L_i of this frame
     eigen_ros::PoseStamped pose;
     pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud;
 };
@@ -89,6 +92,9 @@ private:
 
     //// Thread Management
     mutable std::mutex map_mutex;
+
+    // Body frames
+    const eigen_ros::BodyFrames body_frames;
 
     //// Configuration
     // Translation threshold (metres)

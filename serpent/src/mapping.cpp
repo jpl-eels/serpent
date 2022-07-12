@@ -49,16 +49,16 @@ pcl::PointCloud<pcl::PointNormal>::Ptr Mapping::extract_past_frames(const std::s
     auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
     pointcloud->header.stamp = pcl_conversions::toPCL(body_frame.timestamp);
     pointcloud->header.frame_id = "body_i-1";
-    // B_{i-1,s}^{W} = (B_{W}^{i-1,s})^-1
+    // T_{L_{i-1}}^W = (T_W^{L_{i-1}})^-1
     Eigen::Isometry3d body_frame_inv = to_transform(body_frame.data).inverse();
     for (std::size_t i = 0; i < n; ++i) {
         if (it->second.pose.timestamp > body_frame.timestamp) {
             throw std::runtime_error("Timestamp in the future detected. Something went wrong.");
         }
-        // B_{i-1,s}^{j,s} = B_{i-1,s}^{W} * B_{W}^{j,s}
+        // T_{L_{i-1}}^{L_j} = T_{L_{i-1}}^W * T_W^{L_j}
         Eigen::Isometry3d transform = body_frame_inv * to_transform(it->second.pose.data);
         auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-        // p_{i-1,s} = B_{i-1,s}^{j,s} * p_{j,s}
+        // p_{L_{i-1}} = T_{L_{i-1}}^{L_j} * p_{L_j}
         pcl::transformPointCloudWithNormals(*it->second.pointcloud, *pointcloud_i, transform.matrix());
         *pointcloud += *pointcloud_i;
         if (++it == map.rend()) {
@@ -88,23 +88,29 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
     // 2. Add the new pointcloud (and retain the pointcloud's pose)
     bool pointcloud_timestamp_found{false};
     const ros::Time pointcloud_timestamp = pcl_conversions::fromPCL(pointcloud_msg->header.stamp);
-    eigen_ros::PoseStamped body_pose;
+    eigen_ros::PoseStamped pointcloud_lidar_pose;
     for (const auto& pose : path_changes_msg->poses) {
-        eigen_ros::PoseStamped pose_stamped = eigen_ros::from_ros<eigen_ros::PoseStamped>(pose);
-        if (pose_stamped.timestamp == pointcloud_timestamp) {
+        // Pose in the body frame (from optimisation)
+        const eigen_ros::PoseStamped body_pose_stamped = eigen_ros::from_ros<eigen_ros::PoseStamped>(pose);
+        // Convert to the lidar frame: T_W^{L_i} = T_W^{B_i} * T_{B_i}^{L_i}
+        const Eigen::Isometry3d lidar_pose = to_transform(body_pose_stamped.data) * body_frames.body_to_frame("lidar");
+        const eigen_ros::PoseStamped lidar_pose_stamped = eigen_ros::PoseStamped{eigen_ros::Pose{lidar_pose},
+                body_pose_stamped.timestamp};
+
+        if (lidar_pose_stamped.timestamp == pointcloud_timestamp) {
             // Add new pointcloud (at last path pose) into map
-            if (map.empty() || should_add_to_map(pose_stamped.data, last_frame().pose.data)) {
-                add_to_map(pose_stamped, pointcloud_msg);
+            if (map.empty() || should_add_to_map(lidar_pose_stamped.data, last_frame().pose.data)) {
+                add_to_map(lidar_pose_stamped, pointcloud_msg);
                 ROS_INFO_STREAM("Added frame at " << pointcloud_timestamp << " to map (" << map.size()
                         << " total keyframes)");
             }
-            body_pose = pose_stamped;
+            pointcloud_lidar_pose = lidar_pose_stamped;
             pointcloud_timestamp_found = true;
         } else {
             // Update pose in the map
-            auto it = map.find(pose_stamped.timestamp);
+            auto it = map.find(lidar_pose_stamped.timestamp);
             if (it != map.end()) {
-                it->second.pose = pose_stamped;
+                it->second.pose = lidar_pose_stamped;
             }
         }
     }
@@ -115,7 +121,7 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
     }
 
     // Extract map around pose in the pose frame
-    auto map_region = extract_past_frames(frame_extraction_number, body_pose);
+    auto map_region = extract_past_frames(frame_extraction_number, pointcloud_lidar_pose);
 
     // Publish the local map
     local_map_publisher.publish(map_region);
@@ -132,6 +138,7 @@ bool Mapping::publish_map_service_callback(std_srvs::Empty::Request&, std_srvs::
         for (const auto& map_frame_pair : map) {
             const auto& map_frame = map_frame_pair.second;
             auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+            // p_W = T_W^{L_i} * p_{L_i}
             pcl::transformPointCloudWithNormals(*map_frame.pointcloud, *pointcloud_i,
                     eigen_ros::to_transform(map_frame.pose.data).matrix());
             *pointcloud += *pointcloud_i;
