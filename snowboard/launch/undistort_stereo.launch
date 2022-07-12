@@ -1,6 +1,6 @@
 <launch>
-    <arg name="stereo_camera" default="snowboard_left" />
-    <arg name="calib_path" default="$(find snowboard)/config/camera_calibration/stereo_left/omni-radtan-camchain.yaml"/>
+    <arg name="stereo_camera" default="snowboard_left"/>
+    <arg name="calib_path" default="$(find snowboard)/config/camera_calibration/$(arg stereo_camera)/omni-radtan-camchain.yaml"/>
 
     <arg name="queue_size" default="10"/>
     <arg name="input_camera_info_from_ros_params" default="true"/>
@@ -23,10 +23,10 @@
         <remap from="raw/second/image"          to="/$(arg stereo_camera)/right/image_raw"/>
         <!-- <remap from="raw/first/camera_info"     to="/$(arg stereo_camera)/left/camera_info"/> -->
         <!-- <remap from="raw/second/camera_info"    to="/$(arg stereo_camera)/right/camera_info"/> -->
-        <remap from="rect/first/image"          to="/$(arg stereo_camera)_rect/left/image"/>
-        <remap from="rect/second/image"         to="/$(arg stereo_camera)_rect/right/image"/>
-        <remap from="rect/first/camera_info"    to="/$(arg stereo_camera)_rect/left/camera_info"/>
-        <remap from="rect/second/camera_info"   to="/$(arg stereo_camera)_rect/right/camera_info"/>
+        <remap from="rect/first/image"          to="/$(arg stereo_camera)/left/rect/image"/>
+        <remap from="rect/second/image"         to="/$(arg stereo_camera)/right/rect/image"/>
+        <remap from="rect/first/camera_info"    to="/$(arg stereo_camera)/left/rect/camera_info"/>
+        <remap from="rect/second/camera_info"   to="/$(arg stereo_camera)/right/rect/camera_info"/>
 
         <param name="queue_size"                        value="$(arg queue_size)"/>
         <param name="input_camera_info_from_ros_params" value="$(arg input_camera_info_from_ros_params)"/>
