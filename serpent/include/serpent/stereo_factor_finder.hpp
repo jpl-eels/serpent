@@ -4,9 +4,10 @@
 #include <image_transport/image_transport.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+#include <opencv2/features2d.hpp>
+#include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
-#include <ros/ros.h>
 
 namespace serpent {
 
@@ -31,6 +32,10 @@ private:
     ros::Publisher left_info_publisher;
     image_transport::Publisher right_image_publisher;
     ros::Publisher right_info_publisher;
+
+    //// Feature detectors
+    cv::Ptr<cv::Feature2D> detector;
+    cv::DrawMatchesFlags draw_feature_flag;
 };
 
 }

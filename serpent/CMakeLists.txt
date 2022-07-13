@@ -29,7 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
 add_message_files(
@@ -118,16 +118,16 @@ add_dependencies(${NODE}
 
 target_include_directories(${NODE} SYSTEM PUBLIC
     ${NODE_SYSTEM_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
 )
 
 target_include_directories(${NODE} PUBLIC
     include
-    ${catkin_INCLUDE_DIRS}
 )
 
 target_link_libraries(${NODE} PUBLIC
-    ${catkin_LIBRARIES}
     ${NODE_SYSTEM_LIBRARIES}
+    ${catkin_LIBRARIES}
 )
 
 set_target_properties(${NODE}
@@ -153,15 +153,15 @@ if(CATKIN_ENABLE_TESTING)
     )
     target_include_directories(test_${PROJECT_NAME} SYSTEM PUBLIC
         ${NODE_SYSTEM_INCLUDE_DIRS}
+        ${catkin_INCLUDE_DIRS}
     )
     target_include_directories(test_${PROJECT_NAME} PUBLIC
         include
         test/include
-        ${catkin_INCLUDE_DIRS}
     )
     target_link_libraries(test_${PROJECT_NAME}
-        ${catkin_LIBRARIES}
         ${NODE_SYSTEM_LIBRARIES}
+        ${catkin_LIBRARIES}
     )
     target_compile_definitions(test_${PROJECT_NAME} PRIVATE DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test/data")
 

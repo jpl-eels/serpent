@@ -69,7 +69,6 @@ s2s:
     voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
     neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
 
-
 s2m:
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
@@ -107,3 +106,26 @@ mapping:
   frame_extraction_number: 10
   distance_threshold: 1.0                   # metres
   rotation_threshold: 0.5235987755982988    # radians
+
+# Stereo Factors
+stereo_factors:
+  features:
+    type: "ORB" # Options: ORB, SIFT (requires OpenCV >= 4.4.0)
+    orb:
+      num_features: 500
+      scale_factor: 1.2
+      num_levels: 8
+      edge_threshold: 31
+      first_level: 0
+      wta_k: 2
+      score_type: "HARRIS_SCORE" # Options: HARRIS_SCORE, FAST_SCORE
+      patch_size: 31
+      fast_threshold: 20
+    sift:
+      num_features: 10
+      num_octave_layers: 3
+      contrast_threshold: 0.04
+      edge_threshold: 10.0
+      sigma: 1.6
+    visualisation:
+      rich_keypoints: true

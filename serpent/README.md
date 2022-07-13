@@ -4,6 +4,20 @@ Maintainer: William Talbot 347J
 
 ## Dependencies
 
+### cv_bridge
+
+If you installed OpenCV from source (see OpenCV section), you will have to install `cv_bridge` from source to avoid conflicting opencv libraries. One way to build cv_bridge from source:
+```bash
+cd ~/src
+git clone git@github.com:ros-perception/vision_opencv.git # Check the branch matches your ROS version
+cd ~/catkin_ws/src
+ln -s ~/src/vision_opencv/cv_bridge cv_bridge
+cd ~/catkin_ws
+catkin build cv_bridge
+```
+
+`cv_bridge` should now be linked to your installed version of OpenCV.
+
 ### Eigen
 
 Tested with 3.3.7
@@ -25,6 +39,32 @@ Ubuntu 20.04:
 ```bash
 sudo apt install libgtsam-dev
 ```
+
+### OpenCV
+
+SERPENT uses SIFT as one of its stereo feature types, however SIFT lost its patent only in March 2020, so is only part of core OpenCV starting from version 4.4.0. Ubuntu 20.04's OpenCV `apt` version is 4.2.0, so is not sufficient. Ubuntu 22.04's `apt` version is 4.5.4, so you should be able to install via `apt` (not tested):
+```bash
+sudo apt install libopencv-dev
+```
+
+For Ubuntu 20.04 or earlier, OpenCV >=4.4.0 must be installed from source (replace `<version>`):
+```bash
+git clone git@github.com:opencv/opencv.git
+git clone git@github.com:opencv/opencv_contrib.git
+cd opencv
+git checkout <version>
+cd ../opencv_contrib
+git checkout <version>
+cd ../opencv
+mkdir build && cd build
+cmake -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.x/modules ..
+cmake --build . -j
+sudo cmake --build . --target install
+```
+
+If it is desirable to keep an older version of OpenCV installed on your system, you can do so, making sure to turn on the OPENCV_ENABLE_NONFREE flag while building.
+
+**Note that if you install OpenCV from source, you must also install `cv_bridge` from source.**
 
 ### PCL
 
