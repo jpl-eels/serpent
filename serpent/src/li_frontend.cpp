@@ -89,14 +89,16 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         twist_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
                 linear_velocity_covariance;
         */
-        ROS_WARN_ONCE("TODO FIX: angular velocity must be converted from IMU frame to body frame");
-        const Eigen::Vector3d angular_velocity = imu.angular_velocity + imu_biases.gyroscope();
+        ROS_WARN_ONCE("TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even"
+                " possible? A rotation may be a good approximation.");
+        const Eigen::Vector3d angular_velocity = body_frames.body_to_frame("imu").rotation()
+                * (imu.angular_velocity + imu_biases.gyroscope());
         
         // Publish current state as odometry output
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
         odometry->header.frame_id = "map";
-        odometry->child_frame_id = "body";
+        odometry->child_frame_id = body_frames.body_frame();
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
         // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
@@ -106,17 +108,17 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
 
-        // Publish body_i-1 to body (IMU-rate frame) TF
+        // Publish map to body (IMU-rate frame) TF
+        /*
         const Eigen::Isometry3d pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(state.pose());
-        const Eigen::Isometry3d world_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(world_state.pose());
-        const Eigen::Isometry3d incremental_transform = world_pose.inverse() * pose;
-        geometry_msgs::TransformStamped incremental_tf;
-        incremental_tf.header.stamp = imu.timestamp;
-        incremental_tf.header.frame_id = "body_i-1";
-        incremental_tf.child_frame_id = "body";
-        eigen_ros::to_ros(incremental_tf.transform.translation, incremental_transform.translation());
-        eigen_ros::to_ros(incremental_tf.transform.rotation, incremental_transform.rotation());
-        tf_broadcaster.sendTransform(incremental_tf);
+        geometry_msgs::TransformStamped map_to_body_tf;
+        map_to_body_tf.header.stamp = imu.timestamp;
+        map_to_body_tf.header.frame_id = "map";
+        map_to_body_tf.child_frame_id = body_frames.body_frame();
+        eigen_ros::to_ros(map_to_body_tf.transform, pose);
+        tf_broadcaster.sendTransform(map_to_body_tf);
+        */
+        ROS_WARN_ONCE("TODO: add IMU-rate TF back once confirmed it doesn't conflict with important TF publishing");
     }
 }
 
@@ -175,11 +177,12 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         const Eigen::Matrix3d linear_twist_covariance = Eigen::Matrix3d::Identity()
                 * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
         const Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();
+        ROS_WARN_ONCE("TODO FIX: read linear velocity prior from mission file");
         ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
                 imu.angular_velocity_covariance};
-        const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", "body_i"};
+        const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame()};
 
         // Publish initial state
         auto odometry_msg = boost::make_shared<nav_msgs::Odometry>();
@@ -277,11 +280,11 @@ void LIFrontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr&
     world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
             world_odometry.twist.linear);
 
-    // Publish map to body_i-1 TF
+    // Publish map to body TF at t_i-1
     geometry_msgs::TransformStamped tf;
     tf.header.stamp = optimised_odometry_msg->header.stamp;
     tf.header.frame_id = "map";
-    tf.child_frame_id = "body_i-1";
+    tf.child_frame_id = body_frames.body_frame();
     tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
     tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
     tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;

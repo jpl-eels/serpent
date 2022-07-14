@@ -76,7 +76,7 @@ private:
     std::unique_ptr<ISAM2GraphManager> gm;
 };
 
-nav_msgs::Path convert_to_path(const GraphManager& graph_manager, const int max_key);
+nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix);
 
 nav_msgs::Path extract_changed_poses(const nav_msgs::Path& full_path, const gtsam::ISAM2Result& optimisation_result);
 

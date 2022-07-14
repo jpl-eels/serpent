@@ -153,9 +153,9 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
 
     // Publish imu estimated transform
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
-    imu_transform->header.stamp = gm->timestamp("imu");
-    imu_transform->header.frame_id = "lidar_i-1";
-    imu_transform->child_frame_id = "lidar_i";
+    imu_transform->header.stamp = gm->timestamp("imu"); // Timestamp must be that of the child frame for synchronisation
+    imu_transform->header.frame_id = "lidar_i-1"; // i-1
+    imu_transform->child_frame_id = "lidar"; // i
     eigen_ros::to_ros(imu_transform->transform, s2s_pose_lidar);
     imu_transform_publisher.publish(imu_transform);
 
@@ -249,7 +249,7 @@ void Optimisation::optimise_and_publish(const int key) {
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
     optimised_odometry_msg->header.frame_id = "map";
-    optimised_odometry_msg->child_frame_id = "body_i-1";
+    optimised_odometry_msg->child_frame_id = body_frames.body_frame();
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, gm->pose(key).translation());
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, gm->pose(key).rotation().toQuaternion());
     eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, eigen_ext::reorder_covariance(
@@ -276,7 +276,7 @@ void Optimisation::optimise_and_publish(const int key) {
     imu_biases_publisher.publish(imu_bias_msg);
 
     // Publish optimised path and changed path
-    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key));
+    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key, body_frames.body_frame()));
     auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path, isam2_result));
     path_publisher.publish(global_path);
     path_changes_publisher.publish(global_path_changes);
@@ -326,14 +326,14 @@ void Optimisation::registration_transform_callback(const geometry_msgs::PoseWith
     }
 }
 
-nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key) {
+nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix) {
     nav_msgs::Path path;
     path.header.stamp = gm.timestamp(max_key);
     path.header.frame_id = "map";
     for (int key = 0; key <= max_key; ++key) {
         geometry_msgs::PoseStamped pose_msg;
         pose_msg.header.stamp = gm.timestamp(key);
-        pose_msg.header.frame_id = "body_" + std::to_string(key);
+        pose_msg.header.frame_id = frame_id_prefix + "_" + std::to_string(key);
         to_ros(pose_msg.pose, gm.pose(key));
         path.poses.push_back(pose_msg);
     }

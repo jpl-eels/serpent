@@ -56,7 +56,7 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
     }
 
     // Change frame
-    pointcloud->header.frame_id = "body_i";
+    pointcloud->header.frame_id = "lidar";
     
     // Publish pointcloud
     pointcloud_publisher.publish(pointcloud);

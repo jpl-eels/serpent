@@ -49,7 +49,6 @@ Registration::Registration():
                     "debug/s2s_transformed_pointcloud_alt", 1);
             debug_s2m_transformed_cloud_alt_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                     "debug/s2m_transformed_pointcloud_alt", 1);
-
         }
     }
 }
@@ -64,8 +63,8 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
-    transform_msg->header.stamp = timestamp;
-    transform_msg->header.frame_id = "body_i-1"; // Child = "body_i"
+    transform_msg->header.stamp = timestamp; // Timestamp is at t_i
+    transform_msg->header.frame_id = body_frames.body_frame(); // TF: body at t_i-1 -> body at t_i
     eigen_ros::to_ros(transform_msg->pose.pose, transform_body);
     eigen_ros::to_ros(transform_msg->pose.covariance, eigen_ext::reorder_covariance(covariance, 3));
     refined_transform_publisher.publish(transform_msg);
@@ -84,19 +83,19 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             // Current pointcloud untransformed (must change timestamp for visualisation)
             auto current_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*current_pointcloud);
             current_pointcloud_->header.stamp = previous_pointcloud->header.stamp;
-            current_pointcloud_->header.frame_id = "body_i-1";
+            current_pointcloud_->header.frame_id = "lidar";
             debug_current_cloud_publisher.publish(current_pointcloud_);
 
             // Publish previous cloud (unfortunately a copy is required to correct the frame id)
             auto previous_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*previous_pointcloud);
-            previous_pointcloud_->header.frame_id = "body_i-1";
+            previous_pointcloud_->header.frame_id = "lidar";
             debug_previous_cloud_publisher.publish(previous_pointcloud_);
 
             // Transform current scan to previous frame and publish (must change timestamp for visualisation)
             auto imu_guess_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
             pcl::transformPointCloud(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
             imu_guess_pointcloud->header.stamp = previous_pointcloud->header.stamp;
-            imu_guess_pointcloud->header.frame_id = "body_i-1";
+            imu_guess_pointcloud->header.frame_id = "lidar";
             debug_imu_guess_cloud_publisher.publish(imu_guess_pointcloud);
         }
 
@@ -109,7 +108,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         const ros::WallTime tic = ros::WallTime::now();
         s2s->align(*registered_pointcloud, tf_mat_float);
         registered_pointcloud->header.stamp = previous_pointcloud->header.stamp;
-        registered_pointcloud->header.frame_id = "body_i-1";
+        registered_pointcloud->header.frame_id = "lidar";
         const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();
         const Eigen::Matrix4d s2s_transform = s2s_transform_float.cast<double>();
         ROS_INFO_STREAM("S2S finished in " << (ros::WallTime::now() - tic).toSec() << " s. "
@@ -170,7 +169,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     const ros::WallTime tic = ros::WallTime::now();
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
     registered_pointcloud->header.stamp = map->header.stamp;
-    registered_pointcloud->header.frame_id = "body_i-1";
+    registered_pointcloud->header.frame_id = "lidar";
     const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();
     const Eigen::Matrix4d s2m_transform = s2m_transform_float.cast<double>();
     ROS_INFO_STREAM("S2M finished in " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2m));

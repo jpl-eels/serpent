@@ -25,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Left Camera Features
+    SyncSource: Local Map (S2M reference)
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -64,19 +64,23 @@ Visualization Manager:
           Value: true
         front_stereo_right_cam:
           Value: true
-        ins:
+        imu:
           Value: true
         left_stereo:
           Value: true
         left_stereo_left_cam:
           Value: true
-        left_stereo_left_cam_rect:
-          Value: true
         left_stereo_right_cam:
           Value: true
-        left_stereo_right_cam_rect:
+        lidar:
+          Value: true
+        map:
           Value: true
         ned:
+          Value: true
+        os_imu:
+          Value: true
+        os_lidar:
           Value: true
         os_sensor:
           Value: true
@@ -99,31 +103,34 @@ Visualization Manager:
       Name: TF
       Show Arrows: true
       Show Axes: true
-      Show Names: true
+      Show Names: false
       Tree:
-        base_link:
-          front_stereo:
+        map:
+          base_link:
+            front_stereo:
+              {}
             front_stereo_left_cam:
               {}
             front_stereo_right_cam:
               {}
-          ins:
-            {}
-          left_stereo:
+            imu:
+              {}
+            left_stereo:
+              {}
             left_stereo_left_cam:
-              left_stereo_left_cam_rect:
-                {}
+              {}
             left_stereo_right_cam:
-              left_stereo_right_cam_rect:
-                {}
-          os_sensor:
-            {}
-          right_stereo:
+              {}
+            lidar:
+              {}
+            right_stereo:
+              {}
             right_stereo_left_cam:
               {}
             right_stereo_right_cam:
               {}
-          up_stereo:
+            up_stereo:
+              {}
             up_stereo_left_cam:
               {}
             up_stereo_right_cam:
@@ -758,7 +765,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 77.23095703125
+      Distance: 42.72641372680664
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

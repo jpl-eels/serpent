@@ -12,7 +12,10 @@
     <arg name="stereo_camera" default="snowboard_left"/>
 
     <!-- IMU transform -->
-    <include file="$(find snowboard)/launch/imu_transform.launch"/>
+    <include file="$(find snowboard)/launch/imu_transform.launch">
+        <arg name="overwrite_frame" value="true"/>
+        <arg name="new_frame"       value="imu"/>
+    </include>
 
     <!-- SERPENT -->
     <include file="$(find serpent)/launch/serpent.launch">
