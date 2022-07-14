@@ -33,6 +33,7 @@ catkin_package(
 )
 
 add_library(${LIBRARY_NAME}
+    src/body_frames_tf.cpp
     src/body_frames.cpp
     src/eigen_ros.cpp
     src/geometry_msgs.cpp
@@ -60,6 +61,32 @@ target_link_libraries(${LIBRARY_NAME}
 )
 
 set_target_properties(${LIBRARY_NAME}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+add_executable(body_frames_tf_node
+    src/body_frames_tf_node.cpp
+)
+
+target_include_directories(body_frames_tf_node PUBLIC
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
+)
+
+target_include_directories(body_frames_tf_node PUBLIC SYSTEM
+    ${EIGEN3_INCLUDE_DIRS}
+)
+
+target_link_libraries(body_frames_tf_node
+    ${LIBRARY_NAME}
+    ${catkin_LIBRARIES}
+    ${EIGEN3_LIBRARIES}
+)
+
+set_target_properties(body_frames_tf_node
     PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
