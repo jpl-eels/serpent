@@ -76,6 +76,7 @@ set(NODE_SRC_FILES
     src/graph_manager.cpp
     src/li_frontend.cpp
     src/mapping.cpp
+    src/match_filters.cpp
     src/node.cpp
     src/optimisation.cpp
     src/pointcloud_filter.cpp

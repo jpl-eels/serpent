@@ -109,9 +109,18 @@ mapping:
 
 # Stereo Factors
 stereo_factors:
-  features:
-    type: "ORB" # Options: ORB, SIFT (requires OpenCV >= 4.4.0)
-    orb:
+  visualisation:
+    rich_keypoints: false
+  detector:
+    type: "GFTT" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    gftt: &gftt
+      max_corners: 100
+      quality_level: 0.01
+      min_distance: 1.0
+      block_size: 3
+      use_harris_detector: false
+      k: 0.04
+    orb: &orb
       num_features: 100
       scale_factor: 1.2
       num_levels: 8
@@ -121,11 +130,35 @@ stereo_factors:
       score_type: "HARRIS_SCORE" # Options: HARRIS_SCORE, FAST_SCORE
       patch_size: 31
       fast_threshold: 20
-    sift:
+    sift: &sift
       num_features: 100
       num_octave_layers: 3
       contrast_threshold: 0.04
       edge_threshold: 10.0
       sigma: 1.6
-    visualisation:
-      rich_keypoints: true
+  descriptor:
+    type: "ORB" # Options: ORB, SIFT
+    orb: *orb
+    sift: *sift
+  matcher:
+    type: "BRUTE_FORCE" # Options: BRUTE_FORCE, FLANN (only for float descriptors, e.g. SIFT, SURF)
+    brute_force:
+      norm_type: "NORM_HAMMING"  # NORM_HAMMING for ORB and BRIEF, NORM_L2 for SIFT and SURF.
+      cross_check: false
+    # TODO: flann options (https://www.ccoderun.ca/programming/doxygen/opencv/structcv_1_1flann_1_1IndexParams.html)
+  distance_match_filter:
+    enabled: true
+    descriptor_distance_threshold: 25.0
+  stereo_match_filter:
+    vertical_pixel_threshold: 25.0
+  sparse_optical_flow:
+    type: "PyrLK" # Options: PyrLK (Pyramid Lucas-Kanade), TODO: RLOF
+    pyrlk:
+      win_size: [21, 21]
+      max_level: 3
+      term_criteria:
+        type: "COUNT+EPS" # Options: COUNT, EPS, COUNT+EPS
+        max_count: 30
+        epsilon: 0.01
+      flags: 0
+      min_eig_threshold: 1.0e-4
