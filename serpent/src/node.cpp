@@ -6,6 +6,7 @@
 #include "serpent/pointcloud_normal_estimation.hpp"
 #include "serpent/registration.hpp"
 #include "serpent/stereo_factor_finder.hpp"
+#include <eigen_ros/body_frames_tf.hpp>
 #include <ros/ros.h>
 
 int main(int argc, char** argv) {
@@ -13,6 +14,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "serpent");
 
     // Initialise Modules
+    eigen_ros::BodyFramesTf body_frames_tf;
     serpent::LIFrontend frontend;
     serpent::Mapping mapping;
     serpent::Optimisation optimisation;

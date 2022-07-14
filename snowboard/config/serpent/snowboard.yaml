@@ -11,63 +11,92 @@
 #   y: -0.9981348
 #   z: 0.0
 body_frames:
-  imu:
-    translation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-    rotation:
-      w: 0.0
-      x: 0.0
-      y: 1.0
-      z: 0.0
-  lidar:
-    translation:
-      x: 0.60
-      y: 0.04
-      z: 0.00
-    rotation:
-      w: 0.9981348
-      x: 0.0
-      y: -0.0610485
-      z: 0.0
-  left_stereo:
-    translation:
-      x: 0.4225
-      y: 0.09
-      z: 0.04
-    rotation:
-      w: 0.7071068
-      x: -0.7071068
-      y: 0.0
-      z: 0.0
-  right_stereo:
-    translation:
-      x: 0.4225
-      y: -0.01
-      z: 0.04
-    rotation:
-      w: 0.0
-      x: 0.0
-      y: -0.7071068
-      z: 0.7071068
-  front_stereo:
-    translation:
-      x: 0.4725
-      y: 0.04
-      z: 0.04
-    rotation:
-      w: 0.5
-      x: -0.5
-      y: 0.5
-      z: -0.5
-  up_stereo:
-    translation:
-      x: 0.4225
-      y: 0.04
-      z: 0.09
-    rotation:
-      w: 1.0
-      x: 0.0
-      y: 0.0
-      z: 0.0
+  base_link:
+    imu:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation:
+        w: 0.0
+        x: 0.0
+        y: 1.0
+        z: 0.0
+    lidar:
+      translation:
+        x: 0.60
+        y: 0.04
+        z: 0.00
+      rotation:
+        w: 0.9981348
+        x: 0.0
+        y: -0.0610485
+        z: 0.0
+    left_stereo:
+      translation:
+        x: 0.4225
+        y: 0.09
+        z: 0.04
+      rotation:
+        w: 0.7071068
+        x: -0.7071068
+        y: 0.0
+        z: 0.0
+      frames:
+        left_stereo_left_cam:
+          translation:
+            x: -0.0275
+        left_stereo_right_cam:
+          translation:
+            x: 0.0275
+    right_stereo:
+      translation:
+        x: 0.4225
+        y: -0.01
+        z: 0.04
+      rotation:
+        w: 0.0
+        x: 0.0
+        y: -0.7071068
+        z: 0.7071068
+      frames:
+        right_stereo_left_cam:
+          translation:
+            x: -0.0275
+        right_stereo_right_cam:
+          translation:
+            x: 0.0275
+    front_stereo:
+      translation:
+        x: 0.4725
+        y: 0.04
+        z: 0.04
+      rotation:
+        w: 0.5
+        x: -0.5
+        y: 0.5
+        z: -0.5
+      frames:
+        front_stereo_left_cam:
+          translation:
+            x: -0.0275
+        front_stereo_right_cam:
+          translation:
+            x: 0.0275
+    up_stereo:
+      translation:
+        x: 0.4225
+        y: 0.04
+        z: 0.09
+      rotation:
+        w: 1.0
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      frames:
+        up_stereo_left_cam:
+          translation:
+            x: -0.0275
+        up_stereo_right_cam:
+          translation:
+            x: 0.0275
