@@ -107,18 +107,6 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
-
-        // Publish map to body (IMU-rate frame) TF
-        /*
-        const Eigen::Isometry3d pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(state.pose());
-        geometry_msgs::TransformStamped map_to_body_tf;
-        map_to_body_tf.header.stamp = imu.timestamp;
-        map_to_body_tf.header.frame_id = "map";
-        map_to_body_tf.child_frame_id = body_frames.body_frame();
-        eigen_ros::to_ros(map_to_body_tf.transform, pose);
-        tf_broadcaster.sendTransform(map_to_body_tf);
-        */
-        ROS_WARN_ONCE("TODO: add IMU-rate TF back once confirmed it doesn't conflict with important TF publishing");
     }
 }
 
