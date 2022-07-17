@@ -39,7 +39,7 @@ optimisation:
 
 # Registration
 s2s:
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
     ransac_iterations: 0
@@ -68,10 +68,14 @@ s2s:
     resolution: 1.0
     voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
     neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
+  ndt: # Uses base (note default maximum_iterations for ndt is 35)
+    resolution: 1.0
+    step_size: 0.1
+    outlier_ratio: 0.55
 
 s2m:
   enabled: true
-  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
     ransac_iterations: 0
@@ -100,6 +104,10 @@ s2m:
     resolution: 1.0
     voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
     neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
+  ndt: # Uses base (note default maximum_iterations for ndt is 35)
+    resolution: 1.0
+    step_size: 0.1
+    outlier_ratio: 0.55
 
 # Mapping
 mapping:

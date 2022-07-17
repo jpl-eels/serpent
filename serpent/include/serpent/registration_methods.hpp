@@ -6,6 +6,7 @@
 #include <fast_gicp/gicp/fast_vgicp.hpp>
 #include <fast_gicp/gicp/lsq_registration.hpp>
 #include <pcl/registration/gicp.h>
+#include <pcl/registration/ndt.h>
 #include <ros/ros.h>
 
 namespace fast_gicp {
@@ -74,6 +75,13 @@ void set_fast_gicp_parameters(const ros::NodeHandle& nh, const std::string& pref
 }
 
 template<typename PointIn, typename PointOut>
+void set_fast_gicp_st_parameters(const ros::NodeHandle& nh, const std::string& prefix,
+        typename fast_gicp::FastGICPSingleThread<PointIn, PointOut>& fast_gicp_st) {
+    set_fast_gicp_parameters(nh, prefix, fast_gicp_st);
+    fast_gicp_st.setNumThreads(1);
+}
+
+template<typename PointIn, typename PointOut>
 void set_fast_vgicp_parameters(const ros::NodeHandle& nh, const std::string& prefix,
         typename fast_gicp::FastVGICP<PointIn, PointOut>& fast_vgicp) {
     set_fast_gicp_parameters(nh, prefix, fast_vgicp);
@@ -85,10 +93,14 @@ void set_fast_vgicp_parameters(const ros::NodeHandle& nh, const std::string& pre
 }
 
 template<typename PointIn, typename PointOut>
-void set_fast_gicp_st_parameters(const ros::NodeHandle& nh, const std::string& prefix,
-        typename fast_gicp::FastGICPSingleThread<PointIn, PointOut>& fast_gicp_st) {
-    set_fast_gicp_parameters(nh, prefix, fast_gicp_st);
-    fast_gicp_st.setNumThreads(1);
+void set_ndt_parameters(const ros::NodeHandle& nh, const std::string& prefix,
+        typename pcl::NormalDistributionsTransform<PointIn, PointOut>& ndt) {
+    set_registration_parameters(nh, prefix, ndt);
+    // overwrite max iterations default value to 35 for ndt if base/maximum_iterations is not set
+    ndt.setMaximumIterations(nh.param<int>(prefix + "base/maximum_iterations", 35));
+    ndt.setResolution(nh.param<float>(prefix + "ndt/resolution", 1.0f));
+    ndt.setStepSize(nh.param<double>(prefix + "ndt/step_size", 0.1));
+    ndt.setOulierRatio(nh.param<double>(prefix + "ndt/outlier_ratio", 0.55)); // Note pcl function typo
 }
 
 template<typename PointIn, typename PointOut>
@@ -116,6 +128,10 @@ typename pcl::Registration<PointIn, PointOut>::Ptr registration_method(const ros
         auto fast_vgicp = boost::make_shared<typename fast_gicp::FastVGICP<PointIn, PointOut>>();
         set_fast_vgicp_parameters(nh, prefix, *fast_vgicp);
         registration = fast_vgicp;
+    } else if (method == "ndt") {
+        auto ndt = boost::make_shared<typename pcl::NormalDistributionsTransform<PointIn, PointOut>>();
+        set_ndt_parameters(nh, prefix, *ndt);
+        registration = ndt;
     } else {
         throw std::runtime_error("Registration method \'" + method  + "\' not supported");
     }
