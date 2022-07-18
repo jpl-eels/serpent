@@ -19,6 +19,7 @@ config.odom_topics = ["/integrate_imu/odometry", ...
 
 plot_opts.align_first_pose = true;
 plot_opts.start_from_time_zero = true;
+plot_opts.summary_decimal_places = 3;
 plot_opts.angle = "deg";
 plot_opts.figure_dims = [0, 0, 2400, 1600];
 plot_opts.colours = {[0 0.4470 0.7410], [0.8500 0.3250 0.0980], ...
@@ -32,4 +33,4 @@ plot_opts.close_after_save = false;
 
 data = data_from_rosbags(config);
 
-plot_and_save(data, plot_opts);
+[pose_data, twist_data] = plot_and_save(data, plot_opts);

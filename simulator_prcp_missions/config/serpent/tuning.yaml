@@ -39,6 +39,9 @@ optimisation:
 
 # Registration
 s2s:
+  base_noise:
+    rotation: 0.00174533 # 0.1 deg
+    translation: 1.0e-3  # 1 mm
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 20
@@ -74,6 +77,9 @@ s2s:
     outlier_ratio: 0.55
     
 s2m:
+  base_noise:
+    rotation: 0.00174533 # 0.1 deg
+    translation: 1.0e-3  # 1 mm
   enabled: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:

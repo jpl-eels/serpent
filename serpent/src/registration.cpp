@@ -31,6 +31,16 @@ Registration::Registration():
         s2m = registration_method<pcl::PointNormal, pcl::PointNormal>(nh, "s2m/");
     }
 
+    // Create registration base covariances
+    s2s_covariance_base <<
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2s/base_noise/rotation", 0.00174533), 2.0),
+            Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2s/base_noise/translation", 1.0e-3), 2.0);
+    s2m_covariance_base <<
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2m/base_noise/rotation", 0.00174533), 2.0),
+            Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2m/base_noise/translation", 1.0e-3), 2.0);
+
     // Debugging
     nh.param<bool>("debug/publish_registration_clouds", publish_registration_clouds, false);
     if (publish_registration_clouds) {
@@ -138,7 +148,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             s2s_registrations.emplace_back(s2s_transform);
         } else {
             // Publish the refined transform
-            publish_refined_transform(s2s_transform, covariance_from_registration(*s2s),
+            publish_refined_transform(s2s_transform, covariance_from_registration(*s2s, s2s_covariance_base),
                     pcl_conversions::fromPCL(current_pointcloud->header.stamp));
         }
     }
@@ -192,7 +202,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     }
 
     // Publish the refined transform
-    publish_refined_transform(s2m_transform, covariance_from_registration(*s2m),
+    publish_refined_transform(s2m_transform, covariance_from_registration(*s2m, s2m_covariance_base),
             pcl_conversions::fromPCL(pointcloud->header.stamp));
 }
 

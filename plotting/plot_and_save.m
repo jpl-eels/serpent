@@ -1,4 +1,4 @@
-function plot_and_save(data, plot_opts)
+function [pose_data, twist_data] = plot_and_save(data, plot_opts)
     pose_data = compute_pose_data(data, plot_opts.align_first_pose);
     if plot_opts.start_from_time_zero
         start_time = pose_data.gt.timestamps(1);
@@ -14,8 +14,7 @@ function plot_and_save(data, plot_opts)
         end
     end
     fprintf("Finished computing pose data.\n");
-    [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts);
-    fprintf("Finished plotting pose data.\n");
+
     twist_data = compute_twist_data(data);
     if plot_opts.start_from_time_zero
         start_time = twist_data.gt.timestamps(1);
@@ -31,6 +30,38 @@ function plot_and_save(data, plot_opts)
         end
     end
     fprintf("Finished computing twist data.\n");
+
+    fmt_str = ['%30s: %.', num2str(plot_opts.summary_decimal_places), 'f'];
+    for i = 1:length(data.names)
+        fprintf("%s Summary:\n", data.names(i));
+        fprintf([fmt_str, ' m\n'], ...
+            "Final Translation ||APE||", ...
+            pose_data.entries{i}.ape_norm.position(end));
+        fprintf([fmt_str, ' rad\n'], ...
+            "Final Orientation ||APE||", ...
+            pose_data.entries{i}.ape_norm.rot_axang(end));
+        fprintf([fmt_str, ' m\n'], ...
+            "Translation APE RMSE", ...
+            pose_data.entries{i}.ape_norm.position_rmse);
+        fprintf([fmt_str, ' rad\n'], ...
+            "Orientation APE RMSE", ...
+            pose_data.entries{i}.ape_norm.rot_axang_rmse);
+        fprintf([fmt_str, ' m/s\n'], ...
+            "Final Linear Velocity ||APE||", ...
+            twist_data.entries{i}.ae_norm.linear_velocity(end));
+        fprintf([fmt_str, ' rad/s\n'], ...
+            "Final Angular Velocity ||APE||", ...
+            twist_data.entries{i}.ae_norm.angular_velocity(end));
+        fprintf([fmt_str, ' m/s\n'], ...
+            "Linear Velocity APE RMSE", ...
+            twist_data.entries{i}.ae_norm.linear_velocity_rmse);
+        fprintf([fmt_str, ' rad/s\n'], ...
+            "Angular Velocity APE RMSE", ...
+            twist_data.entries{i}.ae_norm.angular_velocity_rmse);
+    end
+
+    [fig_position, fig_orientation] = plot_pose(pose_data, plot_opts);
+    fprintf("Finished plotting pose data.\n");
     [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, plot_opts);
     fprintf("Finished plotting twist data.\n");
     if plot_opts.save

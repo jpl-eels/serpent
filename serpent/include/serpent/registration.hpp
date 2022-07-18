@@ -90,27 +90,17 @@ private:
     pcl::Registration<pcl::PointNormal, pcl::PointNormal>::Ptr s2m;
     // Scan-to-Scan Registrations
     std::deque<Eigen::Isometry3d> s2s_registrations;
+    // Scan-to-scan registration covariance base (rotation then translation order)
+    Eigen::Matrix<double, 6, 6> s2s_covariance_base;
+    // Scan-to-map registration covariance base (rotation then translation order)
+    Eigen::Matrix<double, 6, 6> s2m_covariance_base;
 };
 
-/**
- * @brief Returns covariance in order [R1, R2, R3, t1, t2, t3].
- * 
- * @tparam PointSource 
- * @tparam PointTarget 
- * @param registration 
- * @return Eigen::Matrix<double, 6, 6> 
- */
 template<typename PointSource, typename PointTarget>
-Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration) {
-    ROS_WARN_ONCE("DESIGN DECISION: Use fitness score in registration covariance?");
-    // Eigen::Matrix<double, 6, 6> covariance;
-    // covariance << Eigen::Matrix3d::Identity() * std::pow(1 * M_PI / 180.0, 2.0), Eigen::Matrix3d::Zero(),
-    //         Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(0.1, 2.0);
-    // // covariance << Eigen::Matrix3d::Identity() * std::pow(0.1 * M_PI / 180.0, 2.0), Eigen::Matrix3d::Zero(),
-    // //         Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(0.01, 2.0);
-    // ROS_INFO_STREAM("Registration cov:\n" << covariance);
-    // return covariance;
-    return Eigen::Matrix<double, 6, 6>::Identity() * registration.getFitnessScore();
+Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration,
+        const Eigen::Matrix<double, 6, 6>& base_covariance) {
+    ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
+    return base_covariance;
 }
 
 template<typename PointSource, typename PointTarget>

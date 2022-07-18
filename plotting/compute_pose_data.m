@@ -82,12 +82,16 @@ function pose_data = compute_pose_data(data, align_first_pose)
         entry.ape.rots_axang = rot_axang_apes;
         entry.ape_norm.position = vecnorm(position_apes, 2, 2);
         entry.ape_norm.rot_axang = vecnorm(rot_axang_apes, 2, 2);
+        entry.ape_norm.position_rmse = rms(entry.ape_norm.position);
+        entry.ape_norm.rot_axang_rmse = rms(entry.ape_norm.rot_axang);
         [position_rpes, rot_axang_rpes] = split_poses(rpes);
         entry.rpe.timestamps = rpe_timestamps;
         entry.rpe.positions = position_rpes;
         entry.rpe.rots_axang = rot_axang_rpes;
         entry.rpe_norm.position = vecnorm(position_rpes, 2, 2);
         entry.rpe_norm.rot_axang = vecnorm(rot_axang_rpes, 2, 2);
+        entry.rpe_norm.position_rmse = rms(entry.rpe_norm.position);
+        entry.rpe_norm.rot_axang_rmse = rms(entry.rpe_norm.rot_axang);
         pose_data.entries{i} = entry;
     end
 end
