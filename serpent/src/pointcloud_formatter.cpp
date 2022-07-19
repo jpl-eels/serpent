@@ -32,6 +32,8 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
     switch (sensor_type) {
         case SensorType::OUSTER:
             ouster_ns_to_s(*pointcloud);
+            pct::cast_to_float32(*pointcloud, "range");
+            pct::scale_float32_field(*pointcloud, "range", 0.001f);
             break;
         case SensorType::CUSTOM:
             if (!pct::has_field(*pointcloud, "t") && pct::has_field(*pointcloud, "time")) {
