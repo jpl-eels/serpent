@@ -95,33 +95,36 @@ private:
     Eigen::Matrix<double, 6, 6> s2s_covariance_base;
     // Scan-to-map registration covariance base (rotation then translation order)
     Eigen::Matrix<double, 6, 6> s2m_covariance_base;
+    // Scan-to-Scan Jacobian Augmentation
+    bool s2s_jacobian_augmentation;
+    // Scan-to-Map Jacobian Augmentation
+    bool s2m_jacobian_augmentation;
 };
 
 template<typename PointSource, typename PointTarget>
 Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration,
-        const Eigen::Matrix<double, 6, 6>& base_covariance) {
+        const Eigen::Matrix<double, 6, 6>& base_covariance, const bool jacobian_augmentation) {
     ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
-    ros::WallTime tic2 = ros::WallTime::now();
-    int count;
-    const Eigen::Matrix<float, 6, 6> point_to_plane_J_ = point_to_plane_jacobian_matrix(registration, count);
-    const Eigen::Matrix<double, 6, 6> point_to_plane_J = point_to_plane_J_.cast<double>();
-    ROS_INFO_STREAM("Point to plane J:\n" << point_to_plane_J);
-    ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic2).toSec() << " seconds to compute jacobian ("
-            << count << " correspondences).");
-    // return base_covariance;
-    if (count > 0) {
-        // 0.1 deg, 1mm
-        Eigen::Matrix<double, 6, 1> min_covariance_diagonal;
-        min_covariance_diagonal << std::pow(0.00174533, 2.0), std::pow(0.00174533, 2.0), std::pow(0.00174533, 2.0),
-            std::pow(0.001, 2.0), std::pow(0.001, 2.0), std::pow(0.001, 2.0);
-        const Eigen::Matrix<double, 6, 6>& min_covariance{Eigen::DiagonalMatrix<double, 6>{min_covariance_diagonal}};
-        Eigen::Matrix<double, 6, 6> covariance = (point_to_plane_J.transpose() * base_covariance.inverse()
-                * point_to_plane_J).inverse();
-        covariance = covariance.cwiseMax(min_covariance);
-        ROS_INFO_STREAM("Reg Covariance:\n" << covariance);
-        return covariance;
-    } else {
-        ROS_WARN_STREAM("No correspondences found for computing jacobian.");
+    if (jacobian_augmentation) {
+        ros::WallTime tic2 = ros::WallTime::now();
+        int count;
+        const Eigen::Matrix<float, 6, 6> point_to_plane_J_ = point_to_plane_jacobian_matrix(registration, count);
+        const Eigen::Matrix<double, 6, 6> point_to_plane_J = point_to_plane_J_.cast<double>();
+        ROS_INFO_STREAM("Point to plane J:\n" << point_to_plane_J);
+        ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic2).toSec() << " seconds to compute jacobian ("
+                << count << " correspondences).");
+        // return base_covariance;
+        if (count > 0) {
+            // 0.1 deg, 1mm
+            const Eigen::Matrix<double, 6, 6> min_covariance = base_covariance * 0.001;
+            Eigen::Matrix<double, 6, 6> covariance = (point_to_plane_J.transpose() * base_covariance.inverse()
+                    * point_to_plane_J).inverse();
+            covariance = covariance.cwiseMax(min_covariance);
+            ROS_INFO_STREAM("Reg Covariance:\n" << covariance);
+            return covariance;
+        } else {
+            ROS_WARN_STREAM("No correspondences found for computing jacobian.");
+        }
     }
     return base_covariance;
 }

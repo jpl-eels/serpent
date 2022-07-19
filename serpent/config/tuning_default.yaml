@@ -42,6 +42,7 @@ s2s:
   base_noise:
     rotation: 0.00174533 # 0.1 deg
     translation: 1.0e-3  # 1 mm
+    jacobian_augmentation: false
   method: "fast_vgicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
@@ -80,6 +81,7 @@ s2m:
   base_noise:
     rotation: 0.00174533 # 0.1 deg
     translation: 1.0e-3  # 1 mm
+    jacobian_augmentation: false
   enabled: true
   method: "fast_vgicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:

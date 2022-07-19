@@ -40,6 +40,8 @@ Registration::Registration():
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2m/base_noise/rotation", 0.00174533), 2.0),
             Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2m/base_noise/translation", 1.0e-3), 2.0);
+    nh.param<bool>("s2s/base_noise/jacobian_augmentation", s2s_jacobian_augmentation, false);
+    nh.param<bool>("s2m/base_noise/jacobian_augmentation", s2m_jacobian_augmentation, false);
 
     // Debugging
     nh.param<bool>("debug/publish_registration_clouds", publish_registration_clouds, false);
@@ -148,7 +150,8 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             s2s_registrations.emplace_back(s2s_transform);
         } else {
             // Publish the refined transform
-            publish_refined_transform(s2s_transform, covariance_from_registration(*s2s, s2s_covariance_base),
+            publish_refined_transform(s2s_transform,
+                    covariance_from_registration(*s2s, s2s_covariance_base, s2s_jacobian_augmentation),
                     pcl_conversions::fromPCL(current_pointcloud->header.stamp));
         }
     }
@@ -202,7 +205,8 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     }
 
     // Publish the refined transform
-    publish_refined_transform(s2m_transform, covariance_from_registration(*s2m, s2m_covariance_base),
+    publish_refined_transform(s2m_transform,
+            covariance_from_registration(*s2m, s2m_covariance_base, s2m_jacobian_augmentation),
             pcl_conversions::fromPCL(pointcloud->header.stamp));
 }
 
