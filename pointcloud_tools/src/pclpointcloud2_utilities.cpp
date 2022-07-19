@@ -3,6 +3,27 @@
 
 namespace pct {
 
+void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
+    pcl::PCLPointField& field = get_field(pointcloud, name);
+    if (field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+        for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
+            if (field.datatype == pcl::PCLPointField::PointFieldTypes::UINT32) {
+                const std::uint32_t* t = reinterpret_cast<const std::uint32_t*>(&pointcloud.data[i + field.offset]);
+                const float f = static_cast<float>(*t);
+                std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
+            } else if (field.datatype ==pcl::PCLPointField::PointFieldTypes::INT32) {
+                const std::int32_t* t = reinterpret_cast<const std::int32_t*>(&pointcloud.data[i + field.offset]);
+                const float f = static_cast<float>(*t);
+                std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
+            } else {
+                throw std::runtime_error("Converting field.datatype " + std::to_string(field.datatype)
+                        + " not supported yet.");
+            }
+        }
+        field.datatype = pcl::PCLPointField::PointFieldTypes::FLOAT32;
+    }
+}
+
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field) {
     if (time_field.datatype != pcl::traits::asEnum<float>::value) {
         throw std::runtime_error("Currently ns_to_s only handled for FLOAT32");
@@ -125,6 +146,19 @@ std::string min_value_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLP
             return std::to_string(min_value<double>(pointcloud, field));
         default:
             throw std::runtime_error("Failed to get max value string");
+    }
+}
+
+void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale) {
+    const pcl::PCLPointField& field = get_field(pointcloud, name);
+    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+        for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
+            float* f = reinterpret_cast<float*>(&pointcloud.data[i + field.offset]);
+            *f *= scale;
+        }
+    } else {
+        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " + std::to_string(field.datatype )
+                + "Not yet supported.");
     }
 }
 

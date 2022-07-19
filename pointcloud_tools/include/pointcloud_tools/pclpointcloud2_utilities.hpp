@@ -8,6 +8,9 @@
 
 namespace pct {
 
+// TODO: generalise this function to other types
+void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
+
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field);
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name);
@@ -101,6 +104,9 @@ inline T min_value(const pcl::PCLPointCloud2& pointcloud, const std::string& fie
 }
 
 std::string min_value_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field);
+
+// TODO: generalise to other types
+void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale);
 
 std::uint32_t size_bytes(const pcl::PCLPointCloud2& pointcloud);
 
