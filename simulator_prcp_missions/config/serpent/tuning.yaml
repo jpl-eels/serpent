@@ -34,14 +34,14 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: false
+    imu: true
     registration: true
 
 # Registration
 s2s:
   base_noise:
-    rotation: 0.00174533 # 0.1 deg
-    translation: 1.0e-3  # 1 mm
+    rotation: 0.0174533 # 1 deg
+    translation: 1.0e-2  # 10 mm
     jacobian_augmentation: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:

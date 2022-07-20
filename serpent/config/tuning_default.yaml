@@ -40,10 +40,10 @@ optimisation:
 # Registration
 s2s:
   base_noise:
-    rotation: 0.00174533 # 0.1 deg
-    translation: 1.0e-3  # 1 mm
-    jacobian_augmentation: false
-  method: "fast_vgicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
+    rotation: 0.0174533 # 1 deg
+    translation: 1.0e-2  # 10 mm
+    jacobian_augmentation: true
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
     ransac_iterations: 0
@@ -83,7 +83,7 @@ s2m:
     translation: 1.0e-3  # 1 mm
     jacobian_augmentation: false
   enabled: true
-  method: "fast_vgicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
     ransac_iterations: 0
