@@ -81,7 +81,7 @@ s2m:
   base_noise:
     rotation: 0.00174533 # 0.1 deg
     translation: 1.0e-3  # 1 mm
-    jacobian_augmentation: false
+    jacobian_augmentation: true
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
