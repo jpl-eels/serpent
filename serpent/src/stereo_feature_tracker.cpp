@@ -1,5 +1,4 @@
 #include "serpent/stereo_feature_tracker.hpp"
-#include <ros/ros.h> // Temporary
 #include <sstream>
 
 namespace serpent {
@@ -53,7 +52,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Extract features in both images
     auto keypoints = extract_keypoints(images);
-    ROS_INFO_STREAM("Extracted keypoints");
     if (stats) {
         stats->get().extracted_kp_count[0] = keypoints[0].size();
         stats->get().extracted_kp_count[1] = keypoints[1].size();
@@ -70,7 +68,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         // Track features from previous frame, keeping new keypoints and creating hypothetical new matches
         LRF2FMatches f2f_matches;
         auto new_track_hypotheses = track_previous_keypoints(images, f2f_matches);
-        ROS_INFO_STREAM("Tracked previous keypoints");
         if (stats) {
             stats->get().tracked_kp_count[0] = new_track_hypotheses.keypoints[0].size();
             stats->get().tracked_kp_count[1] = new_track_hypotheses.keypoints[1].size();
@@ -89,7 +86,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
         // Remove keypoints too close to those already being tracked
         keypoints = remove_already_tracked_keypoints(keypoints, new_track_hypotheses);
-        ROS_INFO_STREAM("Removed already tracked keypoints");
         if (stats) {
             stats->get().filtered_extracted_kp_count[0] = keypoints[0].size();
             stats->get().filtered_extracted_kp_count[1] = keypoints[1].size();
@@ -98,7 +94,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Add filtered new keypoints to new track keypoints
     append_keypoints(keypoints, new_track_hypotheses);
-    ROS_INFO_STREAM("Appended keypoints");
     if (stats) {
         stats->get().merged_kp_count[0] = new_track_hypotheses.keypoints[0].size();
         stats->get().merged_kp_count[1] = new_track_hypotheses.keypoints[1].size();
@@ -113,7 +108,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Match tracked features in both images
     auto matches = match_tracked_keypoints(images, new_track_hypotheses.keypoints);
-    ROS_INFO_STREAM("Matched tracked keypoints");
     if (stats) {
         stats->get().match_count = matches.size();
     }
@@ -126,7 +120,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Filter matches
     filter_matches(new_track_hypotheses.keypoints, matches);
-    ROS_INFO_STREAM("Filtered matches");
     if (stats) {
         stats->get().filtered_match_count = matches.size();
     }
@@ -140,7 +133,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     // Find new and consistent tracked features, and save this as new track data
     extract_consistent_matches(matches, new_track_hypotheses.matches, new_track_hypotheses.match_ids,
             previous_track_data.matches, previous_track_data.match_ids);
-    ROS_INFO_STREAM("Extracted consistent matches");
     if (stats) {
         stats->get().consistent_match_count = previous_track_data.matches.size();
         stats->get().consistent_match_id_count = previous_track_data.match_ids.size();
@@ -149,7 +141,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     // Extract the keypoints for the consistent matches
     previous_track_data.keypoints = extract_matched_keypoints(new_track_hypotheses.keypoints,
             previous_track_data.matches);
-    ROS_INFO_STREAM("Extracted consistent keypoints");
     if (stats) {
         stats->get().consistent_match_kp_count[0] = previous_track_data.keypoints[0].size();
         stats->get().consistent_match_kp_count[1] = previous_track_data.keypoints[1].size();
