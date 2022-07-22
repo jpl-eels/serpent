@@ -12,6 +12,7 @@
 int main(int argc, char** argv) {
     // Initialise ROS
     ros::init(argc, argv, "serpent");
+    ros::NodeHandle nh("~");
 
     // Initialise Modules
     eigen_ros::BodyFramesTf body_frames_tf;
@@ -22,10 +23,11 @@ int main(int argc, char** argv) {
     serpent::PointcloudFormatter pointcloud_formatter;
     serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
     serpent::Registration registration;
-    serpent::StereoFactorFinder stereo_factor_finder;
+    if (nh.param<bool>("optimisation/factors/stereo", true)) {
+        serpent::StereoFactorFinder stereo_factor_finder;
+    }
 
     // Start the Node
-    ros::NodeHandle nh("~");
     const int threads = nh.param<int>("threads", 4);
     if (threads < 1) {
         throw std::runtime_error("Thread count must be >= 1, was " + std::to_string(threads));

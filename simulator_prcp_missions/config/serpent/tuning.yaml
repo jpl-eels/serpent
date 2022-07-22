@@ -36,6 +36,7 @@ optimisation:
   factors:
     imu: true
     registration: true
+    stereo: false
 
 # Registration
 s2s:

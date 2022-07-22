@@ -32,6 +32,7 @@
     <arg name="rosbag_mission"                  default=""/>
     <arg name="rosbag_data_dir"                 default="$(env HOME)/data/"/>
     <arg name="rosbag_rate"                     default="1"/>
+    <arg name="rosbag_start"                    default="0"/>
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
@@ -84,6 +85,7 @@
         <arg name="mission"  default="$(arg rosbag_mission)"/>
         <arg name="data_dir" default="$(arg rosbag_data_dir)"/>
         <arg name="rate"     default="$(arg rosbag_rate)"/>
+        <arg name="start"    default="$(arg rosbag_start)"/>
     </include>
 
     <!-- RVIZ -->

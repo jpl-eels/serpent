@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="eigen_ros" type="body_frames_tf_node" name="body_frames_tf_node" output="screen">
+        <rosparam command="load" file="$(find snowboard)/config/serpent/snowboard.yaml"/>
+    </node>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="lidar_to_os_sensor_link" output="screen"
+            args="0 0 0 0 0 0 lidar os_sensor"/>
+</launch>
