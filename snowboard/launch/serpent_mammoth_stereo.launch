@@ -1,19 +1,13 @@
 <launch>
+    <arg name="rate"     default="1"/>
     <arg name="stereo_camera" default="snowboard_left"/>
-
-    <!-- Split Images -->
-    <include file="$(find snowboard)/launch/split_images.launch"/>
-
-    <!-- Undistort Stereo -->
-    <include file="$(find snowboard)/launch/undistort_stereo.launch">
-        <arg name="stereo_camera" default="$(arg stereo_camera)"/>
-    </include>
     
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
         <!-- Playback -->
         <arg name="rosbag_mission"  default="replaced_timestamps_2022-03-21-21-49-07"/>
         <arg name="data_dir"        default="$(env HOME)/data/jpl_snowboard/2022-03-21_image_imu_dataset"/>
+        <arg name="rate"            default="$(arg rate)"/>
 
         <!-- Stereo Camera -->
         <arg name="stereo_camera"   default="$(arg stereo_camera)"/>

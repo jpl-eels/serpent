@@ -86,6 +86,7 @@ set(NODE_SRC_FILES
     src/registration.cpp
     src/sensor_point_types.cpp
     src/stereo_factor_finder.cpp
+    src/stereo_feature_tracker.cpp
     src/utilities.cpp
 )
 

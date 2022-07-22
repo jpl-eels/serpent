@@ -1,20 +1,28 @@
 <launch>
     <!-- Playback -->
     <arg name="mission"  default="mammoth_outdoor"/>
-    <arg name="rosbag_mission"  default="imu_prepared_fixed_points_night_lidar_no_images"/>
-    <arg name="data_dir" default="$(env HOME)/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31"/>
+    <arg name="rosbag_mission"  default=""/>
+    <arg name="data_dir" default=""/>
     <arg name="rate"     default="1"/>
 
     <!-- SERPENT -->
     <arg name="use_gdb"         default="false"/>
     <arg name="use_callgrind"   default="false"/>
     <arg name="threads"         default="8"/>
-    <arg name="stereo_camera" default="snowboard_left"/>
+    <arg name="stereo_camera"   default="snowboard_left"/>
 
     <!-- IMU transform -->
     <include file="$(find snowboard)/launch/imu_transform.launch">
         <arg name="overwrite_frame" value="true"/>
         <arg name="new_frame"       value="imu"/>
+    </include>
+
+    <!-- Split Images -->
+    <include file="$(find snowboard)/launch/split_images.launch"/>
+
+    <!-- Undistort Stereo -->
+    <include file="$(find snowboard)/launch/undistort_stereo.launch">
+        <arg name="stereo_camera" default="$(arg stereo_camera)"/>
     </include>
 
     <!-- SERPENT -->

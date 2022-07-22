@@ -12,12 +12,23 @@ public:
     static cv::Ptr<DistanceMatchFilter> create(const float descriptor_distance_threshold =
             std::numeric_limits<float>::max());
 
-    std::vector<cv::DMatch> filter(const std::vector<cv::DMatch>& matches) const;
+    std::vector<cv::DMatch> filter(const std::vector<cv::DMatch>& matches);
 
-    static std::vector<cv::DMatch> filter(const std::vector<cv::DMatch>& matches, const float descriptor_distance_threshold);
+    static std::vector<cv::DMatch> filter(const std::vector<cv::DMatch>& matches,
+            const float descriptor_distance_threshold, std::vector<std::size_t>& indices);
+
+    /**
+     * @brief Get indices of match indices from last call to filter (the matches that passed).
+     * 
+     * @return const std::vector<int>& 
+     */
+    const std::vector<std::size_t>& indices() const;
 
 protected:
     float descriptor_distance_threshold;
+
+    // State of last filter estimate
+    std::vector<std::size_t> indices_;
 };
 
 /**
@@ -31,14 +42,24 @@ public:
     static cv::Ptr<StereoMatchFilter> create(const float vertical_pixels_threshold = 1.0);
 
     std::vector<cv::DMatch> filter(const std::vector<cv::KeyPoint>& kp_query, const std::vector<cv::KeyPoint>& kp_train,
-            const std::vector<cv::DMatch>& matches) const;
+            const std::vector<cv::DMatch>& matches);
 
     static std::vector<cv::DMatch> filter(const std::vector<cv::KeyPoint>& kp_query,
             const std::vector<cv::KeyPoint>& kp_train, const std::vector<cv::DMatch>& matches,
-            const float vertical_pixels_threshold);
+            const float vertical_pixels_threshold, std::vector<std::size_t>& indices);
+
+    /**
+     * @brief Get indices of match indices from last call to filter (the matches that passed).
+     * 
+     * @return const std::vector<int>& 
+     */
+    const std::vector<std::size_t>& indices() const;
 
 protected:
     float vertical_pixel_threshold;
+
+    // State of last filter estimate
+    std::vector<std::size_t> indices_;
 };
 
 }

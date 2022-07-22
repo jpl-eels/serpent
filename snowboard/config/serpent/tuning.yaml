@@ -126,7 +126,11 @@ mapping:
 # Stereo Factors
 stereo_factors:
   visualisation:
-    rich_keypoints: false
+    print_stats: true
+    publish_intermediate_results: true
+    rich_keypoints: true
+    rich_matches: true
+  new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     gftt: &gftt

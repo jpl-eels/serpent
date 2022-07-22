@@ -109,18 +109,27 @@ StereoFactorFinder::StereoFactorFinder():
     stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
     stereo_sync.registerCallback(boost::bind(&StereoFactorFinder::stereo_callback, this, _1, _2, _3, _4));
 
-    // Publishers
-    left_image_publisher = it.advertise("stereo/left/detections/image", 1);
-    left_info_publisher = nh.advertise<sensor_msgs::CameraInfo>("stereo/left/detections/camera_info", 1);
-    right_image_publisher = it.advertise("stereo/right/detections/image", 1);
-    right_info_publisher = nh.advertise<sensor_msgs::CameraInfo>("stereo/right/detections/camera_info", 1);
-    image_matches_publisher = it.advertise("stereo/matches/image", 1);
+    // Additional Publishers
+    nh.param<bool>("stereo_factors/visualisation/publish_intermediate_results", publish_intermediate_results, false);
+    if (publish_intermediate_results) {
+        extracted_keypoints_left_publisher = it.advertise("stereo/left/extracted_keypoints/image", 1);
+        extracted_keypoints_right_publisher = it.advertise("stereo/right/extracted_keypoints/image", 1);
+        sof_matches_left_publisher = it.advertise("stereo/left/sof_matches/image", 1);
+        sof_matches_right_publisher = it.advertise("stereo/right/sof_matches/image", 1);
+        merged_keypoints_left_publisher = it.advertise("stereo/left/merged_keypoints/image", 1);
+        merged_keypoints_right_publisher = it.advertise("stereo/right/merged_keypoints/image", 1);
+        raw_matches_publisher = it.advertise("stereo/raw_matches/image", 1);
+        filtered_matches_publisher = it.advertise("stereo/filtered_matches/image", 1);
+        consistent_matches_publisher = it.advertise("stereo/consistent_matches/image", 1);
+    }
 
-    // Test: SOF Publishers
-    prev_left_publisher = it.advertise("stereo/left/sof_prev/image", 1);
-    sof_left_publisher = it.advertise("stereo/left/sof/image", 1);
-    prev_right_publisher = it.advertise("stereo/right/sof_prev/image", 1);
-    sof_right_publisher = it.advertise("stereo/right/sof/image", 1);
+    // Components of tracker
+    cv::Ptr<cv::Feature2D> detector;
+    cv::Ptr<cv::Feature2D> descriptor;
+    cv::Ptr<cv::DescriptorMatcher> matcher;
+    cv::Ptr<cv::SparseOpticalFlow> sparse_optical_flow;
+    cv::Ptr<serpent::DistanceMatchFilter> distance_filter;
+    cv::Ptr<serpent::StereoMatchFilter> stereo_filter;
 
     // Detector
     const std::string feature_type = nh.param<std::string>("stereo_factors/detector/type", "ORB");
@@ -212,12 +221,144 @@ StereoFactorFinder::StereoFactorFinder():
                 + "\' not recognised.");
     }
 
+    // Create tracker
+    const float new_feature_dist_threshold = nh.param<float>("stereo_factors/new_feature_dist_threshold", 5.0);
+    tracker = std::make_unique<StereoFeatureTracker>(detector, descriptor, matcher, sparse_optical_flow,
+            stereo_filter, distance_filter, new_feature_dist_threshold);
+
     // Visualisation
+    nh.param<bool>("stereo_factors/visualisation/print_stats", print_stats, false);
     if (nh.param<bool>("stereo_factors/visualisation/rich_keypoints", true)) {
-        draw_feature_flag = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
+        keypoint_draw_flags = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
     } else {
-        draw_feature_flag = cv::DrawMatchesFlags::DEFAULT;
+        keypoint_draw_flags = cv::DrawMatchesFlags::DEFAULT;
     }
+    if (nh.param<bool>("stereo_factors/visualisation/rich_matches", true)) {
+        match_draw_flags = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
+    } else {
+        match_draw_flags = cv::DrawMatchesFlags::DEFAULT;
+    }
+}
+
+// void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image_left_msg,
+//         const sensor_msgs::ImageConstPtr& image_right_msg, const sensor_msgs::CameraInfoConstPtr& info_left,
+//         const sensor_msgs::CameraInfoConstPtr& info_right) {
+//     // Convert to OpenCV
+//     const cv_bridge::CvImageConstPtr image_left = cv_bridge::toCvShare(image_left_msg);
+//     const cv_bridge::CvImageConstPtr image_right = cv_bridge::toCvShare(image_right_msg);
+
+//     // Feature detection
+//     ros::WallTime tic = ros::WallTime::now();
+//     std::vector<cv::KeyPoint> keypoints_left, keypoints_right;
+//     detector->detect(image_left->image, keypoints_left);
+//     ros::WallDuration detection_time = ros::WallTime::now() - tic;
+//     ROS_INFO_STREAM("Detection of " << keypoints_left.size() << " features in left camera took "
+//             << detection_time.toSec() << " s (" << detection_time.toSec() / keypoints_left.size()  << " s/feature).");
+//     tic = ros::WallTime::now();
+//     detector->detect(image_right->image, keypoints_right);
+//     detection_time = ros::WallTime::now() - tic;
+//     ROS_INFO_STREAM("Detection of " << keypoints_right.size() << " features in right camera took "
+//             << detection_time.toSec() << " s (" << detection_time.toSec() / keypoints_right.size()  << " s/feature).");
+//     cv_bridge::CvImage output_image_left{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
+//     cv_bridge::CvImage output_image_right{image_right->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
+//     cv::drawKeypoints(image_left->image, keypoints_left, output_image_left.image, cv::Scalar::all(-1),
+//             draw_feature_flag);
+//     cv::drawKeypoints(image_right->image, keypoints_right, output_image_right.image, cv::Scalar::all(-1),
+//             draw_feature_flag);
+//     left_image_publisher.publish(output_image_left.toImageMsg());
+//     left_info_publisher.publish(info_left);
+//     right_image_publisher.publish(output_image_right.toImageMsg());
+//     right_info_publisher.publish(info_right);
+
+//     // Feature description
+//     cv::Mat descriptors_left, descriptors_right;
+//     tic = ros::WallTime::now();
+//     descriptor->compute(image_left->image, keypoints_left, descriptors_left);
+//     ROS_INFO_STREAM("Computing descriptors for left camera took " << (ros::WallTime::now() - tic).toSec() << " s.");
+//     tic = ros::WallTime::now();
+//     descriptor->compute(image_right->image, keypoints_right, descriptors_right);
+//     ROS_INFO_STREAM("Computing descriptors for right camera took " << (ros::WallTime::now() - tic).toSec() << " s.");
+
+//     // Feature matching (best match, note knn and radius are also available)
+//     tic = ros::WallTime::now();
+//     std::vector<cv::DMatch> matches;
+//     matcher->match(descriptors_left, descriptors_right, matches);
+//     ROS_INFO_STREAM("Computing matches took " << (ros::WallTime::now() - tic).toSec() << " s.");
+
+//     // Filtering
+//     if (distance_filter) {
+//         matches = distance_filter->filter(matches);
+//     }
+//     matches = stereo_filter->filter(keypoints_left, keypoints_right, matches);
+
+//     // Visualise matches
+//     cv_bridge::CvImage output_image_matches{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
+//     cv::drawMatches(image_left->image, keypoints_left, image_right->image, keypoints_right, matches,
+//             output_image_matches.image, cv::Scalar(0, 255, 0), cv::Scalar(0, 0, 255), std::vector<char>(),
+//             draw_feature_flag);
+//     image_matches_publisher.publish(output_image_matches.toImageMsg());
+
+//     // Convert keypoints to matrix
+//     std::vector<cv::Point2f> points_left, points_right;
+//     cv::KeyPoint::convert(keypoints_left, points_left);
+//     cv::KeyPoint::convert(keypoints_right, points_right);
+//     const cv::Mat points_left_mat(points_left);
+//     const cv::Mat points_right_mat(points_right);
+
+//     if (prev_image_left && prev_image_right) {
+//         // Sparse Optical Flow
+//         cv::Mat sof_points_left_mat, sof_points_right_mat;
+//         cv::Mat sof_status_left_mat, sof_status_right_mat;
+//         cv::Mat sof_error_left_mat, sof_error_right_mat;
+//         sparse_optical_flow->calc(prev_image_left->image, image_left->image, prev_points_left_mat, sof_points_left_mat,
+//                 sof_status_left_mat, sof_error_left_mat);
+//         sparse_optical_flow->calc(prev_image_right->image, image_right->image, prev_points_right_mat,
+//                 sof_points_right_mat, sof_status_right_mat, sof_error_right_mat);
+
+//         // Convert matrix to keypoints
+//         std::vector<cv::Point2f> sof_points_left, sof_points_right;
+//         for (std::size_t i = 0; i < sof_points_left_mat.rows; ++i) {
+//             if (sof_status_left_mat.at<unsigned char>(i) == 1) {
+//                 sof_points_left.push_back(sof_points_left_mat.at<cv::Point2f>(i));
+//             }
+//         }
+//         ROS_INFO_STREAM(sof_points_left.size() << " features retained by SOF in left image");
+//         for (std::size_t i = 0; i < sof_points_right_mat.rows; ++i) {
+//             if (sof_status_right_mat.at<unsigned char>(i) == 1) {
+//                 sof_points_right.push_back(sof_points_right_mat.at<cv::Point2f>(i));
+//             }
+//         }
+//         ROS_INFO_STREAM(sof_points_right.size() << " features retained by SOF in right image");
+//         std::vector<cv::KeyPoint> sof_keypoints_left, sof_keypoints_right;
+//         cv::KeyPoint::convert(sof_points_left, sof_keypoints_left);
+//         cv::KeyPoint::convert(sof_points_right, sof_keypoints_right);
+
+//         // Test: Publish SOF images and previous frames
+//         cv_bridge::CvImage sof_image_left{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
+//         cv_bridge::CvImage sof_image_right{image_right->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
+//         cv::drawKeypoints(image_left->image, sof_keypoints_left, sof_image_left.image, cv::Scalar::all(-1),
+//                 draw_feature_flag);
+//         cv::drawKeypoints(image_right->image, sof_keypoints_right, sof_image_right.image, cv::Scalar::all(-1),
+//                 draw_feature_flag);
+//         sof_left_publisher.publish(sof_image_left.toImageMsg());
+//         sof_right_publisher.publish(sof_image_right.toImageMsg());
+//         prev_left_publisher.publish(prev_output_image_left.toImageMsg());
+//         prev_right_publisher.publish(prev_output_image_right.toImageMsg());
+//     }
+//     prev_image_left = image_left;
+//     prev_image_right = image_right;
+//     prev_points_left_mat = points_left_mat;
+//     prev_points_right_mat = points_right_mat;
+
+//     // Test: previous output images
+//     prev_output_image_left = output_image_left;
+//     prev_output_image_right = output_image_right;
+// }
+
+void publish_image(image_transport::Publisher& publisher, const cv::Mat& image, const std_msgs::Header& header,
+        const std::string& encoding = sensor_msgs::image_encodings::RGB8) {
+    cv_bridge::CvImage output_image{header, encoding, image};
+    publisher.publish(output_image.toImageMsg());
 }
 
 void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image_left_msg,
@@ -227,112 +368,44 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image
     const cv_bridge::CvImageConstPtr image_left = cv_bridge::toCvShare(image_left_msg);
     const cv_bridge::CvImageConstPtr image_right = cv_bridge::toCvShare(image_right_msg);
 
-    // Feature detection
-    ros::WallTime tic = ros::WallTime::now();
-    std::vector<cv::KeyPoint> keypoints_left, keypoints_right;
-    detector->detect(image_left->image, keypoints_left);
-    ros::WallDuration detection_time = ros::WallTime::now() - tic;
-    ROS_INFO_STREAM("Detection of " << keypoints_left.size() << " features in left camera took "
-            << detection_time.toSec() << " s (" << detection_time.toSec() / keypoints_left.size()  << " s/feature).");
-    tic = ros::WallTime::now();
-    detector->detect(image_right->image, keypoints_right);
-    detection_time = ros::WallTime::now() - tic;
-    ROS_INFO_STREAM("Detection of " << keypoints_right.size() << " features in right camera took "
-            << detection_time.toSec() << " s (" << detection_time.toSec() / keypoints_right.size()  << " s/feature).");
-    cv_bridge::CvImage output_image_left{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
-    cv_bridge::CvImage output_image_right{image_right->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
-    cv::drawKeypoints(image_left->image, keypoints_left, output_image_left.image, cv::Scalar::all(-1),
-            draw_feature_flag);
-    cv::drawKeypoints(image_right->image, keypoints_right, output_image_right.image, cv::Scalar::all(-1),
-            draw_feature_flag);
-    left_image_publisher.publish(output_image_left.toImageMsg());
-    left_info_publisher.publish(info_left);
-    right_image_publisher.publish(output_image_right.toImageMsg());
-    right_info_publisher.publish(info_right);
-
-    // Feature description
-    cv::Mat descriptors_left, descriptors_right;
-    tic = ros::WallTime::now();
-    descriptor->compute(image_left->image, keypoints_left, descriptors_left);
-    ROS_INFO_STREAM("Computing descriptors for left camera took " << (ros::WallTime::now() - tic).toSec() << " s.");
-    tic = ros::WallTime::now();
-    descriptor->compute(image_right->image, keypoints_right, descriptors_right);
-    ROS_INFO_STREAM("Computing descriptors for right camera took " << (ros::WallTime::now() - tic).toSec() << " s.");
-
-    // Feature matching (best match, note knn and radius are also available)
-    tic = ros::WallTime::now();
-    std::vector<cv::DMatch> matches;
-    matcher->match(descriptors_left, descriptors_right, matches);
-    ROS_INFO_STREAM("Computing matches took " << (ros::WallTime::now() - tic).toSec() << " s.");
-
-    // Filtering
-    if (distance_filter) {
-        matches = distance_filter->filter(matches);
+    // Optional introspection arguments
+    StereoFeatureTracker::Statistics stats;
+    std::optional<std::reference_wrapper<StereoFeatureTracker::Statistics>> stats_ref = std::nullopt;
+    if (print_stats) {
+        stats_ref = stats;
     }
-    matches = stereo_filter->filter(keypoints_left, keypoints_right, matches);
-
-    // Visualise matches
-    cv_bridge::CvImage output_image_matches{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
-    cv::drawMatches(image_left->image, keypoints_left, image_right->image, keypoints_right, matches,
-            output_image_matches.image, cv::Scalar(0, 255, 0), cv::Scalar(0, 0, 255), std::vector<char>(),
-            draw_feature_flag);
-    image_matches_publisher.publish(output_image_matches.toImageMsg());
-
-    // Convert keypoints to matrix
-    std::vector<cv::Point2f> points_left, points_right;
-    cv::KeyPoint::convert(keypoints_left, points_left);
-    cv::KeyPoint::convert(keypoints_right, points_right);
-    const cv::Mat points_left_mat(points_left);
-    const cv::Mat points_right_mat(points_right);
-
-    if (prev_image_left && prev_image_right) {
-        // Sparse Optical Flow
-        cv::Mat sof_points_left_mat, sof_points_right_mat;
-        cv::Mat sof_status_left_mat, sof_status_right_mat;
-        cv::Mat sof_error_left_mat, sof_error_right_mat;
-        sparse_optical_flow->calc(prev_image_left->image, image_left->image, prev_points_left_mat, sof_points_left_mat,
-                sof_status_left_mat, sof_error_left_mat);
-        sparse_optical_flow->calc(prev_image_right->image, image_right->image, prev_points_right_mat,
-                sof_points_right_mat, sof_status_right_mat, sof_error_right_mat);
-
-        // Convert matrix to keypoints
-        std::vector<cv::Point2f> sof_points_left, sof_points_right;
-        for (std::size_t i = 0; i < sof_points_left_mat.rows; ++i) {
-            if (sof_status_left_mat.at<unsigned char>(i) == 1) {
-                sof_points_left.push_back(sof_points_left_mat.at<cv::Point2f>(i));
-            }
-        }
-        ROS_INFO_STREAM(sof_points_left.size() << " features retained by SOF in left image");
-        for (std::size_t i = 0; i < sof_points_right_mat.rows; ++i) {
-            if (sof_status_right_mat.at<unsigned char>(i) == 1) {
-                sof_points_right.push_back(sof_points_right_mat.at<cv::Point2f>(i));
-            }
-        }
-        ROS_INFO_STREAM(sof_points_right.size() << " features retained by SOF in right image");
-        std::vector<cv::KeyPoint> sof_keypoints_left, sof_keypoints_right;
-        cv::KeyPoint::convert(sof_points_left, sof_keypoints_left);
-        cv::KeyPoint::convert(sof_points_right, sof_keypoints_right);
-
-        // Test: Publish SOF images and previous frames
-        cv_bridge::CvImage sof_image_left{image_left->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
-        cv_bridge::CvImage sof_image_right{image_right->header, sensor_msgs::image_encodings::TYPE_8UC3, cv::Mat()};
-        cv::drawKeypoints(image_left->image, sof_keypoints_left, sof_image_left.image, cv::Scalar::all(-1),
-                draw_feature_flag);
-        cv::drawKeypoints(image_right->image, sof_keypoints_right, sof_image_right.image, cv::Scalar::all(-1),
-                draw_feature_flag);
-        sof_left_publisher.publish(sof_image_left.toImageMsg());
-        sof_right_publisher.publish(sof_image_right.toImageMsg());
-        prev_left_publisher.publish(prev_output_image_left.toImageMsg());
-        prev_right_publisher.publish(prev_output_image_right.toImageMsg());
+    StereoFeatureTracker::IntermediateImages intermediate_images;
+    std::optional<std::reference_wrapper<StereoFeatureTracker::IntermediateImages>> intermediate_images_ref =
+            std::nullopt;
+    if (publish_intermediate_results) {
+        intermediate_images.keypoint_draw_flags = keypoint_draw_flags;
+        intermediate_images.match_draw_flags = match_draw_flags;
+        intermediate_images_ref = intermediate_images;
     }
-    prev_image_left = image_left;
-    prev_image_right = image_right;
-    prev_points_left_mat = points_left_mat;
-    prev_points_right_mat = points_right_mat;
+    
+    // Run processing pipeline
+    auto tracked_matches = tracker->process(image_left->image, image_right->image, stats_ref, intermediate_images_ref);
 
-    // Test: previous output images
-    prev_output_image_left = output_image_left;
-    prev_output_image_right = output_image_right;
+    // Optional printing and publishing of internal information
+    if (print_stats) {
+        ROS_INFO_STREAM(stats.to_string());
+    }
+    if (publish_intermediate_results) {
+        const std_msgs::Header& header = image_left->header;
+        publish_image(extracted_keypoints_left_publisher, intermediate_images.extracted_keypoints[0], header);
+        publish_image(extracted_keypoints_right_publisher, intermediate_images.extracted_keypoints[1], header);
+        publish_image(sof_matches_left_publisher, intermediate_images.sof_matches[0], header);
+        publish_image(sof_matches_right_publisher, intermediate_images.sof_matches[1], header);
+        publish_image(merged_keypoints_left_publisher, intermediate_images.merged_keypoints[0], header);
+        publish_image(merged_keypoints_right_publisher, intermediate_images.merged_keypoints[1], header);
+        publish_image(raw_matches_publisher, intermediate_images.raw_matches, header);
+        publish_image(filtered_matches_publisher, intermediate_images.filtered_matches, header);
+        publish_image(consistent_matches_publisher, intermediate_images.consistent_matches, header);
+    }
+
+    // Keep images in scope
+    previous_image_left = image_left;
+    previous_image_right = image_right;
 }
 
 }

@@ -27,7 +27,7 @@ isam2:
   relinearize_threshold: 0.1
   relinearize_skip: 10
   enable_relinearization: true
-  evaluate_nonlinear_error: true
+  evaluate_nonlinear_error: false
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
@@ -126,7 +126,11 @@ mapping:
 # Stereo Factors
 stereo_factors:
   visualisation:
+    print_stats: false
+    publish_intermediate_results: false
     rich_keypoints: true
+    rich_matches: true
+  new_feature_dist_threshold: 5.0
   detector:
     type: "ORB" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     gftt: &gftt

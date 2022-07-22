@@ -1,7 +1,7 @@
 #ifndef SERPENT_STEREO_FACTOR_FINDER_HPP
 #define SERPENT_STEREO_FACTOR_FINDER_HPP
 
-#include "serpent/match_filters.hpp"
+#include "serpent/stereo_feature_tracker.hpp"
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <message_filters/subscriber.h>
@@ -31,38 +31,29 @@ private:
     message_filters::Subscriber<sensor_msgs::CameraInfo> right_info_subcriber;
     message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo,
             sensor_msgs::CameraInfo> stereo_sync;
-    image_transport::Publisher left_image_publisher;
-    ros::Publisher left_info_publisher;
-    image_transport::Publisher right_image_publisher;
-    ros::Publisher right_info_publisher;
-    image_transport::Publisher image_matches_publisher;
-
-    // Debug
-    image_transport::Publisher prev_left_publisher;
-    image_transport::Publisher sof_left_publisher;
-    image_transport::Publisher prev_right_publisher;
-    image_transport::Publisher sof_right_publisher;
+    //// Intermediate Results
+    image_transport::Publisher extracted_keypoints_left_publisher;
+    image_transport::Publisher extracted_keypoints_right_publisher;
+    image_transport::Publisher sof_matches_left_publisher;
+    image_transport::Publisher sof_matches_right_publisher;
+    image_transport::Publisher merged_keypoints_left_publisher;
+    image_transport::Publisher merged_keypoints_right_publisher;
+    image_transport::Publisher raw_matches_publisher;
+    image_transport::Publisher filtered_matches_publisher;
+    image_transport::Publisher consistent_matches_publisher;
 
     //// Visualisation
-    cv::DrawMatchesFlags draw_feature_flag;
+    bool print_stats;
+    bool publish_intermediate_results;
+    cv::DrawMatchesFlags keypoint_draw_flags;
+    cv::DrawMatchesFlags match_draw_flags;
 
-    //// Algorithms
-    cv::Ptr<cv::Feature2D> detector;
-    cv::Ptr<cv::Feature2D> descriptor;
-    cv::Ptr<cv::DescriptorMatcher> matcher;
-    cv::Ptr<serpent::DistanceMatchFilter> distance_filter;
-    cv::Ptr<serpent::StereoMatchFilter> stereo_filter;
-    cv::Ptr<cv::SparseOpticalFlow> sparse_optical_flow;
+    // Tracker
+    std::unique_ptr<StereoFeatureTracker> tracker;
 
-    //// Previous frame data
-    cv_bridge::CvImageConstPtr prev_image_left;
-    cv_bridge::CvImageConstPtr prev_image_right;
-    cv::Mat prev_points_left_mat;
-    cv::Mat prev_points_right_mat;
-
-    // Test: previous frames with keypoints
-    cv_bridge::CvImage prev_output_image_left;
-    cv_bridge::CvImage prev_output_image_right;
+    // Previous images (must be kept in scope)
+    cv_bridge::CvImageConstPtr previous_image_left;
+    cv_bridge::CvImageConstPtr previous_image_right;
 };
 
 }
