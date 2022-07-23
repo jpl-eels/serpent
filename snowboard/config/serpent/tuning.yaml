@@ -36,7 +36,7 @@ optimisation:
   factors:
     imu: false
     registration: true
-    stereo: false
+    stereo: true
 
 # Registration
 s2s:
@@ -83,7 +83,7 @@ s2m:
     rotation: 0.0174533 # 1 deg
     translation: 1.0e-2  # 10 mm
     jacobian_augmentation: true
-  enabled: true
+  enabled: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 20
@@ -133,7 +133,7 @@ stereo_factors:
     rich_matches: true
   new_feature_dist_threshold: 5.0
   detector:
-    type: "GFTT" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    type: "ORB" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     gftt: &gftt
       max_corners: 100
       quality_level: 0.01

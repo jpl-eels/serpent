@@ -18,6 +18,7 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
+    <arg name="rqt_stereo"                      default="true"/>
 
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
@@ -89,9 +90,13 @@
     </include>
 
     <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
 
     <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="rqt_gui" output="screen"
+    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
             args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
+
+    <!-- RQT Stereo -->
+    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
+            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
 </launch>

@@ -1,11 +1,13 @@
 <launch>
     <arg name="rate"     default="1"/>
+    <arg name="start"    default="30"/>
 
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
         <!-- Playback -->
-        <arg name="rosbag_mission"  default="imu_prepared_2022-07-13-21-46-05"/>
+        <arg name="rosbag_mission"  default="replaced_timestamps_imu_prepared_2022-07-13-21-46-05"/>
         <arg name="data_dir"        default="$(env HOME)/data/jpl_snowboard/ice_rink_data"/>
         <arg name="rate"            default="$(arg rate)"/>
+        <arg name="start"           default="$(arg start)"/>
     </include>
 </launch>
