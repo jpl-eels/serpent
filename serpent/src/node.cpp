@@ -8,6 +8,7 @@
 #include "serpent/stereo_factor_finder.hpp"
 #include <eigen_ros/body_frames_tf.hpp>
 #include <ros/ros.h>
+#include <memory>
 
 int main(int argc, char** argv) {
     // Initialise ROS
@@ -23,8 +24,9 @@ int main(int argc, char** argv) {
     serpent::PointcloudFormatter pointcloud_formatter;
     serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
     serpent::Registration registration;
+    std::unique_ptr<serpent::StereoFactorFinder> stereo_factor_finder;
     if (nh.param<bool>("optimisation/factors/stereo", true)) {
-        serpent::StereoFactorFinder stereo_factor_finder;
+        stereo_factor_finder = std::make_unique<serpent::StereoFactorFinder>();
     }
 
     // Start the Node
