@@ -311,18 +311,19 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::track_previous_key
                     previous_match.distance};
             new_track_hypotheses.matches.push_back(match);
 
-            // Add points for the valid matches
-            sof_points[0].push_back(sof_points_mats[0].at<cv::Point2f>(previous_match.queryIdx));
-            sof_points[1].push_back(sof_points_mats[1].at<cv::Point2f>(previous_match.trainIdx));
+            // Add points for the valid matches, keeping the keypoint properties that SOF loses
+            const cv::KeyPoint& previous_keypoint_l = previous_track_data.keypoints[0][previous_match.queryIdx];
+            const cv::KeyPoint& previous_keypoint_r = previous_track_data.keypoints[1][previous_match.trainIdx];
+            new_track_hypotheses.keypoints[0].emplace_back(sof_points_mats[0].at<cv::Point2f>(previous_match.queryIdx),
+                    previous_keypoint_l.size, previous_keypoint_l.angle, previous_keypoint_l.response,
+                    previous_keypoint_l.octave, previous_keypoint_l.class_id);
+            new_track_hypotheses.keypoints[1].emplace_back(sof_points_mats[1].at<cv::Point2f>(previous_match.trainIdx),
+                    previous_keypoint_r.size, previous_keypoint_r.angle, previous_keypoint_r.response,
+                    previous_keypoint_r.octave, previous_keypoint_r.class_id);
 
             // Keep the match id
             new_track_hypotheses.match_ids.push_back(previous_track_data.match_ids[i]);
         }
-    }
-
-    // Convert points to keypoints
-    for (std::size_t lr = 0; lr < 2; ++lr) {
-        cv::KeyPoint::convert(sof_points[lr], new_track_hypotheses.keypoints[lr]);
     }
 
     return new_track_hypotheses;
