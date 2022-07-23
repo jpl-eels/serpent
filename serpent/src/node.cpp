@@ -1,4 +1,4 @@
-#include "serpent/li_frontend.hpp"
+#include "serpent/frontend.hpp"
 #include "serpent/mapping.hpp"
 #include "serpent/optimisation.hpp"
 #include "serpent/pointcloud_filter.hpp"
@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 
     // Initialise Modules
     eigen_ros::BodyFramesTf body_frames_tf;
-    serpent::LIFrontend frontend;
+    serpent::Frontend frontend;
     serpent::Mapping mapping;
     serpent::Optimisation optimisation;
     serpent::PointcloudFilter pointcloud_filter;

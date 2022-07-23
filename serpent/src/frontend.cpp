@@ -1,4 +1,4 @@
-#include "serpent/li_frontend.hpp"
+#include "serpent/frontend.hpp"
 #include "serpent/utilities.hpp"
 #include "serpent/ImuArray.h"
 #include <eigen_ext/covariance.hpp>
@@ -13,7 +13,7 @@
 
 namespace serpent {
 
-LIFrontend::LIFrontend():
+Frontend::Frontend():
     nh("~"), optimised_odometry_sync(10), last_preint_imu_timestamp(0.0), initialised(false)
 {
     // Publishers
@@ -23,13 +23,13 @@ LIFrontend::LIFrontend():
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("output/odometry", 1);
 
     // Subscribers
-    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 1000, &LIFrontend::imu_callback, this);
+    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 1000, &Frontend::imu_callback, this);
     imu_biases_subscriber.subscribe(nh, "optimisation/imu_biases", 10);
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
-    optimised_odometry_sync.registerCallback(boost::bind(&LIFrontend::optimised_odometry_callback, this, _1, _2));
+    optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
-            &LIFrontend::pointcloud_callback, this);
+            &Frontend::pointcloud_callback, this);
 
     // Preintegration parameters
     nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
@@ -59,7 +59,7 @@ LIFrontend::LIFrontend():
     preintegration_params->setBodyPSensor(body_to_imu);
 }
 
-void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
+void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     // Convert IMU to pointcloud frame using extrinsics
     eigen_ros::Imu imu = eigen_ros::from_ros<eigen_ros::Imu>(*msg);
     if (overwrite_imu_covariance) {
@@ -110,7 +110,7 @@ void LIFrontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     }
 }
 
-void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
+void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
     ROS_INFO_STREAM("Received pointcloud " << msg->header.seq << " with timestamp " << pointcloud_start);
@@ -259,7 +259,7 @@ void LIFrontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     initialised = true;
 }
 
-void LIFrontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& imu_biases_msg,
+void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& imu_biases_msg,
         const nav_msgs::Odometry::ConstPtr& optimised_odometry_msg) {
     std::lock_guard<std::mutex> guard{optimised_odometry_mutex};
 

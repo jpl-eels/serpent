@@ -74,7 +74,7 @@ set(NODE ${PROJECT_NAME}_node)
 
 set(NODE_SRC_FILES
     src/graph_manager.cpp
-    src/li_frontend.cpp
+    src/frontend.cpp
     src/mapping.cpp
     src/match_filters.cpp
     src/node.cpp

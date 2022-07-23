@@ -1,5 +1,5 @@
-#ifndef SERPENT_LI_FRONTEND_HPP
-#define SERPENT_LI_FRONTEND_HPP
+#ifndef SERPENT_FRONTEND_HPP
+#define SERPENT_FRONTEND_HPP
 
 #include "serpent/ImuBiases.h"
 #include <eigen_ros/body_frames.hpp>
@@ -21,9 +21,9 @@
 
 namespace serpent {
 
-class LIFrontend {
+class Frontend {
 public:
-    explicit LIFrontend();
+    explicit Frontend();
 
 private:
     /**
