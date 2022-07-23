@@ -102,10 +102,10 @@ StereoFactorFinder::StereoFactorFinder():
     nh("~"), it(nh), stereo_sync(10)
 {
     // Subscribers
-    left_image_subcriber.subscribe(nh, "input/stereo/left/image", 10);
-    right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
-    left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
-    right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
+    left_image_subcriber.subscribe(nh, "stereo/left/image", 10);
+    right_image_subcriber.subscribe(nh, "stereo/right/image", 10);
+    left_info_subcriber.subscribe(nh, "stereo/left/camera_info", 10);
+    right_info_subcriber.subscribe(nh, "stereo/right/camera_info", 10);
     stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
     stereo_sync.registerCallback(boost::bind(&StereoFactorFinder::stereo_callback, this, _1, _2, _3, _4));
 
@@ -273,7 +273,8 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image
     // Run processing pipeline
     const ros::WallTime tic = ros::WallTime::now();
     auto tracked_matches = tracker->process(image_left->image, image_right->image, stats_ref, intermediate_images_ref);
-    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec() << " seconds.");
+    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec() << " seconds for stereo"
+            " data at t = " << image_left->header.stamp);
 
     // Optional printing and publishing of internal information
     if (print_stats) {

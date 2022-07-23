@@ -14,7 +14,8 @@
 namespace serpent {
 
 Frontend::Frontend():
-    nh("~"), optimised_odometry_sync(10), last_preint_imu_timestamp(0.0), initialised(false)
+    nh("~"), optimised_odometry_sync(10), it(nh), stereo_sync(10), last_preint_imu_timestamp(0.0), initialised(false),
+    publish_next_stereo(false)
 {
     // Publishers
     deskewed_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("frontend/deskewed_pointcloud", 1);
@@ -30,6 +31,25 @@ Frontend::Frontend():
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
             &Frontend::pointcloud_callback, this);
+    
+    // Stereo data
+    nh.param<bool>("optimisation/factors/stereo", stereo_enabled, true);
+    if (stereo_enabled) {
+        // Publishers
+        left_image_publisher = it.advertise("stereo/left/image", 1);
+        right_image_publisher = it.advertise("stereo/right/image", 1);
+        left_info_publisher = nh.advertise<sensor_msgs::CameraInfo>("stereo/left/camera_info", 1);
+        right_info_publisher = nh.advertise<sensor_msgs::CameraInfo>("stereo/right/camera_info", 1);
+
+        // Subscribers
+        left_image_subcriber.subscribe(nh, "input/stereo/left/image", 10);
+        right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
+        left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
+        right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
+        stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber,
+                right_info_subcriber);
+        stereo_sync.registerCallback(boost::bind(&Frontend::stereo_callback, this, _1, _2, _3, _4));
+    }
 
     // Preintegration parameters
     nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
@@ -110,12 +130,67 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     }
 }
 
+void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& imu_biases_msg,
+        const nav_msgs::Odometry::ConstPtr& optimised_odometry_msg) {
+    std::lock_guard<std::mutex> guard{optimised_odometry_mutex};
+
+    // Save optimised odometry 
+    world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
+    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
+            world_odometry.twist.linear);
+
+    // Publish map to body TF at t_i-1
+    geometry_msgs::TransformStamped tf;
+    tf.header.stamp = optimised_odometry_msg->header.stamp;
+    tf.header.frame_id = "map";
+    tf.child_frame_id = body_frames.body_frame();
+    tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
+    tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
+    tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
+    tf.transform.rotation = optimised_odometry_msg->pose.pose.orientation;
+    tf_broadcaster.sendTransform(tf);
+
+    // Save biases
+    from_ros(*imu_biases_msg, imu_biases);
+    imu_bias_timestamp = imu_biases_msg->header.stamp;
+
+    // Create new IMU integrator with new biases for IMU-rate odometry
+    preintegrated_imu = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_biases);
+    last_preint_imu_timestamp = imu_biases_msg->header.stamp;
+
+    // Integrate IMU messages after last_preint_imu_timestamp
+    for (const auto& imu : imu_buffer) {
+        if (imu.timestamp > last_preint_imu_timestamp) {
+            const double dt = (imu.timestamp - last_preint_imu_timestamp).toSec();
+            last_preint_imu_timestamp = imu.timestamp;
+            preintegrated_imu->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+        }
+    }
+}
+
 void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
     ROS_INFO_STREAM("Received pointcloud " << msg->header.seq << " with timestamp " << pointcloud_start);
     if (pct::empty(*msg)) {
         throw std::runtime_error("Handling of empty pointclouds not yet supported");
+    }
+
+    // Publish first stereo data after pointcloud timestamp
+    if (stereo_enabled) {
+        std::lock_guard<std::mutex> guard{stereo_mutex};
+        // Remove old data
+        while (!stereo_data.empty() && stereo_data.front().timestamp() < pointcloud_start) {
+            stereo_data.pop_front();
+        }
+        // Publish stereo data or inform stereo thread to publish next received data
+        if (stereo_data.empty()) {
+            publish_next_stereo = true;
+            publish_next_stereo_timestamp = pointcloud_start;
+        } else {
+            publish_stereo_data(stereo_data.front(), pointcloud_start);
+            stereo_data.pop_front();
+        }
     }
 
     // Sleep until IMU message after scan start time
@@ -259,41 +334,43 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     initialised = true;
 }
 
-void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& imu_biases_msg,
-        const nav_msgs::Odometry::ConstPtr& optimised_odometry_msg) {
-    std::lock_guard<std::mutex> guard{optimised_odometry_mutex};
+void Frontend::publish_stereo_data(const StereoData& data, const ros::Time& timestamp) {
+    if (timestamp == ros::Time()) {
+        left_image_publisher.publish(data.left_image);
+        right_image_publisher.publish(data.right_image);
+        left_info_publisher.publish(data.left_info);
+        right_info_publisher.publish(data.right_info);
+        ROS_INFO_STREAM("Re-publishing stereo data at its original timestamp");
+    } else {
+        // Changing timestamp requires a copy
+        sensor_msgs::ImagePtr left_image = boost::make_shared<sensor_msgs::Image>(*data.left_image);
+        left_image->header.stamp = timestamp;
+        sensor_msgs::ImagePtr right_image = boost::make_shared<sensor_msgs::Image>(*data.right_image);
+        right_image->header.stamp = timestamp;
+        sensor_msgs::CameraInfoPtr left_info = boost::make_shared<sensor_msgs::CameraInfo>(*data.left_info);
+        left_info->header.stamp = timestamp;
+        sensor_msgs::CameraInfoPtr right_info = boost::make_shared<sensor_msgs::CameraInfo>(*data.right_info);
+        right_info->header.stamp = timestamp;
+        left_image_publisher.publish(left_image);
+        right_image_publisher.publish(right_image);
+        left_info_publisher.publish(left_info);
+        right_info_publisher.publish(right_info);
+        ROS_INFO_STREAM("Re-publishing stereo data with new timestamp = " << timestamp << " (originally "
+                << data.left_image->header.stamp << ", diff = "
+                << (data.left_image->header.stamp - timestamp).toSec() << " s)");
+    }
+}
 
-    // Save optimised odometry 
-    world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
-    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
-            world_odometry.twist.linear);
-
-    // Publish map to body TF at t_i-1
-    geometry_msgs::TransformStamped tf;
-    tf.header.stamp = optimised_odometry_msg->header.stamp;
-    tf.header.frame_id = "map";
-    tf.child_frame_id = body_frames.body_frame();
-    tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
-    tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
-    tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
-    tf.transform.rotation = optimised_odometry_msg->pose.pose.orientation;
-    tf_broadcaster.sendTransform(tf);
-
-    // Save biases
-    from_ros(*imu_biases_msg, imu_biases);
-    imu_bias_timestamp = imu_biases_msg->header.stamp;
-
-    // Create new IMU integrator with new biases for IMU-rate odometry
-    preintegrated_imu = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_biases);
-    last_preint_imu_timestamp = imu_biases_msg->header.stamp;
-
-    // Integrate IMU messages after last_preint_imu_timestamp
-    for (const auto& imu : imu_buffer) {
-        if (imu.timestamp > last_preint_imu_timestamp) {
-            const double dt = (imu.timestamp - last_preint_imu_timestamp).toSec();
-            last_preint_imu_timestamp = imu.timestamp;
-            preintegrated_imu->integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-        }
+void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
+        const sensor_msgs::ImageConstPtr& right_image, const sensor_msgs::CameraInfoConstPtr& left_info,
+        const sensor_msgs::CameraInfoConstPtr& right_info) {
+    std::lock_guard<std::mutex> guard{stereo_mutex};
+    // Publish stereo data or add to queue
+    if (publish_next_stereo) {
+        publish_stereo_data(StereoData{left_image, right_image, left_info, right_info}, publish_next_stereo_timestamp);
+        publish_next_stereo = false;
+    } else {
+        stereo_data.emplace_back(left_image, right_image, left_info, right_info);
     }
 }
 
