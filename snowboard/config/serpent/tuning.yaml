@@ -169,7 +169,7 @@ stereo_factors:
     # TODO: flann options (https://www.ccoderun.ca/programming/doxygen/opencv/structcv_1_1flann_1_1IndexParams.html)
   distance_match_filter:
     enabled: true
-    descriptor_distance_threshold: 25.0
+    descriptor_distance_threshold: 35.0
   stereo_match_filter:
     vertical_pixel_threshold: 25.0
   sparse_optical_flow:

@@ -119,8 +119,10 @@ StereoFactorFinder::StereoFactorFinder():
         merged_keypoints_left_publisher = it.advertise("stereo/left/merged_keypoints/image", 1);
         merged_keypoints_right_publisher = it.advertise("stereo/right/merged_keypoints/image", 1);
         raw_matches_publisher = it.advertise("stereo/raw_matches/image", 1);
-        filtered_matches_publisher = it.advertise("stereo/filtered_matches/image", 1);
-        consistent_matches_publisher = it.advertise("stereo/consistent_matches/image", 1);
+        distance_filtered_matches_publisher = it.advertise("stereo/distance_filtered_matches/image", 1);
+        stereo_filtered_matches_publisher = it.advertise("stereo/stereo_filtered_matches/image", 1);
+        consistent_new_matches_publisher = it.advertise("stereo/consistent_new_matches/image", 1);
+        consistent_tracked_matches_publisher = it.advertise("stereo/consistent_tracked_matches/image", 1);
     }
 
     // Components of tracker
@@ -286,8 +288,10 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image
         publish_image(merged_keypoints_left_publisher, intermediate_images.merged_keypoints[0], header);
         publish_image(merged_keypoints_right_publisher, intermediate_images.merged_keypoints[1], header);
         publish_image(raw_matches_publisher, intermediate_images.raw_matches, header);
-        publish_image(filtered_matches_publisher, intermediate_images.filtered_matches, header);
-        publish_image(consistent_matches_publisher, intermediate_images.consistent_matches, header);
+        publish_image(distance_filtered_matches_publisher, intermediate_images.distance_filtered_matches, header);
+        publish_image(stereo_filtered_matches_publisher, intermediate_images.stereo_filtered_matches, header);
+        publish_image(consistent_new_matches_publisher, intermediate_images.consistent_new_matches, header);
+        publish_image(consistent_tracked_matches_publisher, intermediate_images.consistent_tracked_matches, header);
     }
 
     // Keep images in scope

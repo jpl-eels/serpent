@@ -2,6 +2,7 @@
     <arg name="rate"     default="1"/>
     <arg name="start"    default="0"/>
     <arg name="stereo_camera" default="snowboard_left"/>
+    <arg name="use_gdb" default="false"/>
 
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
@@ -10,5 +11,8 @@
         <arg name="data_dir"        default="$(env HOME)/data/jpl_snowboard/tunnel"/>
         <arg name="rate"            default="$(arg rate)"/>
         <arg name="start"           default="$(arg start)"/>
+
+        <!-- Debugging -->
+        <arg name="use_gdb"           default="$(arg use_gdb)"/>
     </include>
 </launch>

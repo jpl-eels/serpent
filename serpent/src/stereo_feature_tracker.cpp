@@ -1,4 +1,5 @@
 #include "serpent/stereo_feature_tracker.hpp"
+#include <ros/ros.h>
 #include <sstream>
 
 namespace serpent {
@@ -24,11 +25,15 @@ std::string StereoFeatureTracker::Statistics::to_string() const {
             << filtered_extracted_kp_count[1] << "]\n";
     ss << "\t" << "merged kp #: [" << merged_kp_count[0] << ", " << merged_kp_count[1] << "]\n";
     ss << "\t" << "match #: " << match_count << "\n";
-    ss << "\t" << "filtered match #: " << filtered_match_count << "\n";
+    ss << "\t" << "distance filtered match #: " << distance_filtered_match_count << "\n";
+    ss << "\t" << "stereo filtered match #: " << stereo_filtered_match_count << "\n";
     ss << "\t" << "consistent match #: " << consistent_match_count << "\n";
     ss << "\t" << "consistent match id #: " << consistent_match_id_count << "\n";
+    ss << "\t" << "consistent tracked matches #: " << consistent_tracked_matches << "\n";
+    ss << "\t" << "consistent new matches #: " << consistent_new_matches << "\n";
     ss << "\t" << "consistent match kp #: [" << consistent_match_kp_count[0] << ", " << consistent_match_kp_count[1]
             << "]\n";
+    ss << "\t" << "longest tracked match id: " << longest_tracked_match_id << "\n";
     return ss.str();
 }
 
@@ -52,6 +57,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Extract features in both images
     auto keypoints = extract_keypoints(images);
+    ROS_DEBUG_STREAM("Extracted keypoints");
     if (stats) {
         stats->get().extracted_kp_count[0] = keypoints[0].size();
         stats->get().extracted_kp_count[1] = keypoints[1].size();
@@ -66,8 +72,10 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     LRKeyPointMatches new_track_hypotheses;
     if (frame_number > 0) {
         // Track features from previous frame, keeping new keypoints and creating hypothetical new matches
+        LRKeyPoints all_sof_keypoints;
         LRF2FMatches f2f_matches;
-        auto new_track_hypotheses = track_previous_keypoints(images, f2f_matches);
+        new_track_hypotheses = track_previous_keypoints(images, all_sof_keypoints, f2f_matches);
+        ROS_DEBUG_STREAM("Tracked previous keypoints");
         if (stats) {
             stats->get().tracked_kp_count[0] = new_track_hypotheses.keypoints[0].size();
             stats->get().tracked_kp_count[1] = new_track_hypotheses.keypoints[1].size();
@@ -76,16 +84,22 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         }
         if (intermediate_images) {
             for (std::size_t lr = 0; lr < 2; ++lr) {
+                ROS_DEBUG_STREAM("Previous keypoints #: " << previous_track_data.keypoints[lr].size());
+                ROS_DEBUG_STREAM("New Keypoints #: " << all_sof_keypoints[lr].size());
+                for (const auto& match : f2f_matches[lr]) {
+                    ROS_DEBUG_STREAM("f2f_match: [" << match.queryIdx << ", " << match.trainIdx << "]");
+                }
                 cv::drawMatches(previous_images[lr], previous_track_data.keypoints[lr], images[lr],
-                        new_track_hypotheses.keypoints[lr], f2f_matches[lr],
-                        intermediate_images->get().sof_matches[lr], intermediate_images->get().positive_match_colour,
+                        all_sof_keypoints[lr], f2f_matches[lr],
+                        intermediate_images->get().sof_matches[lr], intermediate_images->get().new_match_colour,
                         intermediate_images->get().negative_match_colour,
                         std::vector<char>(), intermediate_images->get().match_draw_flags);
             }
         }
 
         // Remove keypoints too close to those already being tracked
-        keypoints = remove_already_tracked_keypoints(keypoints, new_track_hypotheses);
+        keypoints = remove_already_tracked_keypoints(keypoints, new_track_hypotheses.keypoints);
+        ROS_DEBUG_STREAM("Removed already tracked keypoints");
         if (stats) {
             stats->get().filtered_extracted_kp_count[0] = keypoints[0].size();
             stats->get().filtered_extracted_kp_count[1] = keypoints[1].size();
@@ -93,7 +107,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     }
 
     // Add filtered new keypoints to new track keypoints
-    append_keypoints(keypoints, new_track_hypotheses);
+    append_keypoints(keypoints, new_track_hypotheses.keypoints);
+    ROS_DEBUG_STREAM("Appended keypoints");
     if (stats) {
         stats->get().merged_kp_count[0] = new_track_hypotheses.keypoints[0].size();
         stats->get().merged_kp_count[1] = new_track_hypotheses.keypoints[1].size();
@@ -108,48 +123,89 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Match tracked features in both images
     auto matches = match_tracked_keypoints(images, new_track_hypotheses.keypoints);
+    ROS_DEBUG_STREAM("Matched tracked keypoints");
     if (stats) {
         stats->get().match_count = matches.size();
     }
     if (intermediate_images) {
         cv::drawMatches(images[0], new_track_hypotheses.keypoints[0], images[1], new_track_hypotheses.keypoints[1],
-                matches, intermediate_images->get().raw_matches, intermediate_images->get().positive_match_colour,
+                matches, intermediate_images->get().raw_matches, intermediate_images->get().new_match_colour,
                 intermediate_images->get().negative_match_colour, std::vector<char>(),
                 intermediate_images->get().match_draw_flags);
     }
 
     // Filter matches
-    filter_matches(new_track_hypotheses.keypoints, matches);
+    ROS_DEBUG_STREAM("Filtered matches by distance");
+    // Filter matches by distance
+    if (distance_filter) {
+        matches = distance_filter->filter(matches);
+    }
     if (stats) {
-        stats->get().filtered_match_count = matches.size();
+        stats->get().distance_filtered_match_count = matches.size();
     }
     if (intermediate_images) {
         cv::drawMatches(images[0], new_track_hypotheses.keypoints[0], images[1], new_track_hypotheses.keypoints[1],
-                matches, intermediate_images->get().filtered_matches, intermediate_images->get().positive_match_colour,
-                intermediate_images->get().negative_match_colour, std::vector<char>(),
-                intermediate_images->get().match_draw_flags);
+                matches, intermediate_images->get().distance_filtered_matches,
+                intermediate_images->get().new_match_colour, intermediate_images->get().negative_match_colour,
+                std::vector<char>(), intermediate_images->get().match_draw_flags);
+    }
+
+    // Filter by stereo geometry
+    matches = stereo_filter->filter(new_track_hypotheses.keypoints[0], new_track_hypotheses.keypoints[1], matches);
+    ROS_DEBUG_STREAM("Filtered matches by stereo geometry");
+    if (stats) {
+        stats->get().stereo_filtered_match_count = matches.size();
+    }
+    if (intermediate_images) {
+        cv::drawMatches(images[0], new_track_hypotheses.keypoints[0], images[1], new_track_hypotheses.keypoints[1],
+                matches, intermediate_images->get().stereo_filtered_matches,
+                intermediate_images->get().new_match_colour, intermediate_images->get().negative_match_colour,
+                std::vector<char>(), intermediate_images->get().match_draw_flags);
     }
 
     // Find new and consistent tracked features, and save this as new track data
-    extract_consistent_matches(matches, new_track_hypotheses.matches, new_track_hypotheses.match_ids,
+    const std::size_t consistent_tracked_matches = extract_consistent_matches(matches, new_track_hypotheses.match_ids,
             previous_track_data.matches, previous_track_data.match_ids);
+    ROS_DEBUG_STREAM("Extracted consistent matches");
     if (stats) {
         stats->get().consistent_match_count = previous_track_data.matches.size();
         stats->get().consistent_match_id_count = previous_track_data.match_ids.size();
+        stats->get().consistent_tracked_matches = consistent_tracked_matches;
+        stats->get().consistent_new_matches = stats->get().consistent_match_count - consistent_tracked_matches;
     }
 
     // Extract the keypoints for the consistent matches
     previous_track_data.keypoints = extract_matched_keypoints(new_track_hypotheses.keypoints,
             previous_track_data.matches);
+    ROS_DEBUG_STREAM("Extracted matched keypoints");
     if (stats) {
         stats->get().consistent_match_kp_count[0] = previous_track_data.keypoints[0].size();
         stats->get().consistent_match_kp_count[1] = previous_track_data.keypoints[1].size();
         stats->get().max_match_id = next_match_id - 1;
+        if (previous_track_data.match_ids.size() > 0) {
+            stats->get().longest_tracked_match_id = previous_track_data.match_ids[0];
+        } else {
+            stats->get().longest_tracked_match_id = -1;
+        }
     }
     if (intermediate_images) {
+        // Split matches between tracked and matched
+        LRMatches tracked_matches, new_matches;
+        for (std::size_t i = 0; i < consistent_tracked_matches; ++i) {
+            tracked_matches.push_back(previous_track_data.matches[i]);
+        }
+        for (std::size_t i = consistent_tracked_matches; i < previous_track_data.matches.size(); ++i) {
+            new_matches.push_back(previous_track_data.matches[i]);
+        }
+        // Draw the new matches
         cv::drawMatches(images[0], previous_track_data.keypoints[0], images[1], previous_track_data.keypoints[1],
-                previous_track_data.matches, intermediate_images->get().consistent_matches,
-                intermediate_images->get().positive_match_colour, intermediate_images->get().negative_match_colour,
+                new_matches, intermediate_images->get().consistent_new_matches,
+                intermediate_images->get().new_match_colour, intermediate_images->get().negative_match_colour,
+                std::vector<char>(), intermediate_images->get().match_draw_flags);
+        // Draw the tracked matches
+        cv::drawMatches(images[0], previous_track_data.keypoints[0], images[1], previous_track_data.keypoints[1],
+                tracked_matches, intermediate_images->get().consistent_tracked_matches,
+                intermediate_images->get().tracked_match_colour, intermediate_images->get().negative_match_colour,
                 std::vector<char>(), intermediate_images->get().match_draw_flags);
     }
 
@@ -163,40 +219,36 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     return previous_track_data;
 }
 
-void StereoFeatureTracker::append_keypoints(const LRKeyPoints& keypoints, LRKeyPointMatches& new_track_hypotheses)
+void StereoFeatureTracker::append_keypoints(const LRKeyPoints& keypoints, LRKeyPoints& tracked_keypoints)
         const {
     for (std::size_t lr = 0; lr < 2; ++lr) {
         for (const auto& kp : keypoints[lr]) {
-            new_track_hypotheses.keypoints[lr].push_back(kp);
+            tracked_keypoints[lr].push_back(kp);
         }
     }
 }
 
-void StereoFeatureTracker::extract_consistent_matches(const LRMatches& matches, const LRMatches& match_hypotheses,
+std::size_t StereoFeatureTracker::extract_consistent_matches(const LRMatches& matches,
         const LRMatchIds& match_hypothesis_ids, LRMatches& consistent_matches, LRMatchIds& consistent_match_ids) {
     // Brute force
+    consistent_matches.clear();
+    consistent_match_ids.clear();
+    std::size_t tracked_match_count{0};
     for (std::size_t i = 0; i < matches.size(); ++i) {
         const auto& match = matches[i];
-        bool is_new_match{true};
-        for (const auto& match_hypothesis : match_hypotheses) {
-            // Find match of left image
-            if (match_hypothesis.queryIdx == match.queryIdx) {
-                // Match is related to previous keypoints
-                is_new_match = false;
-                // Add match as consistent if right image index also matches
-                if (match_hypothesis.trainIdx == match.trainIdx) {
-                    consistent_matches.push_back(match);
-                    consistent_match_ids.push_back(match_hypothesis_ids[i]);
-                }
-                break;
+        if (match.queryIdx < match_hypothesis_ids.size()) {
+            // Match has same left and right index means it is a tracked match
+            if (match.queryIdx == match.trainIdx) {
+                consistent_matches.push_back(match);
+                consistent_match_ids.push_back(match_hypothesis_ids[match.queryIdx]);
+                ++tracked_match_count;
             }
-        }
-        // New match
-        if (is_new_match) {
+        } else if (match.trainIdx >= match_hypothesis_ids.size()) {
             consistent_matches.push_back(match);
             consistent_match_ids.push_back(next_match_id++);
         }
     }
+    return tracked_match_count;
 }
 
 StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_keypoints(const LRImages& images) const {
@@ -210,60 +262,39 @@ StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_keypoints(const 
 StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_matched_keypoints(const LRKeyPoints& keypoints,
         LRMatches& matches) {
     LRKeyPoints matched_keypoints;
-    LRMatches updated_matches;
-    for (const auto& match : matches) {
-        const cv::DMatch updated_match{static_cast<int>(matched_keypoints[0].size()),
-                static_cast<int>(matched_keypoints[1].size()), match.distance};
-        updated_matches.push_back(updated_match);
+    for (auto& match : matches) {
         matched_keypoints[0].push_back(keypoints[0][match.queryIdx]);
         matched_keypoints[1].push_back(keypoints[1][match.trainIdx]);
+        match.queryIdx = static_cast<int>(matched_keypoints[0].size()) - 1;
+        match.trainIdx = static_cast<int>(matched_keypoints[1].size()) - 1;
     }
-    matches = updated_matches;
     return matched_keypoints;
-}
-
-/*
-template<typename T, typename I>
-T extract_by_indices(const typename std::vector<T>& v, const typename std::vector<I>& indices) {
-    typename std::vector<T> v_subset;
-    for (const I index : indices) {
-        v_subset.push_back(v.at(index));
-    }
-    return v_subset;
-}
-*/
-
-void StereoFeatureTracker::filter_matches(const LRKeyPoints& keypoints, LRMatches& matches) {
-    // Filter by distance
-    if (distance_filter) {
-        matches = distance_filter->filter(matches);
-    }
-    // Filter by stereo geometry
-    matches = stereo_filter->filter(keypoints[0], keypoints[1], matches);
 }
 
 StereoFeatureTracker::LRMatches StereoFeatureTracker::match_tracked_keypoints(const LRImages& images,
         LRKeyPoints& keypoints) const {
-    LRDescriptors descriptors;
-    for (std::size_t lr = 0; lr < 2; ++lr) {
-        // Feature description
-        descriptor->compute(images[lr], keypoints[lr], descriptors[lr]);
-    }
-
-    // Feature matching (best match, note knn and radius are also available)
     LRMatches matches;
-    matcher->match(descriptors[0], descriptors[1], matches);
+    if (keypoints[0].size() > 0 && keypoints[1].size() > 0) {
+        LRDescriptors descriptors;
+        for (std::size_t lr = 0; lr < 2; ++lr) {
+            // Feature description
+            descriptor->compute(images[lr], keypoints[lr], descriptors[lr]);
+        }
+
+        // Feature matching (best match, note knn and radius are also available)
+        matcher->match(descriptors[0], descriptors[1], matches);
+    }
     return matches;
 }
 
 StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::remove_already_tracked_keypoints(const LRKeyPoints& keypoints,
-        const LRKeyPointMatches& new_track_hypotheses) const {
+        const LRKeyPoints& tracked_keypoints) const {
     // Brute force solution
     LRKeyPoints filtered_keypoints;
     for (std::size_t lr = 0; lr < keypoints.size(); ++lr) {
         for (const auto& kp : keypoints[lr]) {
             bool approximately_near_flag{false};
-            for (const auto& tracked_kp : new_track_hypotheses.keypoints[lr]) {
+            for (const auto& tracked_kp : tracked_keypoints[lr]) {
                 if (approximately_near(tracked_kp, kp, new_feature_sqr_dist_threshold)) {
                     approximately_near_flag = true;
                     break;
@@ -278,37 +309,42 @@ StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::remove_already_tracked_k
 }
 
 StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::track_previous_keypoints(const LRImages& images,
-        LRF2FMatches& f2f_matches) const {
+        LRKeyPoints& all_sof_keypoints, LRF2FMatches& f2f_matches) const {
     LRKeyPointMatches new_track_hypotheses;
     std::array<cv::Mat, 2> sof_points_mats;
     std::array<cv::Mat, 2> sof_status_mats;
     for (std::size_t lr = 0; lr < 2; ++lr) {
-        // Convert keypoints to matrix
-        std::vector<cv::Point2f> prev_points;
-        cv::KeyPoint::convert(previous_track_data.keypoints[lr], prev_points);
-        const cv::Mat prev_points_mat(prev_points);
+        if (previous_track_data.keypoints[lr].size() > 0) {
+            // Convert keypoints to matrix
+            std::vector<cv::Point2f> prev_points;
+            cv::KeyPoint::convert(previous_track_data.keypoints[lr], prev_points);
+            const cv::Mat prev_points_mat(prev_points);
 
-        // Sparse Optical Flow
-        cv::Mat sof_error_mat;
-        sof->calc(previous_images[lr], images[lr], prev_points_mat, sof_points_mats[lr], sof_status_mats[lr],
-                sof_error_mat);
+            // Sparse Optical Flow
+            cv::Mat sof_error_mat;
+            sof->calc(previous_images[lr], images[lr], prev_points_mat, sof_points_mats[lr], sof_status_mats[lr],
+                    sof_error_mat);
 
-        for (std::size_t i = 0; i < sof_status_mats[lr].rows; ++i) {
-            if (sof_status_mats[lr].at<unsigned char>(i) == 1) {
-                f2f_matches[lr].emplace_back(i, i, 0.0f);
+            for (std::size_t i = 0; i < sof_status_mats[lr].rows; ++i) {
+                if (sof_status_mats[lr].at<unsigned char>(i) == 1) {
+                    f2f_matches[lr].emplace_back(i, i, 0.0f);
+                }
+                const auto& previous_keypoint_i = previous_track_data.keypoints[lr][i];
+                all_sof_keypoints[lr].emplace_back(sof_points_mats[lr].at<cv::Point2f>(i), previous_keypoint_i.size,
+                        previous_keypoint_i.angle, previous_keypoint_i.response, previous_keypoint_i.octave,
+                        previous_keypoint_i.class_id);
             }
         }
     }
 
     // Create hypothetical new matches if both status fields were valid
-    std::array<std::vector<cv::Point2f>, 2> sof_points;
     for (std::size_t i = 0; i < previous_track_data.matches.size(); ++i) {
         const auto& previous_match = previous_track_data.matches[i];
         if (sof_status_mats[0].at<unsigned char>(previous_match.queryIdx) == 1 &&
                 sof_status_mats[1].at<unsigned char>(previous_match.trainIdx) == 1) {
             // Create new match with correct new indices, distance is copied although not accurate
-            cv::DMatch match{static_cast<int>(sof_points[0].size()), static_cast<int>(sof_points[1].size()),
-                    previous_match.distance};
+            cv::DMatch match{static_cast<int>(new_track_hypotheses.keypoints[0].size()),
+                    static_cast<int>(new_track_hypotheses.keypoints[1].size()), previous_match.distance};
             new_track_hypotheses.matches.push_back(match);
 
             // Add points for the valid matches, keeping the keypoint properties that SOF loses

@@ -39,8 +39,10 @@ private:
     image_transport::Publisher merged_keypoints_left_publisher;
     image_transport::Publisher merged_keypoints_right_publisher;
     image_transport::Publisher raw_matches_publisher;
-    image_transport::Publisher filtered_matches_publisher;
-    image_transport::Publisher consistent_matches_publisher;
+    image_transport::Publisher distance_filtered_matches_publisher;
+    image_transport::Publisher stereo_filtered_matches_publisher;
+    image_transport::Publisher consistent_new_matches_publisher;
+    image_transport::Publisher consistent_tracked_matches_publisher;
 
     //// Visualisation
     bool print_stats;

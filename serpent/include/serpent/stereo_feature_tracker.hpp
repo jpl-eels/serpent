@@ -34,10 +34,14 @@ public:
         std::array<std::size_t, 2> filtered_extracted_kp_count;
         std::array<std::size_t, 2> merged_kp_count;
         std::size_t match_count;
-        std::size_t filtered_match_count;
+        std::size_t distance_filtered_match_count;
+        std::size_t stereo_filtered_match_count;
         std::size_t consistent_match_count;
         std::size_t consistent_match_id_count;
+        std::size_t consistent_tracked_matches;
+        std::size_t consistent_new_matches;
         std::array<std::size_t, 2> consistent_match_kp_count;
+        int longest_tracked_match_id;
 
         std::string to_string() const;
     };
@@ -47,11 +51,14 @@ public:
         std::array<cv::Mat, 2> sof_matches;
         LRImages merged_keypoints;
         cv::Mat raw_matches;
-        cv::Mat filtered_matches;
-        cv::Mat consistent_matches;
+        cv::Mat distance_filtered_matches;
+        cv::Mat stereo_filtered_matches;
+        cv::Mat consistent_new_matches;
+        cv::Mat consistent_tracked_matches;
 
         cv::Scalar keypoint_colours = cv::Scalar::all(-1);
-        cv::Scalar positive_match_colour = cv::Scalar(0, 255, 0);
+        cv::Scalar new_match_colour = cv::Scalar(0, 255, 0);
+        cv::Scalar tracked_match_colour = cv::Scalar(0, 0, 255);
         cv::Scalar negative_match_colour = cv::Scalar(255, 0, 0);
         cv::DrawMatchesFlags keypoint_draw_flags = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
         cv::DrawMatchesFlags match_draw_flags = cv::DrawMatchesFlags::DEFAULT;
@@ -80,23 +87,49 @@ public:
             std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images = std::nullopt);
 
 private:
-    void append_keypoints(const LRKeyPoints& keypoints, LRKeyPointMatches& new_track_hypotheses) const;
+    void append_keypoints(const LRKeyPoints& keypoints, LRKeyPoints& new_track_hypotheses) const;
 
-    void extract_consistent_matches(const LRMatches& matches, const LRMatches& match_hypotheses,
-            const LRMatchIds& match_hypothesis_ids, LRMatches& consistent_matches, LRMatchIds& consistent_match_ids);
+    /**
+     * @brief Here we rely on the assumption that keypoints with the same index up to the size of match_hypothesis_ids
+     * were matches in the previous frame, saving unnecessary brute force computation.
+     * 
+     * @param matches 
+     * @param match_hypotheses 
+     * @param match_hypothesis_ids 
+     * @param consistent_matches 
+     * @param consistent_match_ids 
+     * @return std::size_t 
+     */
+    std::size_t extract_consistent_matches(const LRMatches& matches, const LRMatchIds& match_hypothesis_ids,
+            LRMatches& consistent_matches, LRMatchIds& consistent_match_ids);
 
     LRKeyPoints extract_keypoints(const LRImages& images) const;
 
+    /**
+     * @brief Extract just the keypoints present in the matches, and update the match indices.
+     * 
+     * @param keypoints 
+     * @param matches 
+     * @return LRKeyPoints 
+     */
     LRKeyPoints extract_matched_keypoints(const LRKeyPoints& keypoints, LRMatches& matches);
-
-    void filter_matches(const LRKeyPoints& keypoints, LRMatches& matches);
 
     LRMatches match_tracked_keypoints(const LRImages& images, LRKeyPoints& keypoints) const;
 
     LRKeyPoints remove_already_tracked_keypoints(const LRKeyPoints& keypoints,
-            const LRKeyPointMatches& new_track_hypotheses) const;
+            const LRKeyPoints& tracked_keypoints) const;
 
-    LRKeyPointMatches track_previous_keypoints(const LRImages& images, LRF2FMatches& f2f_matches) const;
+    /**
+     * @brief Track keypoints from previous images. Only if the keypoints of a match are tracked successfully in both
+     * frames are they kept. Even though the matches are set, they could also be inferred, since keypoints with the same
+     * index were matched previously.
+     * 
+     * @param images 
+     * @param f2f_matches 
+     * @return LRKeyPointMatches 
+     */
+    LRKeyPointMatches track_previous_keypoints(const LRImages& images, LRKeyPoints& all_sof_keypoints,
+            LRF2FMatches& f2f_matches) const;
 
     //// Algorithms
     cv::Ptr<cv::Feature2D> detector;
