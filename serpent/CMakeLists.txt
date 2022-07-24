@@ -37,11 +37,14 @@ add_message_files(
     FILES
         ImuArray.msg
         ImuBiases.msg
+        StereoLandmark.msg
+        StereoLandmarks.msg
 )
 
 generate_messages(
     DEPENDENCIES
         sensor_msgs
+        std_msgs
 )
 
 catkin_package(

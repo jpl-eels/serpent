@@ -9,7 +9,7 @@
 namespace serpent {
 
 Optimisation::Optimisation():
-    nh("~")
+    nh("~"), opt_sync(10)
 {
     // Publishers
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
@@ -23,16 +23,29 @@ Optimisation::Optimisation():
             this);
     initial_odometry_subscriber = nh.subscribe<nav_msgs::Odometry>("frontend/initial_odometry", 1,
             &Optimisation::initial_odometry_callback, this);
-    registration_transform_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform",
-            10, &Optimisation::registration_transform_callback, this);
 
     // Factor Configuration
-    nh.param<bool>("optimisation/factors/imu", add_imu_factors, true);
-    nh.param<bool>("optimisation/factors/registration", add_registration_factors, true);
-    ROS_INFO_STREAM("IMU Factors " << (add_imu_factors ? "ENABLED" : "DISABLED"));
-    ROS_INFO_STREAM("Registration Factors " << (add_registration_factors ? "ENABLED" : "DISABLED"));
-    if (!add_imu_factors && !add_registration_factors) {
+    nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
+    nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
+    nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
+    ROS_INFO_STREAM("IMU Factors " << (imu_factors_enabled ? "ENABLED" : "DISABLED"));
+    ROS_INFO_STREAM("Registration Factors " << (registration_factors_enabled ? "ENABLED" : "DISABLED"));
+    if (!imu_factors_enabled && !registration_factors_enabled) {
         throw std::runtime_error("Must have at least one of imu and registration factors enabled");
+    }
+
+    // Optimisation subscribers
+    if (registration_factors_enabled && stereo_factors_enabled) {
+        registration_filter_subscriber.subscribe(nh, "registration/transform", 10);
+        stereo_landmarks_filter_subscriber.subscribe(nh, "stereo/landmarks", 10);
+        opt_sync.connectInput(registration_filter_subscriber, stereo_landmarks_filter_subscriber);
+        opt_sync.registerCallback(boost::bind(&Optimisation::registration_stereo_landmarks_callback, this, _1, _2));
+    } else if (registration_factors_enabled) {
+        registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
+                &Optimisation::registration_callback, this);
+    } else if (stereo_factors_enabled) {
+        stereo_landmarks_subscriber = nh.subscribe<serpent::StereoLandmarks>("stereo/landmarks", 10,
+                &Optimisation::stereo_landmarks_callback, this);
     }
     
     // Preintegration parameters
@@ -81,6 +94,39 @@ Optimisation::Optimisation():
     }
     isam2_params.print();
     gm = std::make_unique<ISAM2GraphManager>(isam2_params);
+    gm->set_named_key("imu");
+    gm->set_named_key("reg");
+    gm->set_named_key("stereo");
+}
+
+void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
+    gm->increment("reg");
+    // Extract registration information
+    const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
+    const gtsam::Pose3 registration_pose_gtsam = gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation),
+            registration_pose.data.position);
+    auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
+    ROS_INFO_STREAM("Registration covariance sigmas: " << to_flat_string(registration_covariance->sigmas()));
+    if (registration_covariance->sigmas().minCoeff() == 0.0) {
+        throw std::runtime_error("Registration noise sigmas contained a zero.");
+    }
+
+    // Update state
+    gm->set_pose("reg", gm->pose("reg", -1) * registration_pose_gtsam);
+    if (gm->timestamp("reg") != msg->header.stamp) {
+        throw std::runtime_error("Timestamps did not match [Graph: " + std::to_string(gm->timestamp("reg").toSec())
+                + ", Transform:" + std::to_string(msg->header.stamp.toSec()) + "]. Something went wrong.");
+    }
+    
+    // Add the registration factor
+    const int reg_key = gm->key("reg");
+    gm->create_between_pose_factor(reg_key, registration_pose_gtsam, registration_covariance);
+    ROS_INFO_STREAM("Created factor: X(" << reg_key - 1 << ") => X(" << reg_key << ")");
+}
+
+void Optimisation::add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& landmarks) {
+    gm->increment("stereo");
+    throw std::runtime_error("Stereo factors not implemented");
 }
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
@@ -160,11 +206,16 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     imu_transform_publisher.publish(imu_transform);
 
     // Add preintegration combined IMU factor (includes bias between factor) to graph
-    if (add_imu_factors) {
+    if (imu_factors_enabled) {
         const int imu_key = gm->key("imu");
         gm->create_combined_imu_factor(imu_key, preintegrated_imu);
         ROS_INFO_STREAM("Created factor: X(" << imu_key - 1 << "), V(" << imu_key - 1  << "), B(" << imu_key - 1 <<
                 ") => X(" << imu_key << "), V(" << imu_key << "), B(" << imu_key << ")");
+
+        // If no other factors, optimise
+        if (!registration_factors_enabled && !stereo_factors_enabled) {
+            optimise_and_publish(imu_key);
+        }
     }
 
     graph_mutex.unlock();
@@ -176,8 +227,6 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
 
     // State manager
     std::lock_guard<std::mutex> guard(graph_mutex);
-    gm->set_named_key("imu");
-    gm->set_named_key("reg");
     gm->set_imu_bias(0, gtsam::imuBias::ConstantBias());
     ROS_WARN_ONCE("DESIGN DECISION: can bias be estimated from initialisation procedure?");
     gm->set_pose(0, gtsam::Pose3(gtsam::Rot3(odometry.pose.orientation), odometry.pose.position));
@@ -193,7 +242,7 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
     gm->create_prior_pose_factor(0, gm->pose(0), prior_pose_noise);
     ROS_INFO_STREAM("Created prior factor: X(" << 0 << ")");
 
-    if (add_imu_factors) {
+    if (imu_factors_enabled) {
         // Prior velocity noise
         auto prior_velocity_noise = gtsam::noiseModel::Gaussian::Covariance(
                 odometry.twist.linear_velocity_covariance());
@@ -256,15 +305,15 @@ void Optimisation::optimise_and_publish(const int key) {
             gm->pose_covariance(key), 3));
     eigen_ros::to_ros(optimised_odometry_msg->twist.twist.linear, gm->velocity(key));
     ROS_WARN_ONCE("TODO: add angular velocity from IMU odometry to optimised odometry");
-    const Eigen::Matrix3d optimised_vel_covariance = add_imu_factors ? gm->velocity_covariance(key)
+    const Eigen::Matrix3d optimised_vel_covariance = imu_factors_enabled ? gm->velocity_covariance(key)
             : Eigen::Matrix3d::Zero();
     ROS_WARN_ONCE("TODO: add linear velocity covariance (optimised_vel_covariance) to optimised odometry");
     ROS_WARN_ONCE("TODO: add angular velocity covariance from IMU odometry to optimised odometry");
     optimised_odometry_publisher.publish(optimised_odometry_msg);
     ROS_INFO_STREAM("Pose:\n" << gm->pose(key).matrix());
     ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << gm->pose_covariance(key));
-    if (add_imu_factors) {
-        ROS_INFO_STREAM("Velocity:\n" << gm->velocity(key));
+    if (imu_factors_enabled) {
+        ROS_INFO_STREAM("Velocity:" << to_flat_string(gm->velocity(key)));
         ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
         ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
         ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
@@ -282,48 +331,65 @@ void Optimisation::optimise_and_publish(const int key) {
     path_changes_publisher.publish(global_path_changes);
 }
 
-void Optimisation::registration_transform_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
+void Optimisation::registration_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     // Add registration transform to graph, update value guess
     std::lock_guard<std::mutex> guard{graph_mutex};
-    gm->increment("reg");
-    if (add_registration_factors) {
-        // Extract registration information
-        const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
-        const gtsam::Pose3 registration_pose_gtsam = gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation),
-                registration_pose.data.position);
-        auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
-        ROS_INFO_STREAM("Registration covariance sigmas: " << to_flat_string(registration_covariance->sigmas()));
-        if (registration_covariance->sigmas().minCoeff() == 0.0) {
-            throw std::runtime_error("Registration noise sigmas contained a zero.");
-        }
 
-        // Update state
-        gm->set_pose("reg", gm->pose("reg", -1) * registration_pose_gtsam);
-        if (gm->timestamp("reg") != msg->header.stamp) {
-            throw std::runtime_error("Timestamps did not match [Graph: " + std::to_string(gm->timestamp("reg").toSec())
-                    + ", Transform:" + std::to_string(msg->header.stamp.toSec()) + "]. Something went wrong.");
-        }
-        
-        // Add the registration factor
-        const int reg_key = gm->key("reg");
-        gm->create_between_pose_factor(reg_key, registration_pose_gtsam, registration_covariance);
-        ROS_INFO_STREAM("Created factor: X(" << reg_key - 1 << ") => X(" << reg_key << ")");
-    }
+    // Integrate registration data
+    add_registration_factor(msg);
 
     // Optimise and publish
     optimise_and_publish(gm->key("reg"));
 
     // Update values that weren't optimised
-    if (!add_imu_factors) {
-        // Set velocity based on transforms
-        const double dt = gm->time_between("reg", "reg", -1).toSec();
-        Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(
-                eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose("reg", -1)),
-                eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose("reg")), dt);
-        ROS_INFO_STREAM("Estimated angular and linear velocities from transforms as:\n" << rates);
-        const Eigen::Vector3d linear_velocity = rates.block<3, 1>(3, 0);
-        gm->set_velocity("reg", linear_velocity);
+    if (!imu_factors_enabled) {
+        update_velocity_from_transforms("reg");
     }
+}
+
+void Optimisation::registration_stereo_landmarks_callback(
+        const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& registration,
+        const serpent::StereoLandmarks::ConstPtr& landmarks) {
+    std::lock_guard<std::mutex> guard{graph_mutex};
+    
+    // Integrate registration data
+    add_registration_factor(registration);
+
+    // Integrate stereo data
+    add_stereo_factors(landmarks);
+
+    // Optimise and publish
+    optimise_and_publish(gm->key("reg"));
+
+    // Update velocity if no IMU factors
+    if (!imu_factors_enabled) {
+        update_velocity_from_transforms("reg");
+    }
+}
+
+void Optimisation::stereo_landmarks_callback(const serpent::StereoLandmarks::ConstPtr& landmarks) {
+    std::lock_guard<std::mutex> guard{graph_mutex};
+    // Integrate stereo data
+    add_stereo_factors(landmarks);
+
+    // Optimise and publish
+    optimise_and_publish(gm->key("stereo"));
+
+    // Update velocity if no IMU factors
+    if (!imu_factors_enabled) {
+        update_velocity_from_transforms("stereo");
+    }
+}
+
+void Optimisation::update_velocity_from_transforms(const std::string& named_key) {
+    // Set velocity based on transforms
+    const double dt = gm->time_between(named_key, named_key, -1).toSec();
+    Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(
+            eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key, -1)),
+            eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key)), dt);
+    ROS_INFO_STREAM("Estimated twist [ang, lin] from transforms as:\n" << to_flat_string(rates));
+    const Eigen::Vector3d linear_velocity = rates.block<3, 1>(3, 0);
+    gm->set_velocity(named_key, linear_velocity);
 }
 
 nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix) {

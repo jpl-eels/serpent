@@ -153,6 +153,7 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     // Save biases
     from_ros(*imu_biases_msg, imu_biases);
     imu_bias_timestamp = imu_biases_msg->header.stamp;
+    ROS_INFO_STREAM("Updated IMU bias at t = " << imu_bias_timestamp);
 
     // Create new IMU integrator with new biases for IMU-rate odometry
     preintegrated_imu = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_biases);
@@ -193,6 +194,16 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         }
     }
 
+    // Wait until previous imu_biases received (before sending publishing IMU S2S)
+    ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
+    if (!protected_sleep(optimised_odometry_mutex, 0.01, false, true, [this]()
+            { return imu_bias_timestamp != previous_pointcloud_start; })) {
+        return;
+    };
+    auto previous_imu_biases = imu_biases;
+    ROS_INFO_STREAM("Acquired previous bias at " << imu_bias_timestamp);
+    optimised_odometry_mutex.unlock();
+
     // Sleep until IMU message after scan start time
     ROS_INFO_STREAM("Waiting for start time IMU message past " << pointcloud_start);
     if (!protected_sleep(imu_mutex, 0.01, false, true, [this, pointcloud_start]()
@@ -216,10 +227,11 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     imu_mutex.unlock();
 
     // Update preintegration parameters, with IMU noise at scan start time
-    optimised_odometry_mutex.lock();
+    // optimised_odometry_mutex.lock();
     ROS_WARN_ONCE("DESIGN DECISION: gravity from IMU measurements?");
     update_preintegration_params(*preintegration_params, imu.linear_acceleration_covariance,
             imu.angular_velocity_covariance);
+    optimised_odometry_mutex.unlock();
 
     // If first time, perform initialisation procedure.
     Eigen::Isometry3d deskew_transform;
@@ -259,14 +271,6 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_WARN_ONCE("DESIGN DECISION: Deskew transform from initialisation procedure is missing. Using identity.");
     }
 
-    // Wait until previous imu_biases received
-    ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
-    if (!protected_sleep(optimised_odometry_mutex, 0.01, true, false, [this]()
-            { return imu_bias_timestamp != previous_pointcloud_start; })) {
-        return;
-    };
-    ROS_INFO_STREAM("Acquired previous bias at " << imu_bias_timestamp);
-
     // Compute scan end time
     const ros::Duration sweep_duration = ros::Duration(pct::max_value<float>(*msg, "t"));
     if (sweep_duration == ros::Duration(0)) {
@@ -280,7 +284,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
         if (initialised) {
             // Create new IMU integrator with new biases for deskewing
-            gtsam::PreintegratedCombinedMeasurements preintegrated_imu_over_scan{preintegration_params, imu_biases};
+            gtsam::PreintegratedCombinedMeasurements preintegrated_imu_over_scan{preintegration_params, previous_imu_biases};
 
             // Sleep until IMU message received after scan end time
             ROS_INFO_STREAM("Waiting for IMU message past " << pointcloud_end);
@@ -308,7 +312,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
                     " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
                     " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
-            const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), imu_biases);
+            const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
             deskew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
         }
     }
@@ -365,6 +369,7 @@ void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
         const sensor_msgs::ImageConstPtr& right_image, const sensor_msgs::CameraInfoConstPtr& left_info,
         const sensor_msgs::CameraInfoConstPtr& right_info) {
     std::lock_guard<std::mutex> guard{stereo_mutex};
+    ROS_INFO_STREAM("Received stereo image at t = " << left_image->header.stamp);
     // Publish stereo data or add to queue
     if (publish_next_stereo) {
         publish_stereo_data(StereoData{left_image, right_image, left_info, right_info}, publish_next_stereo_timestamp);

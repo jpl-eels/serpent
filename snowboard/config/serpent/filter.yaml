@@ -32,5 +32,5 @@ statistical_outlier_removal:
 # Downsample points into cubic voxels of side length equal to leaf_size if at least the minimum points are present
 voxel_grid_filter:
   enabled: true
-  leaf_size: 0.1
+  leaf_size: 0.25
   minimum_points_number_per_voxel: 1

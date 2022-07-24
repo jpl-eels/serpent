@@ -23,7 +23,10 @@ int main(int argc, char** argv) {
     serpent::PointcloudFilter pointcloud_filter;
     serpent::PointcloudFormatter pointcloud_formatter;
     serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
-    serpent::Registration registration;
+    std::unique_ptr<serpent::Registration> registration;
+    if (nh.param<bool>("optimisation/factors/registration", true)) {
+        registration = std::make_unique<serpent::Registration>();
+    }
     std::unique_ptr<serpent::StereoFactorFinder> stereo_factor_finder;
     if (nh.param<bool>("optimisation/factors/stereo", true)) {
         stereo_factor_finder = std::make_unique<serpent::StereoFactorFinder>();

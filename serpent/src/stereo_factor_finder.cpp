@@ -1,4 +1,5 @@
 #include "serpent/stereo_factor_finder.hpp"
+#include "serpent/StereoLandmarks.h"
 #include <sensor_msgs/image_encodings.h>
 
 namespace serpent {
@@ -98,9 +99,27 @@ void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string(
             << "\n\tclass_id: "<< kp.class_id);
 }
 
+void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
+        const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches) {
+    stereo_landmarks.clear();
+    for (std::size_t i = 0; i < stereo_keypoint_matches.matches.size(); ++i) {
+        const auto& match = stereo_keypoint_matches.matches[i];
+        serpent::StereoLandmark stereo_landmark;
+        stereo_landmark.left_x = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.x;
+        stereo_landmark.left_y = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.y;
+        stereo_landmark.right_x = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.x;
+        stereo_landmark.right_y = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.y;
+        stereo_landmark.id = stereo_keypoint_matches.match_ids[i];
+        stereo_landmarks.push_back(stereo_landmark);
+    }
+}
+
 StereoFactorFinder::StereoFactorFinder():
     nh("~"), it(nh), stereo_sync(10)
 {
+    // Publishers
+    stereo_landmarks_publisher = nh.advertise<serpent::StereoLandmarks>("stereo/landmarks", 1);
+
     // Subscribers
     left_image_subcriber.subscribe(nh, "stereo/left/image", 10);
     right_image_subcriber.subscribe(nh, "stereo/right/image", 10);
@@ -248,12 +267,12 @@ void publish_image(image_transport::Publisher& publisher, const cv::Mat& image, 
     publisher.publish(output_image.toImageMsg());
 }
 
-void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image_left_msg,
-        const sensor_msgs::ImageConstPtr& image_right_msg, const sensor_msgs::CameraInfoConstPtr& info_left,
-        const sensor_msgs::CameraInfoConstPtr& info_right) {
+void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_image_msg,
+        const sensor_msgs::ImageConstPtr& right_image_msg, const sensor_msgs::CameraInfoConstPtr& left_info,
+        const sensor_msgs::CameraInfoConstPtr& right_info) {
     // Convert to OpenCV
-    const cv_bridge::CvImageConstPtr image_left = cv_bridge::toCvShare(image_left_msg);
-    const cv_bridge::CvImageConstPtr image_right = cv_bridge::toCvShare(image_right_msg);
+    const cv_bridge::CvImageConstPtr left_image = cv_bridge::toCvShare(left_image_msg);
+    const cv_bridge::CvImageConstPtr right_image = cv_bridge::toCvShare(right_image_msg);
 
     // Optional introspection arguments
     StereoFeatureTracker::Statistics stats;
@@ -272,16 +291,16 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image
     
     // Run processing pipeline
     const ros::WallTime tic = ros::WallTime::now();
-    auto tracked_matches = tracker->process(image_left->image, image_right->image, stats_ref, intermediate_images_ref);
+    auto tracked_matches = tracker->process(left_image->image, right_image->image, stats_ref, intermediate_images_ref);
     ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec() << " seconds for stereo"
-            " data at t = " << image_left->header.stamp);
+            " data at t = " << left_image->header.stamp);
 
     // Optional printing and publishing of internal information
     if (print_stats) {
         ROS_INFO_STREAM(stats.to_string());
     }
     if (publish_intermediate_results) {
-        const std_msgs::Header& header = image_left->header;
+        const std_msgs::Header& header = left_image->header;
         publish_image(extracted_keypoints_left_publisher, intermediate_images.extracted_keypoints[0], header);
         publish_image(extracted_keypoints_right_publisher, intermediate_images.extracted_keypoints[1], header);
         publish_image(sof_matches_left_publisher, intermediate_images.sof_matches[0], header);
@@ -295,9 +314,17 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& image
         publish_image(consistent_tracked_matches_publisher, intermediate_images.consistent_tracked_matches, header);
     }
 
+    // Publish Stereo Landmarks
+    auto stereo_landmarks = boost::make_shared<serpent::StereoLandmarks>();
+    stereo_landmarks->header = left_image->header;
+    to_ros(stereo_landmarks->landmarks, tracked_matches);
+    stereo_landmarks->left_info = *left_info;
+    stereo_landmarks->right_info = *right_info;
+    stereo_landmarks_publisher.publish(stereo_landmarks);
+
     // Keep images in scope
-    previous_image_left = image_left;
-    previous_image_right = image_right;
+    previous_left_image = left_image;
+    previous_right_image = right_image;
 }
 
 }

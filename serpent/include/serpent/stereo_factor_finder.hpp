@@ -1,6 +1,7 @@
 #ifndef SERPENT_STEREO_FACTOR_FINDER_HPP
 #define SERPENT_STEREO_FACTOR_FINDER_HPP
 
+#include "serpent/StereoLandmarks.h"
 #include "serpent/stereo_feature_tracker.hpp"
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
@@ -13,6 +14,9 @@
 #include <sensor_msgs/Image.h>
 
 namespace serpent {
+    
+void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
+        const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches);
 
 class StereoFactorFinder {
 public:
@@ -24,6 +28,7 @@ private:
 
     //// ROS Communication
     ros::NodeHandle nh;
+    ros::Publisher stereo_landmarks_publisher;
     image_transport::ImageTransport it;
     message_filters::Subscriber<sensor_msgs::Image> left_image_subcriber;
     message_filters::Subscriber<sensor_msgs::Image> right_image_subcriber;
@@ -54,8 +59,8 @@ private:
     std::unique_ptr<StereoFeatureTracker> tracker;
 
     // Previous images (must be kept in scope)
-    cv_bridge::CvImageConstPtr previous_image_left;
-    cv_bridge::CvImageConstPtr previous_image_right;
+    cv_bridge::CvImageConstPtr previous_left_image;
+    cv_bridge::CvImageConstPtr previous_right_image;
 };
 
 }
