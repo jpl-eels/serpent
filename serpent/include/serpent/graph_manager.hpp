@@ -10,6 +10,7 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/StereoFactor.h>
 #include <ros/time.h>
 #include <deque>
 #include <map>
@@ -57,6 +58,8 @@ private:
  */
 class GraphManager {
 public:
+    void add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks);
+
     void create_combined_imu_factor(const int new_key,
             const gtsam::PreintegratedCombinedMeasurements& measurements);
 
@@ -130,6 +133,8 @@ public:
      */
     RobotState state(const std::string& name, const int offset = 0) const;
 
+    void set_body_to_stereo_left_cam_pose(const gtsam::Pose3& body_to_stereo_left_cam);
+
     void set_imu_bias(const int key, const gtsam::imuBias::ConstantBias& imu_bias);
 
     void set_imu_bias(const std::string& key, const gtsam::imuBias::ConstantBias& imu_bias, const int offset = 0);
@@ -150,6 +155,12 @@ public:
 
     void set_pose(const std::string& key, const gtsam::Pose3& pose, const int offset = 0);
 
+    void set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration);
+
+    void set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration);
+
+    void set_stereo_measurement_covariance(gtsam::SharedNoiseModel covariance);
+
     void set_timestamp(const int key, const ros::Time& timestamp);
 
     void set_timestamp(const std::string& key, const ros::Time& timestamp, const int offset = 0);
@@ -157,6 +168,8 @@ public:
     void set_velocity(const int key, const gtsam::Velocity3& velocity);
 
     void set_velocity(const std::string& key, const gtsam::Velocity3& velocity, const int offset = 0);
+
+    gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
 
     const ros::Duration time_between(const int key1, const int key2) const;
 
@@ -213,6 +226,18 @@ protected:
     
     // All Timestamps (index = key)
     std::vector<ros::Time> timestamps_;
+
+    // Stereo Calibration
+    gtsam::Cal3_S2Stereo::shared_ptr K;
+
+    // Body to Stereo Left Cam Pose
+    boost::optional<gtsam::Pose3> body_to_stereo_left_cam;
+
+    // Stereo Measurement Covariance
+    gtsam::SharedNoiseModel stereo_measurement_covariance;
+
+    // Stereo Landmarks [key = key, value = map[key = landmark id, value = landmark]]
+    std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_landmarks;
 
     // Values
     gtsam::Values values_;

@@ -1,9 +1,11 @@
 #include "serpent/graph_manager.hpp"
 #include <gtsam/inference/Symbol.h>
+#include <ros/ros.h> // TEMPORARY
 
-using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
-using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::X; // Pose3          (x,y,z,r,p,y)
+using gtsam::symbol_shorthand::V; // Vel            (xdot,ydot,zdot)
+using gtsam::symbol_shorthand::B; // Bias           (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::S; // Stereo Point3  (x,y,z)
 
 namespace serpent {
 
@@ -51,6 +53,14 @@ gtsam::Velocity3& RobotState::velocity() {
     return velocity_;
 }
 
+void GraphManager::add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks)
+{
+    if (!stereo_landmarks.emplace(key, landmarks).second) {
+        throw std::runtime_error("Failed to set stereo landmarks for key " + std::to_string(key) + ". Possible"
+                " duplicate key.");
+    }
+}
+
 void GraphManager::create_combined_imu_factor(const int new_key,
         const gtsam::PreintegratedCombinedMeasurements& measurements) {
     add_factor(new_key, boost::make_shared<gtsam::CombinedImuFactor>(X(new_key - 1), V(new_key - 1), X(new_key),
@@ -81,7 +91,30 @@ void GraphManager::create_prior_velocity_factor(const int key_, const gtsam::Vel
 gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int last) const {
     gtsam::NonlinearFactorGraph extracted_factors;
     for (int i = first; i <= last; ++i) {
+        // Robot state factors
         extracted_factors.push_back(factors_.at(i));
+        // Stereo landmark factors
+        const auto landmarks_im2 = stereo_landmarks.find(i - 2);
+        const auto landmarks_im1 = stereo_landmarks.find(i - 1);
+        const auto landmarks_i = stereo_landmarks.find(i);
+        for (const auto& [id, landmark] : landmarks_i->second) {
+            // Add previous state factor if landmark is tracked for the first time (not in i-2 and in i-1)
+            const bool in_im1 = landmarks_im1 != stereo_landmarks.end() &&
+                    landmarks_im1->second.find(id) != landmarks_im1->second.end();
+            if ((landmarks_im2 == stereo_landmarks.end() ||
+                    landmarks_im2->second.find(id) == landmarks_im2->second.end()) && in_im1) {
+                extracted_factors.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
+                        landmarks_im1->second.at(id), stereo_measurement_covariance, X(i - 1), S(id), K,
+                        body_to_stereo_left_cam);
+                ROS_INFO_STREAM("Created stereo factor between X(" << i - 1 << ") and S(" << id << ")");
+            }
+            // Add current state factor if landmark is in i-1
+            if (in_im1) {
+                extracted_factors.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
+                        landmark, stereo_measurement_covariance, X(i), S(id), K, body_to_stereo_left_cam);
+                ROS_INFO_STREAM("Created stereo factor between X(" << i << ") and S(" << id << ")");
+            }
+        }
     }
     return extracted_factors;
 }
@@ -97,9 +130,6 @@ gtsam::imuBias::ConstantBias GraphManager::imu_bias(const std::string key_, cons
 
 int GraphManager::key(const std::string& name, const int offset) const {
     const int key_ = keys.at(name) + offset;
-    if (key_ < 0) {
-        throw std::runtime_error("GraphManager: key < 0 detected - something went wrong.");
-    }
     return key_;
 }
 
@@ -131,6 +161,10 @@ RobotState GraphManager::state(const int key_) const {
 
 RobotState GraphManager::state(const std::string& key_, const int offset) const {
     return state(key(key_, offset));
+}
+
+void GraphManager::set_body_to_stereo_left_cam_pose(const gtsam::Pose3& body_to_stereo_left_cam_) {
+    body_to_stereo_left_cam = body_to_stereo_left_cam_;
 }
 
 void GraphManager::set_imu_bias(const int key_, const gtsam::imuBias::ConstantBias& imu_bias) {
@@ -168,6 +202,18 @@ void GraphManager::set_pose(const std::string& key_, const gtsam::Pose3& pose, c
     set_pose(key(key_, offset), pose);
 }
 
+void GraphManager::set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration) {
+    K = stereo_calibration;
+}
+
+void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration) {
+    K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration);
+}
+
+void GraphManager::set_stereo_measurement_covariance(gtsam::SharedNoiseModel covariance) {
+    stereo_measurement_covariance = covariance;
+}
+
 void GraphManager::set_timestamp(const int key_, const ros::Time& timestamp_) {
     assert(key_ >= 0);
     if (key_ == static_cast<int>(timestamps_.size())) {
@@ -187,6 +233,10 @@ void GraphManager::set_velocity(const int key_, const gtsam::Velocity3& velocity
 
 void GraphManager::set_velocity(const std::string& key_, const gtsam::Velocity3& velocity, const int offset) {
     set_velocity(key(key_, offset), velocity);
+}
+
+gtsam::Cal3_S2Stereo::shared_ptr GraphManager::stereo_calibration() {
+    return K;
 }
 
 const ros::Duration GraphManager::time_between(const int key1, const int key2) const {
@@ -213,7 +263,11 @@ const std::vector<ros::Time>& GraphManager::timestamps() const {
 
 void GraphManager::update_from_values(const gtsam::Values& updated_values_) {
     for (const auto& [key_, value_] : updated_values_) {
-        values_.update(key_, value_);
+        if (values_.exists(key_)) {
+            values_.update(key_, value_);
+        } else {
+            values_.insert(key_, value_);
+        }
     }
 }
 
@@ -231,6 +285,27 @@ gtsam::Values GraphManager::values(const int first, const int last) const {
     add_values(extracted_values, values_, B(first), B(last));
     add_values(extracted_values, values_, X(first), X(last));
     add_values(extracted_values, values_, V(first), V(last));
+    // Stereo landmarks
+    for (int i = first; i <= last; ++i) {
+        const auto landmarks_im2 = stereo_landmarks.find(i - 2);
+        const auto landmarks_im1 = stereo_landmarks.find(i - 1);
+        const auto landmarks_i = stereo_landmarks.find(i);
+        for (const auto& [id, landmark] : landmarks_i->second) {
+            // Add landmark if landmark is tracked for the first time (not in i-2 and in i-1)
+            const bool in_im1 = landmarks_im1 != stereo_landmarks.end() &&
+                    landmarks_im1->second.find(id) != landmarks_im1->second.end();
+            if ((landmarks_im2 == stereo_landmarks.end() ||
+                    landmarks_im2->second.find(id) == landmarks_im2->second.end()) && in_im1) {
+                const gtsam::Pose3 world_to_stereo_left_cam = values_.at<gtsam::Pose3>(X(i)) *
+                        body_to_stereo_left_cam.value();
+                const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
+                const gtsam::Point3 landmark_position = camera.backproject(landmark);
+                extracted_values.insert(S(id), landmark_position);
+                ROS_INFO_STREAM("Created stereo landmark S(" << id << ") at [" << landmark_position.x() << ", "
+                        << landmark_position.y() << ", " << landmark_position.z() << "]");
+            }
+        }
+    }
     return extracted_values;
 }
 

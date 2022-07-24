@@ -100,3 +100,7 @@ body_frames:
         up_stereo_right_cam:
           translation:
             x: 0.0275
+
+# Stereo Camera
+stereo:
+  baseline: 0.055

@@ -126,6 +126,11 @@ mapping:
 
 # Stereo Factors
 stereo_factors:
+  noise:
+    left_x: 5.0
+    right_x: 5.0
+    y: 10.0
+  left_cam_frame_id: "stereo"
   visualisation:
     print_stats: false
     publish_intermediate_results: false

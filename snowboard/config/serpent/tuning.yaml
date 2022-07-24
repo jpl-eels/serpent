@@ -34,9 +34,9 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: true
-    registration: false
-    stereo: true
+    imu: false
+    registration: true
+    stereo: false
 
 # Registration
 s2s:
@@ -83,7 +83,7 @@ s2m:
     rotation: 0.0174533 # 1 deg
     translation: 1.0e-2  # 10 mm
     jacobian_augmentation: false
-  enabled: true
+  enabled: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 20
@@ -126,6 +126,11 @@ mapping:
 
 # Stereo Factors
 stereo_factors:
+  noise:
+    left_x: 5.0
+    right_x: 5.0
+    y: 12.5
+  left_cam_frame_id: "left_stereo_left_cam"
   visualisation:
     print_stats: true
     publish_intermediate_results: true

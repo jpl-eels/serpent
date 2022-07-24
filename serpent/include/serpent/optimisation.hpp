@@ -16,6 +16,8 @@
 
 namespace serpent {
 
+void from_ros(const std::vector<serpent::StereoLandmark>& msgs, std::map<int, gtsam::StereoPoint2>& landmarks);
+
 class Optimisation {
 public:
     explicit Optimisation();

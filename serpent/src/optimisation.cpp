@@ -8,6 +8,15 @@
 
 namespace serpent {
 
+void from_ros(const std::vector<serpent::StereoLandmark>& msgs, std::map<int, gtsam::StereoPoint2>& landmarks) {
+    for (const auto& msg : msgs) {
+        const double mean_y = (msg.left_y + msg.right_y) / 2.0;
+        if (!landmarks.emplace(msg.id, gtsam::StereoPoint2{msg.left_x, msg.right_x, mean_y}).second) {
+            throw std::runtime_error("Failed to convert landmark. This could indicate a duplicate id.");
+        }
+    }
+}
+
 Optimisation::Optimisation():
     nh("~"), opt_sync(10)
 {
@@ -93,10 +102,23 @@ Optimisation::Optimisation():
                 " true). This incurs a computational cost, so should only be used while debugging.");
     }
     isam2_params.print();
+
+    // Set up GraphManager
     gm = std::make_unique<ISAM2GraphManager>(isam2_params);
     gm->set_named_key("imu");
     gm->set_named_key("reg");
-    gm->set_named_key("stereo");
+    if (stereo_factors_enabled) {
+        gm->set_named_key("stereo", -1);
+        const std::string stereo_left_cam_frame = nh.param<std::string>("stereo_factors/left_cam_frame_id", "stereo");
+        gm->set_body_to_stereo_left_cam_pose(eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame(
+                stereo_left_cam_frame)));
+        auto stereo_measurement_covariance = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(3) <<
+                nh.param<double>("stereo_factors/noise/left_x", 5.0),
+                nh.param<double>("stereo_factors/noise/right_x", 5.0),
+                nh.param<double>("stereo_factors/noise/y", 10.0)).finished());
+        ROS_INFO_STREAM("Set stereo measurement covariance:\n" << stereo_measurement_covariance->covariance());
+        gm->set_stereo_measurement_covariance(stereo_measurement_covariance);
+    }
 }
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -126,7 +148,22 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 
 void Optimisation::add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& landmarks) {
     gm->increment("stereo");
-    throw std::runtime_error("Stereo factors not implemented");
+    if (!gm->stereo_calibration()) {
+        const auto& left_info = landmarks->left_info;
+        const double fx = left_info.K[0];
+        const double skew = left_info.K[1];
+        const double cx = left_info.K[2];
+        const double fy = left_info.K[4];
+        const double cy = left_info.K[5];
+        const double baseline = nh.param<double>("stereo/baseline", 0.1);
+        auto K = boost::make_shared<gtsam::Cal3_S2Stereo>(fx, fy, skew, cx, cy, baseline);
+        gm->set_stereo_calibration(K);
+        ROS_INFO_STREAM("Set stereo calibration matrix:\n" << K->matrix());
+    }
+    std::map<int, gtsam::StereoPoint2> stereo_landmarks;
+    from_ros(landmarks->landmarks, stereo_landmarks);
+    gm->add_stereo_landmark_measurements(gm->key("stereo"), stereo_landmarks);
+    ROS_INFO_STREAM("Added " << stereo_landmarks.size() << " stereo landmarks measurements to graph manager");
 }
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
@@ -313,7 +350,7 @@ void Optimisation::optimise_and_publish(const int key) {
     ROS_INFO_STREAM("Pose:\n" << gm->pose(key).matrix());
     ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << gm->pose_covariance(key));
     if (imu_factors_enabled) {
-        ROS_INFO_STREAM("Velocity:" << to_flat_string(gm->velocity(key)));
+        ROS_INFO_STREAM("Velocity: " << to_flat_string(gm->velocity(key)));
         ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
         ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
         ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
@@ -368,17 +405,27 @@ void Optimisation::registration_stereo_landmarks_callback(
 }
 
 void Optimisation::stereo_landmarks_callback(const serpent::StereoLandmarks::ConstPtr& landmarks) {
-    std::lock_guard<std::mutex> guard{graph_mutex};
+    // Wait until IMU data has been processed
+    ROS_INFO_STREAM("Waiting for IMU data to be processed by graph manager");
+    if (!protected_sleep(graph_mutex, 0.01, false, true, [this](){ return gm->key("imu") <= gm->key("stereo"); })) {
+        return;
+    }
+    ROS_INFO_STREAM("Finished waiting for IMU data to be processed by graph manager");
+
     // Integrate stereo data
     add_stereo_factors(landmarks);
 
     // Optimise and publish
-    optimise_and_publish(gm->key("stereo"));
+    if (gm->key("stereo") > 0) {
+        optimise_and_publish(gm->key("stereo"));
 
-    // Update velocity if no IMU factors
-    if (!imu_factors_enabled) {
-        update_velocity_from_transforms("stereo");
+        // Update velocity if no IMU factors
+        if (!imu_factors_enabled) {
+            update_velocity_from_transforms("stereo");
+        }
     }
+    
+    graph_mutex.unlock();
 }
 
 void Optimisation::update_velocity_from_transforms(const std::string& named_key) {
