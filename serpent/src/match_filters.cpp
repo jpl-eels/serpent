@@ -52,7 +52,7 @@ std::vector<cv::DMatch> StereoMatchFilter::filter(const std::vector<cv::KeyPoint
         const cv::DMatch& match = matches[i];
         const cv::Point2f& query_pt = kp_query.at(match.queryIdx).pt;
         const cv::Point2f& train_pt = kp_train.at(match.trainIdx).pt;
-        if (query_pt.x <= train_pt.x && std::abs(query_pt.y - train_pt.y) <= vertical_pixel_threshold) {
+        if (query_pt.x > train_pt.x && std::abs(query_pt.y - train_pt.y) <= vertical_pixel_threshold) {
             filtered_matches.push_back(match);
             indices.push_back(i);
         }
