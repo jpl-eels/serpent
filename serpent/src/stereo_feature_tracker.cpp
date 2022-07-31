@@ -50,7 +50,9 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         std::optional<std::reference_wrapper<Statistics>> stats, 
         std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images) {
     // Track statistics
-    stats->get().frame_number = frame_number;
+    if (stats) {
+        stats->get().frame_number = frame_number;
+    }
 
     // Group images
     LRImages images{{left_image, right_image}};

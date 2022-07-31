@@ -1,7 +1,5 @@
 <launch>
     <!-- Launch Arguments -->
-    <arg name="imu_topic"                       default="/imu"/>
-    <arg name="pointcloud_topic"                default="/pointcloud"/>
     <arg name="stereo_left_cam_image_topic"     default="/stereo/left/image"/>
     <arg name="stereo_right_cam_image_topic"    default="/stereo/right/image"/>
     <arg name="stereo_left_cam_info_topic"      default="/stereo/left/camera_info"/>
@@ -16,8 +14,6 @@
     <arg name="threads"                         default="4"/>
 
     <!-- Visualisation Arguments -->
-    <arg name="rviz"                            default="false"/>
-    <arg name="rqt"                             default="true"/>
     <arg name="rqt_stereo"                      default="true"/>
 
     <!-- Debugging Arguments -->
@@ -44,15 +40,13 @@
     <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
     <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
 
-    <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
+    <node pkg="serpent" type="stereo_pipeline_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
         <!-- Topics -->
-        <remap from="~input/imu"                        to="$(arg imu_topic)"/>
-        <remap from="~input/pointcloud"                 to="$(arg pointcloud_topic)"/>
-        <remap from="~input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
-        <remap from="~input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
-        <remap from="~input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
-        <remap from="~input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
+        <remap from="/$(arg program_name)/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="/$(arg program_name)/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="/$(arg program_name)/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="/$(arg program_name)/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
 
         <!-- Robot Configuration -->
         <rosparam if="$(eval robot_file != '')"             command="load" file="$(arg robot_file)"/>
@@ -88,13 +82,6 @@
         <arg name="rate"     default="$(arg rosbag_rate)"/>
         <arg name="start"    default="$(arg rosbag_start)"/>
     </include>
-
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
-
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
 
     <!-- RQT Stereo -->
     <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"

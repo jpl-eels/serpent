@@ -141,6 +141,39 @@ set_target_properties(${NODE}
         CXX_STANDARD_REQUIRED ON
 )
 
+# Stereo pipeline
+add_executable(stereo_pipeline_node
+    src/match_filters.cpp
+    src/stereo_factor_finder.cpp
+    src/stereo_feature_tracker.cpp
+    src/stereo_pipeline_node.cpp
+)
+
+add_dependencies(stereo_pipeline_node
+    ${PROJECT_NAME}_generate_messages_cpp
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(stereo_pipeline_node SYSTEM PUBLIC
+    ${NODE_SYSTEM_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_include_directories(stereo_pipeline_node PUBLIC
+    include
+)
+
+target_link_libraries(stereo_pipeline_node PUBLIC
+    ${NODE_SYSTEM_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
+
+set_target_properties(stereo_pipeline_node
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
 # Required (before PCL headers) from PCL 1.7 onwards when using custom point types to include templated algorithms also
 target_compile_definitions(${NODE} PUBLIC PCL_NO_PRECOMPILE)
 
