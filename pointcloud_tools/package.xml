@@ -13,6 +13,8 @@
     <depend>roscpp</depend>
     <depend>sensor_msgs</depend>
 
+    <depend>eigen_ext</depend>
+
     <depend>Open3D</depend>
     <depend>PCL</depend>
 

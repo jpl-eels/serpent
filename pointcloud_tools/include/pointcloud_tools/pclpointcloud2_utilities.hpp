@@ -15,6 +15,15 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_fie
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name);
 
+/**
+ * @brief Deskew a pointcloud under the assumption that there has been a constant twist applied over a time dt resulting
+ * in a transform from the starting origin frame to the final frame.
+ * 
+ * @param transform skew transform
+ * @param dt time of point cloud sweep
+ * @param src skewed point cloud
+ * @param dest deskewed point cloud
+ */
 void deskew(const Eigen::Isometry3d& transform, const double dt, const pcl::PCLPointCloud2& src,
         pcl::PCLPointCloud2& dest);
 

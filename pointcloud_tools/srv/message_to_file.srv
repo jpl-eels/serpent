@@ -4,6 +4,8 @@ string filepath
 string topic
 # Timeout (seconds)
 float64 timeout
+# PCL type
+bool is_pcl_type
 ---
 # Result message
 string result_msg

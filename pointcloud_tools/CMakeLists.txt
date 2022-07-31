@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
     pcl_conversions
     roscpp
     sensor_msgs
+
+    eigen_ext
 )
 find_package(Open3D REQUIRED)
 
@@ -33,6 +35,8 @@ catkin_package(
         pcl_conversions
         roscpp
         sensor_msgs
+
+        eigen_ext
     LIBRARIES ${LIBRARY_NAME}
     DEPENDS
         Open3D

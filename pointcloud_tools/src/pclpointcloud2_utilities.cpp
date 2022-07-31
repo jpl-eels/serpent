@@ -1,4 +1,7 @@
 #include "pointcloud_tools/pclpointcloud2_utilities.hpp"
+#include <eigen_ext/geometry.hpp>
+#include <pcl/common/io.h>
+#include <pcl/PCLPointField.h>
 #include <sstream>
 
 namespace pct {
@@ -40,13 +43,94 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name
 
 void deskew(const Eigen::Isometry3d& transform, const double dt, const pcl::PCLPointCloud2& src,
         pcl::PCLPointCloud2& dest) {
+    // Perform a point cloud copy if there is no transform
     if (transform.isApprox(Eigen::Isometry3d::Identity())) {
+        dest = src;
+    } else {
+        // Error handling
         if (dt <= 0.0) {
             throw std::runtime_error("dt cannot be <= 0.0 for deskewing");
         }
-        dest = src;
-    } else {
-        throw std::runtime_error("Deskew not yet implemented");
+
+        // Setup
+        const Eigen::Isometry3d deskew_transform = transform.inverse();
+        const Eigen::Vector3d deskew_translation = deskew_transform.translation();
+        const Eigen::Quaterniond deskew_quaternion = Eigen::Quaterniond(deskew_transform.rotation());
+        dest.header = src.header;
+        dest.height = src.height;
+        dest.width = src.width;
+        dest.fields = src.fields;
+        dest.is_bigendian = src.is_bigendian;
+        dest.point_step = src.point_step;
+        dest.row_step = src.row_step;
+        dest.data.resize(src.data.size());
+        dest.is_dense = src.is_dense;
+        for (std::uint32_t i = 0; i < src.data.size(); i += src.point_step) {
+            Eigen::Vector3d p;
+            std::array<pcl::PCLPointField, 3> p_fields;
+            double t;
+            for (const pcl::PCLPointField& field : src.fields) {
+                if (field.name == "x") {
+                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+                        p[0] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
+                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
+                        p[0] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
+                    } else {
+                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
+                    }
+                    p_fields[0] = field;
+                } else if (field.name == "y") {
+                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+                        p[1] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
+                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
+                        p[1] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
+                    } else {
+                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
+                    }
+                    p_fields[1] = field;
+                } else if (field.name == "z") {
+                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+                        p[2] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
+                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
+                        p[2] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
+                    } else {
+                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
+                    }
+                    p_fields[2] = field;
+                } else if (field.name == "t") {
+                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+                        t = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
+                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
+                        t = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
+                    } else {
+                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
+                    }
+                } else {
+                    std::memcpy(&dest.data[i + field.offset], &src.data[i + field.offset],
+                            pcl::getFieldSize(field.datatype));
+                }
+            }
+
+            // Compute the deskewed point
+            const double interp_fraction = t / dt;
+            const Eigen::Vector3d interp_translation = interp_fraction * deskew_translation;
+            const Eigen::Quaterniond interp_quaternion = Eigen::Quaterniond::Identity().slerp(interp_fraction,
+                    deskew_quaternion);
+            const Eigen::Isometry3d interp_transform = eigen_ext::to_transform(interp_translation, interp_quaternion);
+            const Eigen::Vector3d p_deskew = interp_transform *  p;
+
+            // Copy the deskewed point data
+            for (std::size_t j = 0; j < p_fields.size(); ++j) {
+                if (p_fields[j].datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+                    const float f = static_cast<float>(p_deskew[j]);
+                    std::memcpy(&dest.data[i + p_fields[j].offset], &f, sizeof(float));
+                } else if (p_fields[j].datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
+                    std::memcpy(&dest.data[i + p_fields[j].offset], &p_deskew[j], sizeof(double));
+                } else {
+                    throw std::runtime_error("point field did not have floating-point datatype");
+                }
+            }
+        }
     }
 }
 

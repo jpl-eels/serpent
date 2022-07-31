@@ -3,6 +3,8 @@
 #include <open3d_conversions/open3d_conversions.h>
 #include <open3d/geometry/PointCloud.h>
 #include <open3d/io/PointCloudIO.h>
+#include <pcl/io/auto_io.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 PointcloudFileConverter::PointcloudFileConverter()
     :   nh("~") {
@@ -36,17 +38,28 @@ bool PointcloudFileConverter::load(pointcloud_tools::file_to_message::Request& r
 
 bool PointcloudFileConverter::save(pointcloud_tools::message_to_file::Request& request,
         pointcloud_tools::message_to_file::Response& response) {
-    auto msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(request.topic, nh, ros::Duration(request.timeout));
-    if (!msg) {
-        throw std::runtime_error("Failed to receive pointcloud on topic \'" + request.topic + "\' within timeout period"
-                " of " + std::to_string(request.timeout) + " seconds");
+    if (request.is_pcl_type) {
+        auto msg = ros::topic::waitForMessage<pcl::PCLPointCloud2>(request.topic, nh, ros::Duration(request.timeout));
+        if (!msg) {
+            throw std::runtime_error("Failed to receive PCL pointcloud on topic \'" + request.topic + "\' within"
+                    " timeout period of " + std::to_string(request.timeout) + " seconds");
+        }
+        int return_code = pcl::io::save(request.filepath, *msg);
+        response.result_msg = "Saved PCL pointcloud (" + std::to_string(msg->width * msg->height) + " points) to "
+                + request.filepath + " with return code " + std::to_string(return_code);
+    } else {
+        auto msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(request.topic, nh, ros::Duration(request.timeout));
+        if (!msg) {
+            throw std::runtime_error("Failed to receive pointcloud on topic \'" + request.topic + "\' within timeout"
+                    " period of " + std::to_string(request.timeout) + " seconds");
+        }
+        open3d::geometry::PointCloud pointcloud;
+        open3d_conversions::rosToOpen3d(msg, pointcloud);
+        if (!open3d::io::WritePointCloud(request.filepath, pointcloud)) {
+            throw std::runtime_error("Failed to save pointcloud to file \'" + request.filepath + "\'");
+        }
+        response.result_msg = "Saved pointcloud (" + std::to_string(pointcloud.points_.size()) + " points) to "
+                + request.filepath;
     }
-    open3d::geometry::PointCloud pointcloud;
-    open3d_conversions::rosToOpen3d(msg, pointcloud);
-    if (!open3d::io::WritePointCloud(request.filepath, pointcloud)) {
-        throw std::runtime_error("Failed to save pointcloud to file \'" + request.filepath + "\'");
-    }
-    response.result_msg = "Saved pointcloud (" + std::to_string(pointcloud.points_.size()) + " points) to "
-            + request.filepath;
     return true;
 }
