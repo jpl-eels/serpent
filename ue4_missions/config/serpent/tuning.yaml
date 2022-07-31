@@ -1,0 +1,190 @@
+# Integration and Noise
+prior_noise:
+  position: 0.001
+  rotation: 0.001
+  linear_velocity: 0.001
+  accelerometer_bias: 1.0e-4
+  gyroscope_bias: 1.0e-4
+imu_noise:
+  integration: 1.0e-4
+  integration_bias: 3.0e-3
+  accelerometer_bias: 4.33e-03
+  gyroscope_bias: 2.66e-05
+  overwrite: true # These imu noise values will only be used if overwrite set to true
+  accelerometer: 1.86e-03
+  gyroscope: 1.87e-04
+
+# ISAM2 Optimisation
+isam2:
+  optimization: "GaussNewton"  # Options: GaussNewton, Dogleg
+  gauss_newton_params:
+    wildfire_threshold: 1.0e-3
+  dogleg_params:
+    initial_delta: 1.0
+    wildfire_threshold: 1.0e-5
+    trust_region_adaptation_mode: "SEARCH_EACH_ITERATION" # Options: SEARCH_EACH_ITERATION, ONE_STEP_PER_ITERATION
+    verbose: false
+  relinearize_threshold: 0.1
+  relinearize_skip: 10
+  enable_relinearization: true
+  evaluate_nonlinear_error: false
+  factorization: "CHOLESKY" # Options: CHOLESKY, QR
+  cache_linearized_factors: true
+
+# Optimisation
+optimisation:
+  factors:
+    imu: true
+    registration: true
+    stereo: false
+
+# Registration
+s2s:
+  base_noise:
+    rotation: 0.0174533 # 1 deg
+    translation: 1.0e-2  # 10 mm
+    jacobian_augmentation: true
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
+  base:
+    maximum_iterations: 20
+    ransac_iterations: 0
+    ransac_outlier_rejection_threshold: 0.05
+    max_correspondence_distance: 2.5
+    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+  icp: # Uses base
+    use_reciprocal_correspondences: false
+  gicp: # Uses icp
+    rotation_epsilon: 2.0e-3
+    correspondence_randomness: 20
+    maximum_optimizer_iterations: 10
+    translation_gradient_tolerance: 1.0e-2  # PCL 1.11.0 onwards
+    rotation_gradient_tolerance: 1.0e-2     # PCL 1.11.0 onwards
+  lsq: # Uses base
+    rotation_epsilon: 2.0e-3
+    initial_lambda_factor: 1.0e-9
+    debug_print: false
+  fast_gicp: # Uses lsq
+    num_threads: 8
+    correspondence_randomness: 20
+    regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
+  ndt: # Uses base (note default maximum_iterations for ndt is 35)
+    resolution: 1.0
+    step_size: 0.1
+    outlier_ratio: 0.55
+    
+s2m:
+  base_noise:
+    rotation: 0.00174533 # 0.1 deg
+    translation: 1.0e-3  # 1 mm
+    jacobian_augmentation: true
+  enabled: false
+  method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
+  base:
+    maximum_iterations: 20
+    ransac_iterations: 0
+    ransac_outlier_rejection_threshold: 0.05
+    max_correspondence_distance: 2.5
+    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+  icp: # Uses base
+    use_reciprocal_correspondences: false
+  gicp: # Uses icp
+    rotation_epsilon: 2.0e-3
+    correspondence_randomness: 20
+    maximum_optimizer_iterations: 10
+    translation_gradient_tolerance: 1.0e-2  # PCL 1.11.0 onwards
+    rotation_gradient_tolerance: 1.0e-2     # PCL 1.11.0 onwards
+  lsq: # Uses base
+    rotation_epsilon: 2.0e-3
+    initial_lambda_factor: 1.0e-9
+    debug_print: false
+  fast_gicp: # Uses lsq
+    num_threads: 8
+    correspondence_randomness: 20
+    regularization_method: "PLANE" # Options: NONE, MIN_EIG, NORMALIZED_MIN_EIG, PLANE, FROBENIUS
+  fast_vgicp: # Uses fast_gicp
+    resolution: 1.0
+    voxel_accumulation_mode: "ADDITIVE" # Options: ADDITIVE, ADDITIVE_WEIGHTED, MULTIPLICATIVE
+    neighbor_search_method: "DIRECT1" # Options: DIRECT27, DIRECT7, DIRECT1, (cuda only) DIRECT_RADIUS
+  ndt: # Uses base (note default maximum_iterations for ndt is 35)
+    resolution: 1.0
+    step_size: 0.1
+    outlier_ratio: 0.55
+    
+# Mapping
+mapping:
+  frame_extraction_number: 10
+  distance_threshold: 0.1                   # metres
+  rotation_threshold: 0.05235987755982988   # radians
+
+# Stereo Factors
+stereo_factors:
+  noise:
+    left_x: 5.0
+    right_x: 5.0
+    y: 10.0
+  left_cam_frame_id: "stereo"
+  visualisation:
+    print_stats: true
+    publish_intermediate_results: true
+    rich_keypoints: true
+    rich_matches: true
+  new_feature_dist_threshold: 5.0
+  detector:
+    type: "ORB" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    gftt: &gftt
+      max_corners: 1000
+      quality_level: 0.01
+      min_distance: 1.0
+      block_size: 3
+      use_harris_detector: false
+      k: 0.04
+    orb: &orb
+      num_features: 100
+      scale_factor: 1.2
+      num_levels: 8
+      edge_threshold: 31
+      first_level: 0
+      wta_k: 2
+      score_type: "HARRIS_SCORE" # Options: HARRIS_SCORE, FAST_SCORE
+      patch_size: 31
+      fast_threshold: 20
+    sift: &sift
+      num_features: 10
+      num_octave_layers: 3
+      contrast_threshold: 0.04
+      edge_threshold: 10.0
+      sigma: 1.6
+  descriptor:
+    type: "ORB" # Options: ORB, SIFT
+    orb: *orb
+    sift: *sift
+  matcher:
+    type: "BRUTE_FORCE" # Options: BRUTE_FORCE, FLANN (only for float descriptors, e.g. SIFT, SURF)
+    brute_force:
+      norm_type: "NORM_HAMMING"  # NORM_HAMMING for ORB and BRIEF, NORM_L2 for SIFT and SURF.
+      cross_check: false
+    # TODO: flann options (https://www.ccoderun.ca/programming/doxygen/opencv/structcv_1_1flann_1_1IndexParams.html)
+  distance_match_filter:
+    enabled: false
+    descriptor_distance_threshold: 1.0e+30
+  stereo_match_filter:
+    vertical_pixel_threshold: 1.0
+  sparse_optical_flow:
+    type: "PyrLK" # Options: PyrLK (Pyramid Lucas-Kanade), TODO: RLOF
+    pyrlk:
+      win_size: [21, 21]
+      max_level: 3
+      term_criteria:
+        type: "COUNT+EPS" # Options: COUNT, EPS, COUNT+EPS
+        max_count: 30
+        epsilon: 0.01
+      flags: 0
+      min_eig_threshold: 1.0e-4

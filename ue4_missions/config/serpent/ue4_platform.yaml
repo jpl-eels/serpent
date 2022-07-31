@@ -1,0 +1,33 @@
+# Body frame origin is at IMU, with a NWU (x-forward, y-left, z-up) orientation (tfs are body to frame)
+body_frames:
+  base_link:
+    imu:
+      translation:
+        x: 0.0
+        y: 0.0
+        y: 0.0
+      rotation:
+        w: 1.0
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    lidar:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation:
+        w: 1.0
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    camera:
+      rotation:
+        w: 0.5
+        x: 0.5
+        y: 0.5
+        z: 0.5
+
+# Stereo Camera
+stereo:
+  baseline: 0.1

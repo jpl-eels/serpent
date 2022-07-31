@@ -1,0 +1,17 @@
+<launch>
+    <arg name="left_image_topic"    default="/left_cam"/>
+    <arg name="left_info_topic"     default="/left_camera_info"/>
+    <arg name="right_image_topic"   default="/right_cam"/>
+    <arg name="right_info_topic"    default="/right_camera_info"/>
+
+    <node pkg="camera_tools" type="publish_info" name="publish_left_camera_info" output="screen">
+        <remap from="~input/image" to="$(arg left_image_topic)"/>
+        <remap from="~output/camera_info" to="$(arg left_info_topic)"/>
+        <rosparam command="load" file="$(find ue4_missions)/config/left_camera_info.yaml"/>
+    </node>
+    <node pkg="camera_tools" type="publish_info" name="publish_right_camera_info" output="screen">
+        <remap from="~input/image" to="$(arg right_image_topic)"/>
+        <remap from="~output/camera_info" to="$(arg right_info_topic)"/>
+        <rosparam command="load" file="$(find ue4_missions)/config/right_camera_info.yaml"/>
+    </node>
+</launch>

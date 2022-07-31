@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package>
+    <name>ue4_missions</name>
+    <version>1.0.0</version>
+    <description>The ue4_missions package</description>
+    <maintainer email="william.talbot97@gmail.com">William Talbot</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+</package>

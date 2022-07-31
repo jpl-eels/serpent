@@ -1,0 +1,10 @@
+distortion_model: ""
+distortion_coefficients: []
+
+K: &K
+  fx: 252.07471375549554
+  fy: 252.07471375549554
+  cx: 360.0
+  cy: 360.0
+
+P: *K
