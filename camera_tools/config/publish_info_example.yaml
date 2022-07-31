@@ -1,0 +1,15 @@
+distortion_model: "plumb_bob"
+distortion_coefficients: []
+
+K: &K
+  fx: 600
+  fy: 400
+  cx: 480
+  cy: 320
+
+P:
+  fx: 600
+  fy: 400
+  cx: 480
+  cy: 320
+  Tx: -60.0 # 0 for monocular camera

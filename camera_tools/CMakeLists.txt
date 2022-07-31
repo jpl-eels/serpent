@@ -23,7 +23,7 @@ catkin_package(
         OpenCV
 )
 
-# imu analysis
+# split image
 add_executable(split_image
     src/split_image_main.cpp
     src/split_image.cpp
@@ -40,4 +40,19 @@ target_link_libraries(split_image
     ${catkin_LIBRARIES}
     ${EIGEN3_LIBRARIES}
     ${OpenCV_LIBRARIES}
+)
+
+# publish info
+add_executable(publish_info
+    src/publish_info_main.cpp
+    src/publish_info.cpp
+)
+
+target_include_directories(publish_info PUBLIC
+    include
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_link_libraries(publish_info
+    ${catkin_LIBRARIES}
 )
