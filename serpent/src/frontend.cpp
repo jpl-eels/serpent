@@ -31,6 +31,10 @@ Frontend::Frontend():
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
             &Frontend::pointcloud_callback, this);
+
+    // Deskew
+    nh.param<bool>("deskew/translation", deskew_translation, false);
+    nh.param<bool>("deskew/rotation", deskew_rotation, false);
     
     // Stereo data
     nh.param<bool>("optimisation/factors/stereo", stereo_enabled, true);
@@ -234,7 +238,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     optimised_odometry_mutex.unlock();
 
     // If first time, perform initialisation procedure.
-    Eigen::Isometry3d deskew_transform;
+    Eigen::Isometry3d skew_transform;
     if (!initialised) {
         // Compute initial state using user-defined position & yaw, and gravity-defined roll and pitch
         const Eigen::Matrix3d position_covariance = Eigen::Matrix3d::Identity()
@@ -267,7 +271,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         previous_pointcloud_start = pointcloud_start;
 
         // Deskew transform
-        deskew_transform = Eigen::Isometry3d::Identity();
+        skew_transform = Eigen::Isometry3d::Identity();
         ROS_WARN_ONCE("DESIGN DECISION: Deskew transform from initialisation procedure is missing. Using identity.");
     }
 
@@ -275,7 +279,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     const ros::Duration sweep_duration = ros::Duration(pct::max_value<float>(*msg, "t"));
     if (sweep_duration == ros::Duration(0)) {
         // No sweep required
-        deskew_transform = Eigen::Isometry3d::Identity();
+        skew_transform = Eigen::Isometry3d::Identity();
         ROS_INFO_STREAM("Pointcloud does not require deskewing");
     } else {
         const ros::Time pointcloud_end = pointcloud_start + sweep_duration;
@@ -313,18 +317,25 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                     " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
                     " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
             const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
-            deskew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
+            skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
         }
     }
 
-    // Transform deskew_transform from IMU frame to LIDAR frame
-    deskew_transform = eigen_ext::change_relative_transform_frame(deskew_transform,
+    // Transform skew_transform from IMU frame to LIDAR frame
+    skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,
             body_frames.frame_to_frame("lidar", "imu"));
+    
+    // Transform configuration
+    skew_transform = eigen_ext::to_transform(
+        (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),
+        (deskew_rotation ? skew_transform.rotation() : Eigen::Matrix3d::Identity()));
 
     // Deskew pointcloud
     pcl::PCLPointCloud2::Ptr deskewed_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
     try {
-        pct::deskew(deskew_transform, sweep_duration.toSec(), *msg, *deskewed_pointcloud);
+        const ros::WallTime tic = ros::WallTime::now();
+        pct::deskew(skew_transform, sweep_duration.toSec(), *msg, *deskewed_pointcloud);
+        ROS_INFO_STREAM("Deskewed pointcloud in " << (ros::WallTime::now() - tic).toSec() << " seconds.");
     } catch (const std::exception& ex) {
         ROS_WARN_ONCE("Pointcloud deskewing failed. Skipping deskewing. Error: %s", ex.what());
         *deskewed_pointcloud = *msg;

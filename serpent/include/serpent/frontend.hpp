@@ -140,6 +140,10 @@ private:
     bool initialised;
     // Previous pointcloud start time for pointcloud callback
     ros::Time previous_pointcloud_start;
+    // Deskew translation
+    bool deskew_translation;
+    // Deskew rotation
+    bool deskew_rotation;
     
     // Preintegration parameters
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;

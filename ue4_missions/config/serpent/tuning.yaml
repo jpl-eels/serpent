@@ -14,6 +14,11 @@ imu_noise:
   accelerometer: 1.86e-03
   gyroscope: 1.87e-04
 
+# Deskew configuration
+deskew:
+  translation: false
+  rotation: false
+
 # ISAM2 Optimisation
 isam2:
   optimization: "GaussNewton"  # Options: GaussNewton, Dogleg
