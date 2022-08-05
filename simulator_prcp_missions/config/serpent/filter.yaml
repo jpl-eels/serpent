@@ -34,3 +34,11 @@ voxel_grid_filter:
   enabled: true
   leaf_size: 0.25
   minimum_points_number_per_voxel: 1
+
+# Mask to apply to stereo images for feature extraction, with a coordinate system origin at the top left corner
+stereo_mask:
+  enabled: false
+  top_left_x: 0
+  top_left_y: 0
+  height: 0
+  width: 0

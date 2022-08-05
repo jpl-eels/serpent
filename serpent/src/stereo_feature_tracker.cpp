@@ -40,25 +40,38 @@ std::string StereoFeatureTracker::Statistics::to_string() const {
 StereoFeatureTracker::StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector,
         const cv::Ptr<cv::Feature2D> descriptor, const cv::Ptr<cv::DescriptorMatcher> matcher,
         const cv::Ptr<cv::SparseOpticalFlow> sof, const cv::Ptr<serpent::StereoMatchFilter> stereo_filter,
-        const cv::Ptr<serpent::DistanceMatchFilter> distance_filter, const float new_feature_dist_threshold):
+        const cv::Ptr<serpent::DistanceMatchFilter> distance_filter, const float new_feature_dist_threshold,
+        const cv::Rect2i& roi):
     detector(detector), descriptor(descriptor), matcher(matcher), sof(sof), stereo_filter(stereo_filter),
     distance_filter(distance_filter), new_feature_sqr_dist_threshold(std::pow(new_feature_dist_threshold, 2.0)),
-    frame_number(0), next_match_id(0) {}
+    roi(roi), frame_number(0), next_match_id(0) {}
 
 StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::Mat& left_image,
         const cv::Mat& right_image,
         std::optional<std::reference_wrapper<Statistics>> stats, 
         std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images) {
+    // Error handling
+    if (left_image.size != right_image.size) {
+        throw std::runtime_error("Left and right images did not have the same size.");
+    }
+
     // Track statistics
     if (stats) {
         stats->get().frame_number = frame_number;
+    }
+
+    // Create mask if ROI is defined and image sizes have changed (or first image)
+    if (roi != cv::Rect2i{} && roi_mask.size() != left_image.size()) {
+        roi_mask = cv::Mat::zeros(left_image.rows, left_image.cols, CV_8U);
+        roi_mask(roi) = 1;
+        ROS_DEBUG_STREAM("Create ROI mask");
     }
 
     // Group images
     LRImages images{{left_image, right_image}};
 
     // Extract features in both images
-    auto keypoints = extract_keypoints(images);
+    auto keypoints = extract_keypoints(images, roi_mask);
     ROS_DEBUG_STREAM("Extracted keypoints");
     if (stats) {
         stats->get().extracted_kp_count[0] = keypoints[0].size();
@@ -68,6 +81,10 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         for (std::size_t lr = 0; lr < 2; ++lr) {
             cv::drawKeypoints(images[lr], keypoints[lr], intermediate_images->get().extracted_keypoints[lr],
                     intermediate_images->get().keypoint_colours, intermediate_images->get().keypoint_draw_flags);
+            if (roi != cv::Rect2i{}) {
+                cv::rectangle(intermediate_images->get().extracted_keypoints[lr], roi,
+                        intermediate_images->get().roi_colour, intermediate_images->get().roi_thickness);
+            }
         }
     }
 
@@ -253,10 +270,11 @@ std::size_t StereoFeatureTracker::extract_consistent_matches(const LRMatches& ma
     return tracked_match_count;
 }
 
-StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_keypoints(const LRImages& images) const {
+StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_keypoints(const LRImages& images, cv::InputArray roi_)
+        const {
     LRKeyPoints keypoints;
     for (std::size_t lr = 0; lr < 2; ++lr) {
-        detector->detect(images[lr], keypoints[lr]);
+        detector->detect(images[lr], keypoints[lr], roi_);
     }
     return keypoints;
 }

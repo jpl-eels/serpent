@@ -242,10 +242,19 @@ StereoFactorFinder::StereoFactorFinder():
                 + "\' not recognised.");
     }
 
+    // Region of Interest
+    cv::Rect2i roi;
+    if (nh.param<bool>("stereo_mask/enabled", false)) {
+        roi.height = nh.param<int>("stereo_mask/height", 0);
+        roi.width = nh.param<int>("stereo_mask/width", 0);
+        roi.x = nh.param<int>("stereo_mask/top_left_x", 0);
+        roi.y = nh.param<int>("stereo_mask/top_left_y", 0);
+    }
+
     // Create tracker
     const float new_feature_dist_threshold = nh.param<float>("stereo_factors/new_feature_dist_threshold", 5.0);
     tracker = std::make_unique<StereoFeatureTracker>(detector, descriptor, matcher, sparse_optical_flow,
-            stereo_filter, distance_filter, new_feature_dist_threshold);
+            stereo_filter, distance_filter, new_feature_dist_threshold, roi);
 
     // Visualisation
     nh.param<bool>("stereo_factors/visualisation/print_stats", print_stats, false);

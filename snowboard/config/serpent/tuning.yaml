@@ -41,14 +41,14 @@ optimisation:
   factors:
     imu: false
     registration: true
-    stereo: false
+    stereo: true
 
 # Registration
 s2s:
   base_noise:
     rotation: 0.0174533 # 1 deg
     translation: 1.0e-2  # 10 mm
-    jacobian_augmentation: true
+    jacobian_augmentation: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 20

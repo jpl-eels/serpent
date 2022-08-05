@@ -57,6 +57,8 @@ public:
         cv::Mat consistent_tracked_matches;
 
         cv::Scalar keypoint_colours = cv::Scalar::all(-1);
+        cv::Scalar roi_colour = cv::Scalar(0, 255, 0);
+        int roi_thickness = 2;
         cv::Scalar new_match_colour = cv::Scalar(0, 255, 0);
         cv::Scalar tracked_match_colour = cv::Scalar(0, 0, 255);
         cv::Scalar negative_match_colour = cv::Scalar(255, 0, 0);
@@ -73,7 +75,8 @@ public:
     explicit StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector, const cv::Ptr<cv::Feature2D> descriptor,
             const cv::Ptr<cv::DescriptorMatcher> matcher, const cv::Ptr<cv::SparseOpticalFlow> sof,
             const cv::Ptr<serpent::StereoMatchFilter> stereo_filter,
-            const cv::Ptr<serpent::DistanceMatchFilter> distance_filter, const float new_feature_dist_threshold);
+            const cv::Ptr<serpent::DistanceMatchFilter> distance_filter, const float new_feature_dist_threshold,
+            const cv::Rect2i& roi = cv::Rect2i{});
 
     /**
      * @brief Process a new left-right stereo pair, and return the tracked features in the new frame pair.
@@ -103,7 +106,14 @@ private:
     std::size_t extract_consistent_matches(const LRMatches& matches, const LRMatchIds& match_hypothesis_ids,
             LRMatches& consistent_matches, LRMatchIds& consistent_match_ids);
 
-    LRKeyPoints extract_keypoints(const LRImages& images) const;
+    /**
+     * @brief Extract keypoints within a region of interest
+     * 
+     * @param images 
+     * @param roi
+     * @return LRKeyPoints 
+     */
+    LRKeyPoints extract_keypoints(const LRImages& images, cv::InputArray roi = cv::noArray()) const;
 
     /**
      * @brief Extract just the keypoints present in the matches, and update the match indices.
@@ -141,6 +151,8 @@ private:
 
     //// Configuration
     const float new_feature_sqr_dist_threshold;
+    const cv::Rect2i roi;
+    cv::Mat roi_mask;
 
     //// State
     int frame_number;

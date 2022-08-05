@@ -1,0 +1,37 @@
+<launch>
+    <arg name="mission"         value="ice_rink"/>
+    <arg name="stereo_camera"   default="snowboard_left"/>
+
+    <!-- Split Images -->
+    <include file="$(find snowboard)/launch/split_images.launch"/>
+
+    <!-- Undistort Stereo -->
+    <include file="$(find snowboard)/launch/undistort_stereo.launch">
+        <arg name="stereo_camera" default="$(arg stereo_camera)"/>
+    </include>
+
+    <!-- Launch Serpent Stereo Pipeline -->
+    <include file="$(find serpent)/launch/serpent_stereo_pipeline.launch">
+        <arg name="stereo_left_cam_image_topic"     value="/$(arg stereo_camera)/left/rect/image"/>
+        <arg name="stereo_left_cam_info_topic"      value="/$(arg stereo_camera)/left/rect/camera_info"/>
+        <arg name="stereo_right_cam_image_topic"    value="/$(arg stereo_camera)/right/rect/image"/>
+        <arg name="stereo_right_cam_info_topic"     value="/$(arg stereo_camera)/right/rect/camera_info"/>
+
+        <arg name="robot_file"                      value="$(find snowboard)/config/serpent/snowboard.yaml"/>
+        <arg name="mission_file"                    value="$(find snowboard)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="filter_file"                     value="$(find snowboard)/config/serpent/filter.yaml"/>
+        <arg name="format_file"                     value="$(find snowboard)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"          value="$(find snowboard)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"                     value="$(find snowboard)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"                      value="$(find snowboard)/config/serpent/debug.yaml"/>
+        <arg name="threads"                         value="4"/>
+
+        <arg name="use_gdb"                         value="false"/>
+
+        <arg name="play_rosbag"                     value="true"/>
+        <arg name="rosbag_mission"                  value="replaced_timestamps_imu_prepared_2022-07-13-21-57-40"/>
+        <arg name="rosbag_data_dir"                 value="$(env HOME)/data/jpl_snowboard/ice_rink_data"/>
+        <arg name="rosbag_rate"                     value="1"/>
+        <arg name="rosbag_start"                    value="0"/>
+    </include>
+</launch>

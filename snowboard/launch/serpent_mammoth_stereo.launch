@@ -5,13 +5,15 @@
     
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
+        <arg name="mission"         value="mammoth_outdoor"/>
+
         <!-- Playback -->
-        <arg name="rosbag_mission"  default="replaced_timestamps_2022-03-21-21-49-07"/>
-        <arg name="data_dir"        default="$(env HOME)/data/jpl_snowboard/2022-03-21_image_imu_dataset"/>
-        <arg name="rate"            default="$(arg rate)"/>
-        <arg name="start"           default="$(arg start)"/>
+        <arg name="rosbag_mission"  value="replaced_timestamps_2022-03-21-21-49-07"/>
+        <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/2022-03-21_image_imu_dataset"/>
+        <arg name="rate"            value="$(arg rate)"/>
+        <arg name="start"           value="$(arg start)"/>
 
         <!-- Stereo Camera -->
-        <arg name="stereo_camera"   default="$(arg stereo_camera)"/>
+        <arg name="stereo_camera"   value="$(arg stereo_camera)"/>
     </include>
 </launch>

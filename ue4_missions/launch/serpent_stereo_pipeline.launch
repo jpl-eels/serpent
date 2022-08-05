@@ -12,7 +12,7 @@
         <arg name="right_info_topic"    value="$(arg right_info_topic)"/>
     </include>
 
-    <!-- Launch Serpent Stereo Pipelin -->
+    <!-- Launch Serpent Stereo Pipeline -->
     <include file="$(find serpent)/launch/serpent_stereo_pipeline.launch">
         <arg name="stereo_left_cam_image_topic"    value="$(arg left_image_topic)"/>
         <arg name="stereo_left_cam_info_topic"     value="$(arg left_info_topic)"/>

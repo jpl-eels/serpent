@@ -4,10 +4,12 @@
 
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
+        <arg name="mission"         value="ice_rink"/>
+
         <!-- Playback -->
-        <arg name="rosbag_mission"  default="replaced_timestamps_imu_prepared_2022-07-13-22-14-28"/>
-        <arg name="data_dir"        default="$(env HOME)/data/jpl_snowboard/ice_rink_data"/>
-        <arg name="rate"            default="$(arg rate)"/>
-        <arg name="start"           default="$(arg start)"/>
+        <arg name="rosbag_mission"  value="replaced_timestamps_imu_prepared_2022-07-13-22-14-28"/>
+        <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/ice_rink_data"/>
+        <arg name="rate"            value="$(arg rate)"/>
+        <arg name="start"           value="$(arg start)"/>
     </include>
 </launch>
