@@ -47,8 +47,28 @@ int to_term_criteria_type(const std::string& term_criteria_type) {
     throw std::runtime_error("TermCriteria::Type \'" + term_criteria_type + "\' not recognised.");
 }
 
+cv::FastFeatureDetector::DetectorType to_fast_type(const std::string& fast_type) {
+    if (fast_type == "TYPE_5_8") {
+        return cv::FastFeatureDetector::DetectorType::TYPE_5_8;
+    } else if (fast_type == "TYPE_7_12") {
+        return cv::FastFeatureDetector::DetectorType::TYPE_7_12;
+    } else if (fast_type == "TYPE_9_16") {
+        return cv::FastFeatureDetector::DetectorType::TYPE_9_16;
+    }
+    throw std::runtime_error("FastFeatureDetector Type \'" + fast_type + "\' not recognised.");
+}
+
 template<typename Feature2DType>
 cv::Ptr<Feature2DType> create_from_params(const ros::NodeHandle& nh);
+
+template<>
+cv::Ptr<cv::FastFeatureDetector> create_from_params<cv::FastFeatureDetector>(const ros::NodeHandle& nh) {
+    const int threshold = nh.param<int>("stereo_factors/detector/fast/threshold", 10);
+    const bool nonmax_suppression = nh.param<bool>("stereo_factors/detector/fast/nonmax_suppression", true);
+    const cv::FastFeatureDetector::DetectorType type =
+            to_fast_type(nh.param<std::string>("stereo_factors/detector/fast/type", "TYPE_9_16"));
+    return cv::FastFeatureDetector::create(threshold, nonmax_suppression, type);
+}
 
 template<>
 cv::Ptr<cv::GFTTDetector> create_from_params<cv::GFTTDetector>(const ros::NodeHandle& nh) {
@@ -148,7 +168,9 @@ StereoFactorFinder::StereoFactorFinder():
 
     // Detector
     const std::string feature_type = nh.param<std::string>("stereo_factors/detector/type", "ORB");
-    if (feature_type == "GFTT") {
+    if (feature_type == "FAST") {
+        detector = create_from_params<cv::FastFeatureDetector>(nh);
+    } else if (feature_type == "GFTT") {
         detector = create_from_params<cv::GFTTDetector>(nh);
     } else if (feature_type == "ORB") {
         detector = create_from_params<cv::ORB>(nh);

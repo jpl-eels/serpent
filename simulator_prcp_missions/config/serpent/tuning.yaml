@@ -143,7 +143,11 @@ stereo_factors:
     rich_matches: true
   new_feature_dist_threshold: 5.0
   detector:
-    type: "ORB" # Options: GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    type: "ORB" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    fast: &fast
+      threshold: 10
+      nonmax_suppression: true
+      type: "TYPE_9_16" # Options: TYPE_5_8, TYPE_7_12, TYPE_9_16
     gftt: &gftt
       max_corners: 1000
       quality_level: 0.01
