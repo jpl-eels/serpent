@@ -167,19 +167,6 @@ stereo_factors:
       contrast_threshold: 0.04
       edge_threshold: 10.0
       sigma: 1.6
-  descriptor:
-    type: "ORB" # Options: ORB, SIFT
-    orb: *orb
-    sift: *sift
-  matcher:
-    type: "BRUTE_FORCE" # Options: BRUTE_FORCE, FLANN (only for float descriptors, e.g. SIFT, SURF)
-    brute_force:
-      norm_type: "NORM_HAMMING"  # NORM_HAMMING for ORB and BRIEF, NORM_L2 for SIFT and SURF.
-      cross_check: false
-    # TODO: flann options (https://www.ccoderun.ca/programming/doxygen/opencv/structcv_1_1flann_1_1IndexParams.html)
-  distance_match_filter:
-    enabled: true
-    descriptor_distance_threshold: 35.0
   stereo_match_filter:
     vertical_pixel_threshold: 25.0
   sparse_optical_flow:
@@ -193,3 +180,9 @@ stereo_factors:
         epsilon: 0.01
       flags: 0
       min_eig_threshold: 1.0e-4
+  stereo_keypoint_matcher:
+    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, INCC
+    window_size:
+      width: 3
+      height: 3
+    cost_threshold: 1.0e+9

@@ -131,26 +131,19 @@ StereoFactorFinder::StereoFactorFinder():
     // Additional Publishers
     nh.param<bool>("stereo_factors/visualisation/publish_intermediate_results", publish_intermediate_results, false);
     if (publish_intermediate_results) {
-        extracted_keypoints_left_publisher = it.advertise("stereo/left/extracted_keypoints/image", 1);
-        extracted_keypoints_right_publisher = it.advertise("stereo/right/extracted_keypoints/image", 1);
+        extracted_keypoints_publisher = it.advertise("stereo/extracted_keypoints/image", 1);
         sof_matches_left_publisher = it.advertise("stereo/left/sof_matches/image", 1);
         sof_matches_right_publisher = it.advertise("stereo/right/sof_matches/image", 1);
-        merged_keypoints_left_publisher = it.advertise("stereo/left/merged_keypoints/image", 1);
-        merged_keypoints_right_publisher = it.advertise("stereo/right/merged_keypoints/image", 1);
-        raw_matches_publisher = it.advertise("stereo/raw_matches/image", 1);
-        distance_filtered_matches_publisher = it.advertise("stereo/distance_filtered_matches/image", 1);
         stereo_filtered_matches_publisher = it.advertise("stereo/stereo_filtered_matches/image", 1);
-        consistent_new_matches_publisher = it.advertise("stereo/consistent_new_matches/image", 1);
-        consistent_tracked_matches_publisher = it.advertise("stereo/consistent_tracked_matches/image", 1);
+        new_matches_publisher = it.advertise("stereo/new_matches/image", 1);
+        tracked_matches_publisher = it.advertise("stereo/tracked_matches/image", 1);
     }
 
     // Components of tracker
     cv::Ptr<cv::Feature2D> detector;
-    cv::Ptr<cv::Feature2D> descriptor;
-    cv::Ptr<cv::DescriptorMatcher> matcher;
     cv::Ptr<cv::SparseOpticalFlow> sparse_optical_flow;
-    cv::Ptr<serpent::DistanceMatchFilter> distance_filter;
-    cv::Ptr<serpent::StereoMatchFilter> stereo_filter;
+    cv::Ptr<StereoMatchFilter> stereo_filter;
+    cv::Ptr<StereoKeyPointMatcher> stereo_matcher;
 
     // Detector
     const std::string feature_type = nh.param<std::string>("stereo_factors/detector/type", "ORB");
@@ -170,50 +163,7 @@ StereoFactorFinder::StereoFactorFinder():
         throw std::runtime_error("Stereo factor feature type \'" + feature_type + "\' not recognised.");
     }
 
-    // Descriptor
-    const std::string descriptor_type = nh.param<std::string>("stereo_factors/descriptor/type", "ORB");
-    if (descriptor_type == "GFTT") {
-        descriptor = create_from_params<cv::GFTTDetector>(nh);
-    } else if (descriptor_type == "ORB") {
-        descriptor = create_from_params<cv::ORB>(nh);
-    } else if (descriptor_type == "SIFT") {
-        #if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 4
-        descriptor = create_from_params<cv::SIFT>(nh);
-        #else
-        throw std::runtime_error("SIFT requires OpenCV >= 4.4.0. Current OpenCV version: "
-                + std::to_string(CV_VERSION_MAJOR) + "." + std::to_string(CV_VERSION_MINOR) + "."
-                + std::to_string(CV_VERSION_REVISION));
-        #endif
-    } else {
-        throw std::runtime_error("Stereo factor descriptor type \'" + descriptor_type + "\' not recognised.");
-    }
-
-    // Matcher
-    const std::string matcher_type = nh.param<std::string>("stereo_factors/matcher/type", "FLANN");
-    if (matcher_type == "BRUTE_FORCE") {
-        const cv::NormTypes norm_type = to_norm_type(
-                nh.param<std::string>("stereo_factors/matcher/brute_force/norm_type", "NORM_L2"));
-        const bool cross_check = nh.param<bool>("stereo_factors/matcher/brute_force/cross_check", false);
-        matcher = cv::BFMatcher::create(norm_type, cross_check);
-    } else if (matcher_type == "FLANN") {
-        if (descriptor_type == "ORB") {
-            throw std::runtime_error("Cannot use FLANN (currently) for non-float descriptors (ORB, BRIEF). Use"
-                    " Brute-Force matcher with NORM_HAMMING norm_type instead, or change descriptor. TODO: implement"
-                    " options for FLANN to broaden compatibility.");
-        }
-        // TODO: create from constructor with search and index params
-        matcher = cv::FlannBasedMatcher::create();
-    } else {
-        throw std::runtime_error("Stereo factor matcher type \'" + matcher_type + "\' not recognised.");
-    }
-
-    // Filtering
-    if (nh.param<bool>("stereo_factors/distance_match_filter/enabled", false)) {
-        const float descriptor_distance_threshold = nh.param<float>(
-                "stereo_factors/distance_match_filter/descriptor_distance_threshold",
-                std::numeric_limits<float>::max());
-        distance_filter = serpent::DistanceMatchFilter::create(descriptor_distance_threshold);
-    }
+    // Stereo Filter
     const float vertical_pixel_threshold = nh.param<float>(
             "stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.0);
     stereo_filter = serpent::StereoMatchFilter::create(vertical_pixel_threshold);
@@ -242,6 +192,21 @@ StereoFactorFinder::StereoFactorFinder():
                 + "\' not recognised.");
     }
 
+    // Stereo KeyPoint Matcher
+    const cv::Size stereo_matcher_window{nh.param<int>("stereo_factors/stereo_keypoint_matcher/window_size/width", 3),
+            nh.param<int>("stereo_factors/stereo_keypoint_matcher/window_size/height", 3)};
+    const std::string stereo_matcher_cost_function_str =
+            nh.param<std::string>("stereo_factors/stereo_keypoint_matcher/cost_function", "SAD");
+    StereoKeyPointMatcher::MatchingCostFunction stereo_matcher_cost_function;
+    if (stereo_matcher_cost_function_str == "SAD") {
+        stereo_matcher_cost_function = &sum_of_absolute_differences;
+    } else {
+        throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
+    }
+    stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window);
+    const double stereo_match_cost_threshold = nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold",
+            1.0);
+
     // Region of Interest
     cv::Rect2i roi;
     if (nh.param<bool>("stereo_mask/enabled", false)) {
@@ -253,8 +218,8 @@ StereoFactorFinder::StereoFactorFinder():
 
     // Create tracker
     const float new_feature_dist_threshold = nh.param<float>("stereo_factors/new_feature_dist_threshold", 5.0);
-    tracker = std::make_unique<StereoFeatureTracker>(detector, descriptor, matcher, sparse_optical_flow,
-            stereo_filter, distance_filter, new_feature_dist_threshold, roi);
+    tracker = std::make_unique<StereoFeatureTracker>(detector, sparse_optical_flow, stereo_filter, stereo_matcher,
+            new_feature_dist_threshold, stereo_match_cost_threshold, roi);
 
     // Visualisation
     nh.param<bool>("stereo_factors/visualisation/print_stats", print_stats, false);
@@ -310,17 +275,12 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     }
     if (publish_intermediate_results) {
         const std_msgs::Header& header = left_image->header;
-        publish_image(extracted_keypoints_left_publisher, intermediate_images.extracted_keypoints[0], header);
-        publish_image(extracted_keypoints_right_publisher, intermediate_images.extracted_keypoints[1], header);
+        publish_image(extracted_keypoints_publisher, intermediate_images.extracted_keypoints, header);
         publish_image(sof_matches_left_publisher, intermediate_images.sof_matches[0], header);
         publish_image(sof_matches_right_publisher, intermediate_images.sof_matches[1], header);
-        publish_image(merged_keypoints_left_publisher, intermediate_images.merged_keypoints[0], header);
-        publish_image(merged_keypoints_right_publisher, intermediate_images.merged_keypoints[1], header);
-        publish_image(raw_matches_publisher, intermediate_images.raw_matches, header);
-        publish_image(distance_filtered_matches_publisher, intermediate_images.distance_filtered_matches, header);
         publish_image(stereo_filtered_matches_publisher, intermediate_images.stereo_filtered_matches, header);
-        publish_image(consistent_new_matches_publisher, intermediate_images.consistent_new_matches, header);
-        publish_image(consistent_tracked_matches_publisher, intermediate_images.consistent_tracked_matches, header);
+        publish_image(new_matches_publisher, intermediate_images.new_matches, header);
+        publish_image(tracked_matches_publisher, intermediate_images.tracked_matches, header);
     }
 
     // Publish Stereo Landmarks

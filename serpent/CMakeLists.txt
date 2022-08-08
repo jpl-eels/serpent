@@ -90,6 +90,7 @@ set(NODE_SRC_FILES
     src/sensor_point_types.cpp
     src/stereo_factor_finder.cpp
     src/stereo_feature_tracker.cpp
+    src/stereo_keypoint_matcher.cpp
     src/utilities.cpp
 )
 
@@ -146,6 +147,7 @@ add_executable(stereo_pipeline_node
     src/match_filters.cpp
     src/stereo_factor_finder.cpp
     src/stereo_feature_tracker.cpp
+    src/stereo_keypoint_matcher.cpp
     src/stereo_pipeline_node.cpp
 )
 
