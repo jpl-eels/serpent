@@ -33,7 +33,7 @@ public:
         std::array<std::size_t, 2> tracked_kp_count;
         std::size_t hypothesis_match_count;
         std::size_t hypothesis_match_id_count;
-        std::size_t filtered_extracted_kp_count;
+        std::array<std::size_t, 2> filtered_extracted_kp_count;
         std::size_t tracked_match_count;
         std::size_t new_match_count;
         std::size_t total_match_count;

@@ -22,7 +22,8 @@ std::string StereoFeatureTracker::Statistics::to_string() const {
     ss << "\t" << "tracked kp #: [" << tracked_kp_count[0] << ", " << tracked_kp_count[1] << "]\n";
     ss << "\t" << "hypothesis match #: " << hypothesis_match_count << "\n";
     ss << "\t" << "hypothesis match id #: " << hypothesis_match_id_count << "\n";
-    ss << "\t" << "filtered extracted kp #: " << filtered_extracted_kp_count << "\n";
+    ss << "\t" << "filtered extracted kp #: [" << filtered_extracted_kp_count[0] << ", "
+            << filtered_extracted_kp_count[1] << "]\n";
     ss << "\t" << "tracked match #: " << tracked_match_count << "\n";
     ss << "\t" << "new match #: " << new_match_count << "\n";
     ss << "\t" << "total match #: " << total_match_count << "\n";
@@ -104,10 +105,13 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         }
 
         // Remove keypoints too close to those already being tracked
-        new_keypoints[0] = remove_close_keypoints(new_keypoints[0], new_track_hypotheses.keypoints[0]);
-        ROS_DEBUG_STREAM("Removed keypoints close to already tracked keypoints in left frame");
-        if (stats) {
-            stats->get().filtered_extracted_kp_count = new_keypoints[0].size();
+        for (std::size_t lr = 0; lr < 2; ++lr) {
+            new_keypoints[lr] = remove_close_keypoints(new_keypoints[lr], new_track_hypotheses.keypoints[lr]);
+            ROS_DEBUG_STREAM("Removed keypoints close to already tracked keypoints in the "
+                    << (lr == 0 ? "left" : "right") << " frame");
+            if (stats) {
+                stats->get().filtered_extracted_kp_count[lr] = new_keypoints[lr].size();
+            }
         }
     }
 
