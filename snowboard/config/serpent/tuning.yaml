@@ -186,3 +186,4 @@ stereo_factors:
       width: 3
       height: 3
     cost_threshold: 1.0e+9
+    vertical_pixel_threshold: 25.0

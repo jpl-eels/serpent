@@ -29,7 +29,7 @@ public:
         int frame_number;
         int max_match_id;
         int longest_tracked_match_id;
-        std::size_t extracted_kp_count;
+        std::array<std::size_t, 2> extracted_kp_count;
         std::array<std::size_t, 2> tracked_kp_count;
         std::size_t hypothesis_match_count;
         std::size_t hypothesis_match_id_count;
@@ -43,7 +43,7 @@ public:
     };
 
     struct IntermediateImages {
-        cv::Mat extracted_keypoints;
+        std::array<cv::Mat, 2> extracted_keypoints;
         std::array<cv::Mat, 2> sof_matches;
         cv::Mat stereo_filtered_matches;
         cv::Mat new_matches;
@@ -63,6 +63,10 @@ public:
         LRKeyPoints keypoints;
         LRMatches matches;
         LRMatchIds match_ids;
+
+        inline std::size_t size() const {
+            return matches.size();
+        }
     };
 
     explicit StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector, const cv::Ptr<cv::SparseOpticalFlow> sof,
@@ -82,6 +86,25 @@ public:
             std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images = std::nullopt);
 
 private:
+    /**
+     * @brief Append new keypoint matches onto track data.
+     * 
+     * @param new_keypoint_matches 
+     * @param track_data 
+     */
+    void append_keypoint_matches(const LRKeyPointMatches& new_keypoint_matches, LRKeyPointMatches& track_data);
+
+    /**
+     * @brief Filter the new keypoint matches, removing high cost and invalid keypoints. Create matches and match ids.
+     * 
+     * @param new_keypoints 
+     * @param right_indices 
+     * @param stereo_match_costs 
+     * @return LRKeyPointMatches 
+     */
+    LRKeyPointMatches create_filtered_new_matches(const LRKeyPoints& new_keypoints,
+            const std::vector<int>& right_indices, const std::vector<double>& stereo_match_costs);
+
     /**
      * @brief Extract keypoints from an image using the detector.
      * 
@@ -108,23 +131,6 @@ private:
      * @return LRMatchIds 
      */
     LRMatchIds extract_match_ids(const LRMatchIds& match_ids, const std::vector<std::size_t>& indices) const;
-
-    /**
-     * @brief Remove new stereo keypoint pairs if their cost (computed by the matching algorithm) exceeds a threshold.
-     * 
-     * @param new_keypoints 
-     * @param costs stereo match costs, to be compared against the threshold
-     * @return LRKeyPoints 
-     */
-    LRKeyPoints filter_new_stereo_keypoints(const LRKeyPoints& new_keypoints, const std::vector<double>& costs) const;
-
-    /**
-     * @brief Add new keypoints to track data, adding a match with a new match id for each one.
-     * 
-     * @param new_keypoints 
-     * @param track_data 
-     */
-    void merge_new_stereo_keypoints(const LRKeyPoints& new_keypoints, LRKeyPointMatches& track_data);
 
     /**
      * @brief Return a filtered set of keypoints which are not too close to any reference keypoints, according to a

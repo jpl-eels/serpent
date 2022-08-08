@@ -59,8 +59,12 @@ public:
      */
     const std::vector<std::size_t>& indices() const;
 
+    void set_vertical_pixel_threshold(const float vertical_pixel_threshold);
+
+    float vertical_pixel_threshold() const;
+
 protected:
-    float vertical_pixel_threshold;
+    float vertical_pixel_threshold_;
 
     // State of last filter estimate
     std::vector<std::size_t> indices_;

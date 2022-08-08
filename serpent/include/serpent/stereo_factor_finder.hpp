@@ -37,7 +37,7 @@ private:
     message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo,
             sensor_msgs::CameraInfo> stereo_sync;
     //// Intermediate Results
-    image_transport::Publisher extracted_keypoints_publisher;
+    image_transport::Publisher extracted_keypoints_left_publisher;
     image_transport::Publisher extracted_keypoints_right_publisher;
     image_transport::Publisher sof_matches_left_publisher;
     image_transport::Publisher sof_matches_right_publisher;

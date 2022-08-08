@@ -131,7 +131,8 @@ StereoFactorFinder::StereoFactorFinder():
     // Additional Publishers
     nh.param<bool>("stereo_factors/visualisation/publish_intermediate_results", publish_intermediate_results, false);
     if (publish_intermediate_results) {
-        extracted_keypoints_publisher = it.advertise("stereo/extracted_keypoints/image", 1);
+        extracted_keypoints_left_publisher = it.advertise("stereo/left/extracted_keypoints/image", 1);
+        extracted_keypoints_right_publisher = it.advertise("stereo/right/extracted_keypoints/image", 1);
         sof_matches_left_publisher = it.advertise("stereo/left/sof_matches/image", 1);
         sof_matches_right_publisher = it.advertise("stereo/right/sof_matches/image", 1);
         stereo_filtered_matches_publisher = it.advertise("stereo/stereo_filtered_matches/image", 1);
@@ -203,7 +204,8 @@ StereoFactorFinder::StereoFactorFinder():
     } else {
         throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
     }
-    stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window);
+    stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window,
+            nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
     const double stereo_match_cost_threshold = nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold",
             1.0);
 
@@ -275,7 +277,8 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     }
     if (publish_intermediate_results) {
         const std_msgs::Header& header = left_image->header;
-        publish_image(extracted_keypoints_publisher, intermediate_images.extracted_keypoints, header);
+        publish_image(extracted_keypoints_left_publisher, intermediate_images.extracted_keypoints[0], header);
+        publish_image(extracted_keypoints_right_publisher, intermediate_images.extracted_keypoints[1], header);
         publish_image(sof_matches_left_publisher, intermediate_images.sof_matches[0], header);
         publish_image(sof_matches_right_publisher, intermediate_images.sof_matches[1], header);
         publish_image(stereo_filtered_matches_publisher, intermediate_images.stereo_filtered_matches, header);
