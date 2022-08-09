@@ -1,11 +1,17 @@
 <launch>
+    <!-- Arguments -->
     <arg name="mission"  default=""/>
     <arg name="data_dir" default="$(env HOME)/data/"/>
     <arg name="rate"     default="1"/>
     <arg name="start"    default="0"/>
+    <arg name="duration" default=""/>
 
-    <arg name="bagfile"  value="$(arg data_dir)/$(arg mission).bag"/>
+    <!-- Processing -->
+    <arg name="bagfile" value="$(arg data_dir)/$(arg mission).bag"/>
+    <arg if="$(eval duration == '')" name="duration_arg"    value=""/>
+    <arg if="$(eval duration != '')" name="duration_arg"    value="-u $(arg duration)"/>
 
+    <!-- Rosbag Play -->
     <node pkg="rosbag" type="play" name="mission_play" output="screen"
-            args="$(arg bagfile) --clock -r $(arg rate) -s $(arg start) --pause"/>
+            args="$(arg bagfile) --clock -r $(arg rate) -s $(arg start) $(arg duration_arg) --pause"/>
 </launch>

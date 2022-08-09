@@ -34,6 +34,7 @@
     <arg name="rosbag_data_dir"                 default="$(env HOME)/data/"/>
     <arg name="rosbag_rate"                     default="1"/>
     <arg name="rosbag_start"                    default="0"/>
+    <arg name="rosbag_duration"                 default=""/>
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
@@ -83,10 +84,11 @@
 
     <!-- Rosbag -->
     <include if="$(arg play_rosbag)" file="$(find serpent)/launch/rosbag.launch">
-        <arg name="mission"  default="$(arg rosbag_mission)"/>
-        <arg name="data_dir" default="$(arg rosbag_data_dir)"/>
-        <arg name="rate"     default="$(arg rosbag_rate)"/>
-        <arg name="start"    default="$(arg rosbag_start)"/>
+        <arg name="mission"  value="$(arg rosbag_mission)"/>
+        <arg name="data_dir" value="$(arg rosbag_data_dir)"/>
+        <arg name="rate"     value="$(arg rosbag_rate)"/>
+        <arg name="start"    value="$(arg rosbag_start)"/>
+        <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
 
     <!-- RVIZ -->

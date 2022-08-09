@@ -37,16 +37,9 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
     [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, plot_opts);
     fprintf("Finished plotting twist data.\n");
 
-    fids = [1];
+    fids = 1;
     if plot_opts.save
-        [mkdir_status, msg, msgID] = mkdir(plot_opts.save_dir);
-        if mkdir_status
-            fprintf("Save directory: %s\n", plot_opts.save_dir);
-        else
-            fprintf('Failed to create directory [msgID: %s, msg: %s\n', ...
-                msgID, msg);
-        end
-
+        create_save_directory(plot_opts.save_dir);
         fids(2) = fopen(join([plot_opts.save_dir, "data.txt"], ""), 'w');
 
         for filetype = plot_opts.filetypes

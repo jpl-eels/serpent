@@ -180,6 +180,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     ROS_DEBUG_STREAM("Merged new stereo keypoints into track data");
     if (stats) {
         stats->get().max_match_id = next_match_id - 1;
+        stats->get().total_match_count = previous_track_data.matches.size();
     }
 
     // Increment frame number

@@ -205,9 +205,8 @@ StereoFactorFinder::StereoFactorFinder():
     }
 
     // Stereo Filter
-    const float vertical_pixel_threshold = nh.param<float>(
-            "stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.0);
-    stereo_filter = serpent::StereoMatchFilter::create(vertical_pixel_threshold);
+    stereo_filter = serpent::StereoMatchFilter::create(nh.param<float>(
+            "stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.f));
 
     // Sparse Optical Flow
     const std::string sparse_optical_flow_type = nh.param<std::string>("stereo_factors/sparse_optical_flow/type",
@@ -315,13 +314,14 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     if (print_stats) {
         ROS_INFO_STREAM(stats.to_string());
     }
+    const std_msgs::Header& header = left_image->header;
     if (publish_stats) {
         auto statistics_msg = boost::make_shared<serpent::StereoTrackerStatistics>();
+        statistics_msg->header = header;
         to_ros(*statistics_msg, stats);
         stereo_tracker_statistics_publisher.publish(statistics_msg);
     }
     if (publish_intermediate_results) {
-        const std_msgs::Header& header = left_image->header;
         publish_image(extracted_keypoints_left_publisher, intermediate_images.extracted_keypoints[0], header);
         publish_image(extracted_keypoints_right_publisher, intermediate_images.extracted_keypoints[1], header);
         publish_image(sof_matches_left_publisher, intermediate_images.sof_matches[0], header);
@@ -333,7 +333,7 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
 
     // Publish Stereo Landmarks
     auto stereo_landmarks = boost::make_shared<serpent::StereoLandmarks>();
-    stereo_landmarks->header = left_image->header;
+    stereo_landmarks->header = header;
     to_ros(stereo_landmarks->landmarks, tracked_matches);
     stereo_landmarks->left_info = *left_info;
     stereo_landmarks->right_info = *right_info;

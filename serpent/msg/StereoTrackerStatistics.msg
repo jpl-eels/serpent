@@ -1,3 +1,5 @@
+# Header
+std_msgs/Header header
 # Stereo image pair frame number, starting from 0
 int32 frame_number
 # Maximum match id that has been assigned

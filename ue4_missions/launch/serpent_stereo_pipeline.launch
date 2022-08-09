@@ -1,4 +1,10 @@
 <launch>
+    <!-- Rosbag options -->
+    <arg name="rate"        default="1"/>
+    <arg name="start"       default="0"/>
+    <arg name="duration"    default=""/>
+
+    <!-- Camera topics -->
     <arg name="left_image_topic"    default="/left_cam"/>
     <arg name="left_info_topic"     default="/left_camera_info"/>
     <arg name="right_image_topic"   default="/right_cam"/>
@@ -33,7 +39,8 @@
         <arg name="play_rosbag"             value="true"/>
         <arg name="rosbag_mission"          value="ue4_icy_surface_0"/>
         <arg name="rosbag_data_dir"         value="$(env HOME)/data/ue4_pedro"/>
-        <arg name="rosbag_rate"             value="1"/>
-        <arg name="rosbag_start"            value="0"/>
+        <arg name="rosbag_rate"             value="$(arg rate)"/>
+        <arg name="rosbag_start"            value="$(arg start)"/>
+        <arg name="rosbag_duration"         value="$(arg duration)"/>
     </include>
 </launch>

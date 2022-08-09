@@ -1,0 +1,18 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="bag_name"            default="serpent"/>
+    <arg name="exclude_timestamp"   default="false"/>
+    <arg name="save_in_ros_folder"  default="false"/>
+    <arg name="topics" default="/serpent/optimisation/odometry /serpent/optimisation/imu_biases 
+            /serpent/stereo/statistics"/>
+
+    <!-- Intermediate processing -->
+    <arg     if="$(arg save_in_ros_folder)" name="full_bag_name" value="$(arg bag_name)"/>
+    <arg unless="$(arg save_in_ros_folder)" name="full_bag_name" value="$(env PWD)/$(arg bag_name)"/>
+    <arg     if="$(arg exclude_timestamp)"  name="save_arg" value="-O $(arg full_bag_name)"/>
+    <arg unless="$(arg exclude_timestamp)"  name="save_arg" value="-o $(arg full_bag_name)"/>
+
+    <!-- Launch the record node -->
+    <node pkg="rosbag" type="record" name="serpent_rosbag_record" output="screen"
+        args="$(arg save_arg) $(arg topics)"/>
+</launch>

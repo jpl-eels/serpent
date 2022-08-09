@@ -7,7 +7,8 @@ close all;
 % Configuration
 config = struct;
 config.gt = struct;
-config.gt.data_dir = "/home/william/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/";
+config.gt.data_dir = join([getenv("HOME"), ...
+    "/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31/"], "");
 config.gt.filename = "analysis/ground_truth/odometry.bag";
 config.gt.topic = "/snowboard/lo_frontend/odometry";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
