@@ -18,16 +18,13 @@ std::string StereoFeatureTracker::Statistics::to_string() const {
     ss << "StereoFeatureTracker::Statistics (frame #" << frame_number << "):\n";
     ss << "\t" << "max match id: " << max_match_id << "\n";
     ss << "\t" << "longest tracked match id: " << longest_tracked_match_id << "\n";
-    ss << "\t" << "extracted kp #: [" << extracted_kp_count[0] << ", " << extracted_kp_count[1] << "]\n";
     ss << "\t" << "tracked kp #: [" << tracked_kp_count[0] << ", " << tracked_kp_count[1] << "]\n";
-    ss << "\t" << "hypothesis match #: " << hypothesis_match_count << "\n";
-    ss << "\t" << "hypothesis match id #: " << hypothesis_match_id_count << "\n";
+    ss << "\t" << "tracked match #: " << tracked_match_count << "\n";
+    ss << "\t" << "extracted kp #: [" << extracted_kp_count[0] << ", " << extracted_kp_count[1] << "]\n";
     ss << "\t" << "filtered extracted kp #: [" << filtered_extracted_kp_count[0] << ", "
             << filtered_extracted_kp_count[1] << "]\n";
-    ss << "\t" << "tracked match #: " << tracked_match_count << "\n";
     ss << "\t" << "new match #: " << new_match_count << "\n";
     ss << "\t" << "total match #: " << total_match_count << "\n";
-    ss << "\t" << "total match id #: " << total_match_id_count << "\n";
     return ss.str();
 }
 
@@ -91,8 +88,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         if (stats) {
             stats->get().tracked_kp_count[0] = new_track_hypotheses.keypoints[0].size();
             stats->get().tracked_kp_count[1] = new_track_hypotheses.keypoints[1].size();
-            stats->get().hypothesis_match_count = new_track_hypotheses.matches.size();
-            stats->get().hypothesis_match_id_count = new_track_hypotheses.match_ids.size();
         }
         if (intermediate_images) {
             for (std::size_t lr = 0; lr < 2; ++lr) {
@@ -185,8 +180,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     ROS_DEBUG_STREAM("Merged new stereo keypoints into track data");
     if (stats) {
         stats->get().max_match_id = next_match_id - 1;
-        stats->get().total_match_count = previous_track_data.matches.size();
-        stats->get().total_match_id_count = previous_track_data.match_ids.size();
     }
 
     // Increment frame number

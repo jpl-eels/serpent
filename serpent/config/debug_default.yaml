@@ -1,3 +1,11 @@
 debug:
-  publish_registration_clouds: false
-  publish_registration_clouds_alt: false
+  registration:
+    publish_clouds: false
+    publish_clouds_alt: false
+
+  stereo:
+    print_stats: false
+    publish_stats: false
+    publish_intermediate_results: false
+    rich_keypoints: false
+    rich_matches: false

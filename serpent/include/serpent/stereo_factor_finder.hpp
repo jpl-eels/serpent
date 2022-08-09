@@ -2,6 +2,7 @@
 #define SERPENT_STEREO_FACTOR_FINDER_HPP
 
 #include "serpent/StereoLandmarks.h"
+#include "serpent/StereoTrackerStatistics.h"
 #include "serpent/stereo_feature_tracker.hpp"
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
@@ -18,6 +19,8 @@ namespace serpent {
 void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
         const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches);
 
+void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::Statistics& statistics);
+
 class StereoFactorFinder {
 public:
     explicit StereoFactorFinder();
@@ -29,6 +32,7 @@ private:
     //// ROS Communication
     ros::NodeHandle nh;
     ros::Publisher stereo_landmarks_publisher;
+    ros::Publisher stereo_tracker_statistics_publisher;
     image_transport::ImageTransport it;
     message_filters::Subscriber<sensor_msgs::Image> left_image_subcriber;
     message_filters::Subscriber<sensor_msgs::Image> right_image_subcriber;
@@ -45,8 +49,9 @@ private:
     image_transport::Publisher new_matches_publisher;
     image_transport::Publisher tracked_matches_publisher;
 
-    //// Visualisation
+    //// Debug
     bool print_stats;
+    bool publish_stats;
     bool publish_intermediate_results;
     cv::DrawMatchesFlags keypoint_draw_flags;
     cv::DrawMatchesFlags match_draw_flags;

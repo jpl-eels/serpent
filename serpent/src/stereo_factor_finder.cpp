@@ -134,6 +134,20 @@ void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
     }
 }
 
+void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::Statistics& statistics) {
+    msg.frame_number = statistics.frame_number;
+    msg.max_match_id = statistics.max_match_id;
+    msg.longest_tracked_match_id = statistics.longest_tracked_match_id;
+    msg.tracked_match_count = statistics.tracked_match_count;
+    msg.new_match_count = statistics.new_match_count;
+    msg.total_match_count = statistics.total_match_count;
+    for (std::size_t lr = 0; lr < 2; ++lr) {
+        msg.tracked_kp_count[lr] = statistics.tracked_kp_count[lr];
+        msg.extracted_kp_count[lr] = statistics.extracted_kp_count[lr];
+        msg.filtered_extracted_kp_count[lr] = statistics.filtered_extracted_kp_count[lr];
+    }
+}
+
 StereoFactorFinder::StereoFactorFinder():
     nh("~"), it(nh), stereo_sync(10)
 {
@@ -149,7 +163,11 @@ StereoFactorFinder::StereoFactorFinder():
     stereo_sync.registerCallback(boost::bind(&StereoFactorFinder::stereo_callback, this, _1, _2, _3, _4));
 
     // Additional Publishers
-    nh.param<bool>("stereo_factors/visualisation/publish_intermediate_results", publish_intermediate_results, false);
+    nh.param<bool>("debug/stereo/publish_intermediate_results", publish_intermediate_results, false);
+    nh.param<bool>("debug/stereo/publish_stats", publish_stats, false);
+    if (publish_stats) {
+        stereo_tracker_statistics_publisher = nh.advertise<serpent::StereoTrackerStatistics>("stereo/statistics", 1);
+    }
     if (publish_intermediate_results) {
         extracted_keypoints_left_publisher = it.advertise("stereo/left/extracted_keypoints/image", 1);
         extracted_keypoints_right_publisher = it.advertise("stereo/right/extracted_keypoints/image", 1);
@@ -246,13 +264,13 @@ StereoFactorFinder::StereoFactorFinder():
             new_feature_dist_threshold, stereo_match_cost_threshold, roi);
 
     // Visualisation
-    nh.param<bool>("stereo_factors/visualisation/print_stats", print_stats, false);
-    if (nh.param<bool>("stereo_factors/visualisation/rich_keypoints", true)) {
+    nh.param<bool>("debug/stereo/print_stats", print_stats, false);
+    if (nh.param<bool>("debug/stereo/rich_keypoints", true)) {
         keypoint_draw_flags = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
     } else {
         keypoint_draw_flags = cv::DrawMatchesFlags::DEFAULT;
     }
-    if (nh.param<bool>("stereo_factors/visualisation/rich_matches", true)) {
+    if (nh.param<bool>("debug/stereo/rich_matches", true)) {
         match_draw_flags = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
     } else {
         match_draw_flags = cv::DrawMatchesFlags::DEFAULT;
@@ -275,7 +293,7 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     // Optional introspection arguments
     StereoFeatureTracker::Statistics stats;
     std::optional<std::reference_wrapper<StereoFeatureTracker::Statistics>> stats_ref = std::nullopt;
-    if (print_stats) {
+    if (print_stats || publish_stats) {
         stats_ref = stats;
     }
     StereoFeatureTracker::IntermediateImages intermediate_images;
@@ -296,6 +314,11 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     // Optional printing and publishing of internal information
     if (print_stats) {
         ROS_INFO_STREAM(stats.to_string());
+    }
+    if (publish_stats) {
+        auto statistics_msg = boost::make_shared<serpent::StereoTrackerStatistics>();
+        to_ros(*statistics_msg, stats);
+        stereo_tracker_statistics_publisher.publish(statistics_msg);
     }
     if (publish_intermediate_results) {
         const std_msgs::Header& header = left_image->header;

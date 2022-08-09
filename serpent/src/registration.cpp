@@ -44,7 +44,7 @@ Registration::Registration():
     nh.param<bool>("s2m/base_noise/jacobian_augmentation", s2m_jacobian_augmentation, false);
 
     // Debugging
-    nh.param<bool>("debug/publish_registration_clouds", publish_registration_clouds, false);
+    nh.param<bool>("debug/registration/publish_clouds", publish_registration_clouds, false);
     if (publish_registration_clouds) {
         debug_previous_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                 "debug/previous_pointcloud", 1);
@@ -55,7 +55,7 @@ Registration::Registration():
                 "debug/s2s_transformed_pointcloud", 1);
         debug_s2m_transformed_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                 "debug/s2m_transformed_pointcloud", 1);
-        nh.param<bool>("debug/publish_registration_clouds_alt", publish_registration_clouds_alt, false);
+        nh.param<bool>("debug/registration/publish_clouds_alt", publish_registration_clouds_alt, false);
         if (publish_registration_clouds_alt) {
             debug_s2s_transformed_cloud_alt_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>(
                     "debug/s2s_transformed_pointcloud_alt", 1);

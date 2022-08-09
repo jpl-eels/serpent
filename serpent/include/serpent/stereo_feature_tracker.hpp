@@ -26,18 +26,24 @@ public:
     using LRF2FMatches = std::array<std::vector<cv::DMatch>, 2>;
 
     struct Statistics {
+        // Stereo image pair frame number, starting from 0
         int frame_number;
+        // Maximum match id that has been assigned
         int max_match_id;
+        // Match id of the oldest match in the current tracked matches
         int longest_tracked_match_id;
-        std::array<std::size_t, 2> extracted_kp_count;
+        // Number of features tracked in the left and right images
         std::array<std::size_t, 2> tracked_kp_count;
-        std::size_t hypothesis_match_count;
-        std::size_t hypothesis_match_id_count;
-        std::array<std::size_t, 2> filtered_extracted_kp_count;
+        // Number of tracked matches
         std::size_t tracked_match_count;
+        // Number of features extracted in the left and right images
+        std::array<std::size_t, 2> extracted_kp_count;
+        // Number of extracted features remaining after proximity filtering
+        std::array<std::size_t, 2> filtered_extracted_kp_count;
+        // Number of new matches
         std::size_t new_match_count;
+        // Total number of matches (should always equal tracked_match_count + new_match_count)
         std::size_t total_match_count;
-        std::size_t total_match_id_count;
 
         std::string to_string() const;
     };

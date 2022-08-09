@@ -136,14 +136,9 @@ stereo_factors:
     right_x: 5.0
     y: 10.0
   left_cam_frame_id: "stereo"
-  visualisation:
-    print_stats: false
-    publish_intermediate_results: false
-    rich_keypoints: true
-    rich_matches: true
   new_feature_dist_threshold: 5.0
   detector:
-    type: "ORB" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     fast: &fast
       threshold: 10
       nonmax_suppression: true

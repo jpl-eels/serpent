@@ -39,6 +39,7 @@ add_message_files(
         ImuBiases.msg
         StereoLandmark.msg
         StereoLandmarks.msg
+        StereoTrackerStatistics.msg
 )
 
 generate_messages(
