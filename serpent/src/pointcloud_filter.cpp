@@ -1,7 +1,7 @@
 #include "serpent/pointcloud_filter.hpp"
+#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
-// #include <pcl/kdtree/kdtree_flann.h>
 
 namespace serpent {
 
@@ -85,6 +85,10 @@ void PointcloudFilter::body_filter_callback(const pcl::PCLPointCloud2::ConstPtr&
 }
 
 void PointcloudFilter::range_filter_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
+    if (!pct::has_field(*msg, "range")) {
+        throw std::runtime_error("Point cloud has no field \'range\' but range filter was enabled. Disable range filter"
+                " or add \'range\' field to input point cloud.");
+    }
     range_pointcloud_publisher.publish(filter(msg, range_filter));
 }
 

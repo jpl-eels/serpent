@@ -204,7 +204,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             { return imu_bias_timestamp != previous_pointcloud_start; })) {
         return;
     };
-    auto previous_imu_biases = imu_biases;
+    const gtsam::imuBias::ConstantBias previous_imu_biases = imu_biases;
     ROS_INFO_STREAM("Acquired previous bias at " << imu_bias_timestamp);
     optimised_odometry_mutex.unlock();
 
@@ -231,7 +231,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     imu_mutex.unlock();
 
     // Update preintegration parameters, with IMU noise at scan start time
-    // optimised_odometry_mutex.lock();
+    optimised_odometry_mutex.lock();
     ROS_WARN_ONCE("DESIGN DECISION: gravity from IMU measurements?");
     update_preintegration_params(*preintegration_params, imu.linear_acceleration_covariance,
             imu.angular_velocity_covariance);
@@ -276,70 +276,64 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     }
 
     // Compute scan end time
-    const ros::Duration sweep_duration = ros::Duration(pct::max_value<float>(*msg, "t"));
+    pcl::PCLPointCloud2::Ptr deskewed_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
+    const ros::Duration sweep_duration{pct::has_field(*msg, "t") ? pct::max_value<float>(*msg, "t") : 0};
     if (sweep_duration == ros::Duration(0)) {
         // No sweep required
-        skew_transform = Eigen::Isometry3d::Identity();
-        ROS_INFO_STREAM("Pointcloud does not require deskewing");
+        *deskewed_pointcloud = *msg;
+        ROS_INFO_STREAM("Pointcloud does not require deskewing because sweep duration was 0.");
     } else {
         const ros::Time pointcloud_end = pointcloud_start + sweep_duration;
-        ROS_INFO_STREAM("Pointcloud points span over " << sweep_duration << " from " << pointcloud_start << " to "
+        ROS_INFO_STREAM("Pointcloud points span over " << sweep_duration << " s from " << pointcloud_start << " to "
                 << pointcloud_end);
 
-        if (initialised) {
-            // Create new IMU integrator with new biases for deskewing
-            gtsam::PreintegratedCombinedMeasurements preintegrated_imu_over_scan{preintegration_params, previous_imu_biases};
+        // Create new IMU integrator with new biases for deskewing
+        gtsam::PreintegratedCombinedMeasurements preintegrated_imu_over_scan{preintegration_params,
+                previous_imu_biases};
 
-            // Sleep until IMU message received after scan end time
-            ROS_INFO_STREAM("Waiting for IMU message past " << pointcloud_end);
-            if (!protected_sleep(imu_mutex, 0.01, false, true, [this, pointcloud_end]()
-                    { return last_preint_imu_timestamp < pointcloud_end; })) {
-                return;
-            };
-            ROS_INFO_STREAM("Acquired end time IMU message at " << last_preint_imu_timestamp);
+        // Sleep until IMU message received after scan end time
+        ROS_INFO_STREAM("Waiting for IMU message past " << pointcloud_end);
+        if (!protected_sleep(imu_mutex, 0.01, false, true, [this, pointcloud_end]()
+                { return last_preint_imu_timestamp < pointcloud_end; })) {
+            return;
+        };
+        ROS_INFO_STREAM("Acquired end time IMU message at " << last_preint_imu_timestamp);
 
-            // Integrate IMU messages across pointcloud sweep
-            ros::Time last_timestamp = pointcloud_start;
-            for (const auto& imu : imu_buffer) {
-                if (imu.timestamp > pointcloud_start) {
-                    const double dt = (std::min(imu.timestamp, pointcloud_end) - last_timestamp).toSec();
-                    last_timestamp = imu.timestamp;
-                    preintegrated_imu_over_scan.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-                    if (imu.timestamp > pointcloud_end) {
-                        break;
-                    }
+        // Integrate IMU messages across pointcloud sweep
+        ros::Time last_timestamp = pointcloud_start;
+        for (const auto& imu : imu_buffer) {
+            if (imu.timestamp > pointcloud_start) {
+                const double dt = (std::min(imu.timestamp, pointcloud_end) - last_timestamp).toSec();
+                last_timestamp = imu.timestamp;
+                preintegrated_imu_over_scan.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+                if (imu.timestamp > pointcloud_end) {
+                    break;
                 }
             }
-            imu_mutex.unlock();
-
-            // Generate transform from preintegration
-            ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
-                    " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
-                    " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
-            const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
-            skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
         }
-    }
+        imu_mutex.unlock();
 
-    // Transform skew_transform from IMU frame to LIDAR frame
-    skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,
-            body_frames.frame_to_frame("lidar", "imu"));
+        // Generate transform from preintegration
+        ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
+                " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
+                " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
+        const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
+        skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
     
-    // Transform configuration
-    skew_transform = eigen_ext::to_transform(
-        (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),
-        (deskew_rotation ? skew_transform.rotation() : Eigen::Matrix3d::Identity()));
+        // Transform skew_transform from IMU frame to LIDAR frame
+        skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,
+                body_frames.frame_to_frame("lidar", "imu"));
+        
+        // Deskew configuration
+        skew_transform = eigen_ext::to_transform(
+            (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),
+            (deskew_rotation ? skew_transform.rotation() : Eigen::Matrix3d::Identity()));
 
-    // Deskew pointcloud
-    pcl::PCLPointCloud2::Ptr deskewed_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
-    try {
+        // Deskew pointcloud
         const ros::WallTime tic = ros::WallTime::now();
         pct::deskew(skew_transform, sweep_duration.toSec(), *msg, *deskewed_pointcloud);
         ROS_INFO_STREAM("Deskewed pointcloud in " << (ros::WallTime::now() - tic).toSec() << " seconds.");
-    } catch (const std::exception& ex) {
-        ROS_WARN_ONCE("Pointcloud deskewing failed. Skipping deskewing. Error: %s", ex.what());
-        *deskewed_pointcloud = *msg;
-    } 
+    }
 
     // Publish deskewed pointcloud
     deskewed_pointcloud_publisher.publish(deskewed_pointcloud);

@@ -44,14 +44,20 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
             throw std::runtime_error("Sensor type not valid enum. Something went wrong.");
     }
 
-    // Ensure time field "t" is present and is float
-    const auto& t_field = pct::get_field(*pointcloud, "t");
-    if (t_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-        throw std::runtime_error("t fields that are not FLOAT32 currently not supported.");
-    }
-
     // Time field filter
     if (time_field_filter_enabled) {
+        // Ensure time field is present
+        if (!pct::has_field(*pointcloud, "t")) {
+            throw std::runtime_error("Point cloud must t field with time field filter enabled. Disable filter or add t"
+                    "field to input point cloud.");
+        }
+
+        // Ensure time field "t" is present and is float32
+        const auto& t_field = pct::get_field(*pointcloud, "t");
+        if (t_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+            throw std::runtime_error("t fields that are not FLOAT32 currently not supported.");
+        }
+
         auto filtered_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
         pct::filter_max(*pointcloud, *filtered_pointcloud, t_field, max_time_threshold);
         pointcloud = filtered_pointcloud;
