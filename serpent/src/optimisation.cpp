@@ -39,6 +39,7 @@ Optimisation::Optimisation():
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
     ROS_INFO_STREAM("IMU Factors " << (imu_factors_enabled ? "ENABLED" : "DISABLED"));
     ROS_INFO_STREAM("Registration Factors " << (registration_factors_enabled ? "ENABLED" : "DISABLED"));
+    ROS_INFO_STREAM("Stereo Factors " << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
     if (!imu_factors_enabled && !registration_factors_enabled) {
         throw std::runtime_error("Must have at least one of imu and registration factors enabled");
     }
