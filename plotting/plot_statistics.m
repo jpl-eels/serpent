@@ -1,5 +1,5 @@
-function [fig_core_stats, fig_extra_stats] = plot_statistics(...
-    statistics_data, plot_opts)
+function [fig_core_stats, fig_extra_stats, fig_match_id_stats] = ...
+    plot_statistics(statistics_data, plot_opts)
     % Configuration
     x_axes = cell(statistics_data.num_stats, 1);
     if plot_opts.use_frame_numbers
@@ -54,6 +54,22 @@ function [fig_core_stats, fig_extra_stats] = plot_statistics(...
         ylabel(extra_y_labels(i));
         grid on;
     end
+
+    % Match id figure
+    fig_match_id_stats = figure("Position", plot_opts.figure_dims, ...
+        "Name", "Match Id Statistics");
+    set(0, "CurrentFigure", fig_match_id_stats);
+    mi_r = 1;
+    mi_c = 2;
+    title("Match Id Statistics");
+    subplot(mi_r,mi_c,1);
+    xlabel(x_label);
+    ylabel("frames tracked");
+    zlabel("feature count");
+    subplot(mi_r,mi_c,2);
+    xlabel(x_label);
+    ylabel("mean/min/max frames tracked");
+    grid on;
 
     % Plot all statistics
     for i = 1:statistics_data.num_stats
@@ -115,6 +131,21 @@ function [fig_core_stats, fig_extra_stats] = plot_statistics(...
         hold on;
         plot(x_axis, entry.filtered_extracted_kp_counts.right, 'color', ...
             colour);
+
+        set(0, "CurrentFigure", fig_match_id_stats);
+        % Tracked match histogram
+        subplot(mi_r,mi_c,1);
+        hold on;
+        [Y, T] = meshgrid(1:entry.max_track_duration, entry.timestamps);
+        surf(T, Y, entry.frames_tracked_bins, 'LineStyle', 'none', ...
+            'EdgeColor', 'interp', 'FaceColor', 'interp');
+        subplot(mi_r,mi_c,2);
+        hold on;
+        plot(x_axis, entry.mean_frames_tracked, 'color', colour);
+        plot(x_axis, entry.min_frames_tracked, 'color', colour, ...
+            'LineStyle', '--');
+        plot(x_axis, entry.max_frames_tracked, 'color', colour, ...
+            'LineStyle', '--');
     end
 
     % Legend
@@ -128,4 +159,14 @@ function [fig_core_stats, fig_extra_stats] = plot_statistics(...
         subplot(extra_r,extra_c,i);
         legend(statistics_data.names, "Location", "best");
     end
+    set(0, "CurrentFigure", fig_match_id_stats);
+    subplot(mi_r,mi_c,2);
+    mmm_legend = cell(3*length(statistics_data.names), 1);
+    for i = 1:length(statistics_data.names)
+        name = statistics_data.names{i};
+        mmm_legend{3*(i-1)+1} = join([name, "mean"], " ");
+        mmm_legend{3*(i-1)+2} = join([name, "min"], " ");
+        mmm_legend{3*(i-1)+3} = join([name, "max"], " ");
+    end
+    legend(mmm_legend, "Location", "best");
 end

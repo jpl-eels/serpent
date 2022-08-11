@@ -138,9 +138,9 @@ stereo_factors:
   left_cam_frame_id: "stereo"
   new_feature_dist_threshold: 5.0
   detector:
-    type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
+    type: "FAST" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     fast: &fast
-      threshold: 20
+      threshold: 25
       nonmax_suppression: true
       type: "TYPE_9_16" # Options: TYPE_5_8, TYPE_7_12, TYPE_9_16
     gftt: &gftt
@@ -151,7 +151,7 @@ stereo_factors:
       use_harris_detector: false
       k: 0.04
     orb: &orb
-      num_features: 100
+      num_features: 500
       scale_factor: 1.2
       num_levels: 8
       edge_threshold: 31
