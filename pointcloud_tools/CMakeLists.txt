@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 
     eigen_ext
 )
+find_package(PCL REQUIRED)
 find_package(Open3D REQUIRED)
 
 add_service_files(
