@@ -25,6 +25,7 @@ catkin_package(
 
 # split image
 add_executable(split_image
+    src/image_operations.cpp
     src/split_image_main.cpp
     src/split_image.cpp
 )

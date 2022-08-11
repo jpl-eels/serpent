@@ -1,9 +1,9 @@
 #ifndef CAMERA_TOOLS_SPLIT_IMAGE_HPP
 #define CAMERA_TOOLS_SPLIT_IMAGE_HPP
 
+#include "camera_tools/image_operations.hpp"
 #include <image_transport/image_transport.h>
 #include <opencv2/core/types.hpp>
-#include <opencv2/opencv.hpp>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
@@ -11,45 +11,6 @@
 #include <optional>
 
 namespace camera_tools {
-
-class ImageOperation {
-public:
-    virtual cv::Mat apply(const cv::Mat& mat) = 0;
-
-    virtual sensor_msgs::CameraInfo apply(const sensor_msgs::CameraInfo& info) = 0;
-};
-
-class Rotate : public ImageOperation {
-public:
-    Rotate(const cv::RotateFlags option);
-
-    Rotate(int degrees_clockwise);
-
-    cv::Mat apply(const cv::Mat& in) override;
-
-    sensor_msgs::CameraInfo apply(const sensor_msgs::CameraInfo& info) override;
-
-private:
-    cv::RotateFlags option;
-};
-
-class Flip : public ImageOperation {
-public:
-    enum Option {
-        FLIP_HORIZ,
-        FLIP_VERT,
-        FLIP_BOTH
-    };
-
-    Flip(const Option option);
-
-    cv::Mat apply(const cv::Mat& in) override;
-
-    sensor_msgs::CameraInfo apply(const sensor_msgs::CameraInfo& info) override;
-
-private:
-    int flip_code;
-};
 
 struct ImageSplitConfig {
     image_transport::Publisher publisher;
@@ -60,6 +21,45 @@ struct ImageSplitConfig {
     std::vector<std::shared_ptr<ImageOperation>> operations;
 };
 
+/**
+ * @brief ROS node for splitting up or extracting regions from an image and republishing them as new image + camera_info
+ * streams.
+ * 
+ * Subscribes to ~input/image, which may be remapped in a launch file.
+ * 
+ * Reads configuration from ROS parameter server. For example:
+ *      images:
+ *        - topic: "/camera1/image_raw"
+ *          frame_id: "camera1"
+ *          info_topic: "/camera1/camera_info"
+ *          region:
+ *            u: 0
+ *            v: 0
+ *            w: 800
+ *            h: 600
+ *          operations:
+ *            rotate_cw: 180
+ *            flip: "vert"
+ *          distortion:
+ *            model: "plumb_bob"
+ *            k1: 0.0
+ *            k2: 0.0
+ *            k3: 0.0
+ *            t1: 0.0
+ *            t2: 0.0
+ *          intrinsic:
+ *            fx: 1.0
+ *            fy: 1.0
+ *            cx: 400
+ *            cy: 300
+ *        ...
+ * 
+ * Valid operations:
+ *  rotate_cw: <0, 90, 180, 270>
+ *  rotate_acw: <0, 90, 180, 270>
+ *  flip: "horiz", "vert", "both"
+ * 
+ */
 class ImageSplitter {
 public:
     explicit ImageSplitter();

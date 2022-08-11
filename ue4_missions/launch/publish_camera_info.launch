@@ -4,14 +4,16 @@
     <arg name="right_image_topic"   default="/right_cam/image_raw"/>
     <arg name="right_info_topic"    default="/right_cam/camera_info"/>
 
-    <node pkg="camera_tools" type="publish_info" name="publish_left_camera_info" output="screen">
-        <remap from="~input/image" to="$(arg left_image_topic)"/>
-        <remap from="~output/camera_info" to="$(arg left_info_topic)"/>
-        <rosparam command="load" file="$(find ue4_missions)/config/left_camera_info.yaml"/>
-    </node>
-    <node pkg="camera_tools" type="publish_info" name="publish_right_camera_info" output="screen">
-        <remap from="~input/image" to="$(arg right_image_topic)"/>
-        <remap from="~output/camera_info" to="$(arg right_info_topic)"/>
-        <rosparam command="load" file="$(find ue4_missions)/config/right_camera_info.yaml"/>
-    </node>
+    <include file="$(find camera_tools)/launch/publish_info.launch">
+        <arg name="input_image_topic" value="$(arg left_image_topic)"/>
+        <arg name="output_info_topic" value="$(arg left_info_topic)"/>
+        <arg name="config_file"       value="$(find ue4_missions)/config/left_camera_info.yaml"/>
+        <arg name="node_name"         value="publish_left_camera_info"/>
+    </include>
+    <include file="$(find camera_tools)/launch/publish_info.launch">
+        <arg name="input_image_topic" value="$(arg right_image_topic)"/>
+        <arg name="output_info_topic" value="$(arg right_info_topic)"/>
+        <arg name="config_file"       value="$(find ue4_missions)/config/right_camera_info.yaml"/>
+        <arg name="node_name"         value="publish_right_camera_info"/>
+    </include>
 </launch>

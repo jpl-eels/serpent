@@ -1,0 +1,13 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="input_image_topic" default="/image"/>
+    <arg name="output_info_topic" default="/camera_info"/>
+    <arg name="config_file"       default="$(find camera_tools)/config/publish_info_example.yaml"/>
+    <arg name="node_name"         default="publish_camera_info"/>
+
+    <node pkg="camera_tools" type="publish_info" name="$(arg node_name)" output="screen">
+        <remap from="~input/image" to="$(arg input_image_topic)"/>
+        <remap from="~output/camera_info" to="$(arg output_info_topic)"/>
+        <rosparam command="load" file="$(arg config_file)"/>
+    </node>
+</launch>
