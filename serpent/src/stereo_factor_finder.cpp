@@ -146,6 +146,9 @@ void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::S
         msg.extracted_kp_count[lr] = statistics.extracted_kp_count[lr];
         msg.filtered_extracted_kp_count[lr] = statistics.filtered_extracted_kp_count[lr];
     }
+    for (const int match_id : statistics.match_ids) {
+        msg.match_ids.push_back(match_id);
+    }
 }
 
 StereoFactorFinder::StereoFactorFinder():

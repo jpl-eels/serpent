@@ -44,6 +44,8 @@ public:
         std::size_t new_match_count;
         // Total number of matches (should always equal tracked_match_count + new_match_count)
         std::size_t total_match_count;
+        // Match ids
+        LRMatchIds match_ids;
 
         std::string to_string() const;
     };

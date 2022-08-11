@@ -181,6 +181,9 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     if (stats) {
         stats->get().max_match_id = next_match_id - 1;
         stats->get().total_match_count = previous_track_data.matches.size();
+        for (const int match_id : previous_track_data.match_ids) {
+            stats->get().match_ids.push_back(match_id);
+        }
     }
 
     // Increment frame number

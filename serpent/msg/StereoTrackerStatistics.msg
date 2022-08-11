@@ -18,3 +18,5 @@ int32[2] filtered_extracted_kp_count
 int32 new_match_count
 # Total number of matches (should always equal tracked_match_count + new_match_count)
 int32 total_match_count
+# Match ids
+int32[] match_ids
