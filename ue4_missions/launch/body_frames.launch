@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="eigen_ros" type="body_frames_tf_node" name="body_frames_tf_node" output="screen">
+        <rosparam command="load" file="$(find ue4_missions)/config/serpent/ue4_platform.yaml"/>
+    </node>
+</launch>

@@ -1,0 +1,56 @@
+<launch>
+    <!-- Playback -->
+    <arg name="mission"         default="icy_surface"/>
+    <arg name="rosbag_mission"  default="replaced_gt_replaced_topic_names_replaced_frame_ids_ue4_icy_surface_0"/>
+    <arg name="data_dir"        default="$(env HOME)/data/ue4_pedro"/>
+    <arg name="rate"            default="1"/>
+    <arg name="start"           default="0"/>
+    <arg name="duration"        default=""/>
+
+    <!-- SERPENT -->
+    <arg name="use_gdb"         default="false"/>
+    <arg name="use_callgrind"   default="false"/>
+    <arg name="threads"         default="8"/>
+
+    <!-- Camera topics -->
+    <arg name="left_image_topic"    default="/left_cam/image_raw"/>
+    <arg name="left_info_topic"     default="/left_cam/camera_info"/>
+    <arg name="right_image_topic"   default="/right_cam/image_raw"/>
+    <arg name="right_info_topic"    default="/right_cam/camera_info"/>
+
+    <!-- Publish camera info -->
+    <include file="$(find ue4_missions)/launch/publish_camera_info.launch">
+        <arg name="left_image_topic"    value="$(arg left_image_topic)"/>
+        <arg name="left_info_topic"     value="$(arg left_info_topic)"/>
+        <arg name="right_image_topic"   value="$(arg right_image_topic)"/>
+        <arg name="right_info_topic"    value="$(arg right_info_topic)"/>
+    </include>
+
+    <!-- SERPENT -->
+    <include file="$(find serpent)/launch/serpent.launch">
+        <arg name="imu_topic"                       value="/imu"/>
+        <arg name="pointcloud_topic"                value="/lidar/points"/>
+        <arg name="stereo_left_cam_image_topic"     value="$(arg left_image_topic)"/>
+        <arg name="stereo_left_cam_info_topic"      value="$(arg left_info_topic)"/>
+        <arg name="stereo_right_cam_image_topic"    value="$(arg right_image_topic)"/>
+        <arg name="stereo_right_cam_info_topic"     value="$(arg right_info_topic)"/>
+        <arg name="robot_file"                      value="$(find ue4_missions)/config/serpent/ue4_platform.yaml"/>
+        <arg name="mission_file"                    value="$(find ue4_missions)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="filter_file"                     value="$(find ue4_missions)/config/serpent/filter.yaml"/>
+        <arg name="format_file"                     value="$(find ue4_missions)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"          value="$(find ue4_missions)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"                     value="$(find ue4_missions)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"                      value="$(find ue4_missions)/config/serpent/debug.yaml"/>
+        <arg name="threads"                         value="$(arg threads)"/>
+        <arg name="rviz"                            value="false"/>
+        <arg name="rqt"                             value="true"/>
+        <arg name="play_rosbag"                     value="true"/>
+        <arg name="rosbag_mission"                  value="$(arg rosbag_mission)"/>
+        <arg name="rosbag_data_dir"                 value="$(arg data_dir)"/>
+        <arg name="rosbag_rate"                     value="$(arg rate)"/>
+        <arg name="rosbag_start"                    value="$(arg start)"/>
+        <arg name="rosbag_duration"                 value="$(arg duration)"/>
+        <arg name="use_gdb"                         value="$(arg use_gdb)"/>
+        <arg name="use_callgrind"                   value="$(arg use_callgrind)"/>
+    </include>
+</launch>

@@ -1,14 +1,16 @@
 <launch>
     <!-- Rosbag options -->
-    <arg name="rate"        default="1"/>
-    <arg name="start"       default="0"/>
-    <arg name="duration"    default=""/>
+    <arg name="rosbag_mission"  default="replaced_gt_replaced_topic_names_replaced_frame_ids_ue4_icy_surface_0"/>
+    <arg name="data_dir"        default="$(env HOME)/data/ue4_pedro"/>
+    <arg name="rate"            default="1"/>
+    <arg name="start"           default="0"/>
+    <arg name="duration"        default=""/>
 
     <!-- Camera topics -->
-    <arg name="left_image_topic"    default="/left_cam"/>
-    <arg name="left_info_topic"     default="/left_camera_info"/>
-    <arg name="right_image_topic"   default="/right_cam"/>
-    <arg name="right_info_topic"    default="/right_camera_info"/>
+    <arg name="left_image_topic"    default="/left_cam/image_raw"/>
+    <arg name="left_info_topic"     default="/left_cam/camera_info"/>
+    <arg name="right_image_topic"   default="/right_cam/image_raw"/>
+    <arg name="right_info_topic"    default="/right_cam/camera_info"/>
 
     <!-- Publish camera info -->
     <include file="$(find ue4_missions)/launch/publish_camera_info.launch">
@@ -37,8 +39,8 @@
         <arg name="use_gdb"                 value="false"/>
 
         <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag_mission"          value="ue4_icy_surface_0"/>
-        <arg name="rosbag_data_dir"         value="$(env HOME)/data/ue4_pedro"/>
+        <arg name="rosbag_mission"          value="$(arg rosbag_mission)"/>
+        <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
         <arg name="rosbag_rate"             value="$(arg rate)"/>
         <arg name="rosbag_start"            value="$(arg start)"/>
         <arg name="rosbag_duration"         value="$(arg duration)"/>

@@ -17,16 +17,23 @@ body_frames:
         y: 0.0
         z: 0.0
       rotation:
-        w: 1.0
-        x: 0.0
+        w: 0.0
+        x: 1.0
         y: 0.0
         z: 0.0
     camera:
       rotation:
-        w: 0.5
+        w: -0.5
         x: 0.5
-        y: 0.5
+        y: -0.5
         z: 0.5
+      frames:
+        left_cam:
+          translation:
+            x: -0.05
+        right_cam:
+          translation:
+            x: 0.05
 
 # Stereo Camera
 stereo:

@@ -1,8 +1,8 @@
 <launch>
-    <arg name="left_image_topic"    default="/left_cam"/>
-    <arg name="left_info_topic"     default="/left_camera_info"/>
-    <arg name="right_image_topic"   default="/right_cam"/>
-    <arg name="right_info_topic"    default="/right_camera_info"/>
+    <arg name="left_image_topic"    default="/left_cam/image_raw"/>
+    <arg name="left_info_topic"     default="/left_cam/camera_info"/>
+    <arg name="right_image_topic"   default="/right_cam/image_raw"/>
+    <arg name="right_info_topic"    default="/right_cam/camera_info"/>
 
     <node pkg="camera_tools" type="publish_info" name="publish_left_camera_info" output="screen">
         <remap from="~input/image" to="$(arg left_image_topic)"/>
