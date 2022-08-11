@@ -18,7 +18,7 @@
     <arg name="second_input_frame" default="left_stereo_right_cam"/>
     <arg name="rename_radtan_plumb_bob" default="false"/>
 
-    <node name="undistort_$(arg stereo_camera)" pkg="image_undistort" type="stereo_undistort_node">
+    <node pkg="image_undistort" type="stereo_undistort_node" name="undistort_$(arg stereo_camera)" output="screen">
         <remap from="raw/first/image"           to="/$(arg stereo_camera)/left/image_raw"/>
         <remap from="raw/second/image"          to="/$(arg stereo_camera)/right/image_raw"/>
         <remap from="raw/first/camera_info"     to="/$(arg stereo_camera)/left/camera_info"/>

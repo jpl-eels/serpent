@@ -1,0 +1,49 @@
+<launch>
+    <arg name="stereo_camera" default="snowboard_left"/>
+
+    <arg name="queue_size" default="10"/>
+    <arg name="pre_filter_type" default="xsobel"/>
+    <arg name="pre_filter_size" default="9"/>
+    <arg name="pre_filter_cap" default="31"/>
+    <arg name="sad_window_size" default="21"/>
+    <arg name="min_disparity" default="0"/>
+    <arg name="num_disparities" default="64"/>
+    <arg name="texture_threshold" default="10"/>
+    <arg name="uniqueness_ratio" default="15"/>
+    <arg name="speckle_range" default="0"/>
+    <arg name="speckle_window_size" default="0"/>
+    <arg name="use_sgbm" default="false"/>
+    <arg name="p1" default="120"/>
+    <arg name="p2" default="240"/>
+    <arg name="disp_12_max_diff" default="-1"/>
+    <arg name="use_mode_HH" default="false"/>
+    <arg name="do_median_blur" default="true"/>
+
+    <node pkg="image_undistort" type="depth_node" name="depth_$(arg stereo_camera)" output="screen">
+        <remap from="rect/first/image"          to="/$(arg stereo_camera)/left/rect/image"/>
+        <remap from="rect/second/image"         to="/$(arg stereo_camera)/right/rect/image"/>
+        <remap from="rect/first/camera_info"    to="/$(arg stereo_camera)/left/rect/camera_info"/>
+        <remap from="rect/second/camera_info"   to="/$(arg stereo_camera)/right/rect/camera_info"/>
+        <remap from="disparity/image"           to="/$(arg stereo_camera)/disparity/image"/>
+        <remap from="pointcloud"                to="/$(arg stereo_camera)/pointcloud"/>
+        <remap from="freespace_pointcloud"      to="/$(arg stereo_camera)/freespace_pointcloud"/>
+        
+        <param name="queue_size"            value="$(arg queue_size)"/>
+        <param name="pre_filter_type"       value="$(arg pre_filter_type)"/>
+        <param name="pre_filter_size"       value="$(arg pre_filter_size)"/>
+        <param name="pre_filter_cap"        value="$(arg pre_filter_cap)"/>
+        <param name="sad_window_size"       value="$(arg sad_window_size)"/>
+        <param name="min_disparity"         value="$(arg min_disparity)"/>
+        <param name="num_disparities"       value="$(arg num_disparities)"/>
+        <param name="texture_threshold"     value="$(arg texture_threshold)"/>
+        <param name="uniqueness_ratio"      value="$(arg uniqueness_ratio)"/>
+        <param name="speckle_range"         value="$(arg speckle_range)"/>
+        <param name="speckle_window_size"   value="$(arg speckle_window_size)"/>
+        <param name="use_sgbm"              value="$(arg use_sgbm)"/>
+        <param name="p1"                    value="$(arg p1)"/>
+        <param name="p2"                    value="$(arg p2)"/>
+        <param name="disp_12_max_diff"      value="$(arg disp_12_max_diff)"/>
+        <param name="use_mode_HH"           value="$(arg use_mode_HH)"/>
+        <param name="do_median_blur"        value="$(arg do_median_blur)"/>
+    </node>
+</launch>
