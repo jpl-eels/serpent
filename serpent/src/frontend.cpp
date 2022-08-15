@@ -313,16 +313,16 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         }
         imu_mutex.unlock();
 
-        // Generate transform from preintegration
+        // Generate transform from preintegration, which is in the body frame
         ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
                 " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
                 " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
         const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
         skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
     
-        // Transform skew_transform from IMU frame to LIDAR frame
+        // Transform skew_transform from body frame to lidar frame
         skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,
-                body_frames.frame_to_frame("lidar", "imu"));
+                body_frames.body_to_frame("lidar"));
         
         // Deskew configuration
         skew_transform = eigen_ext::to_transform(
