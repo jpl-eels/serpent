@@ -139,6 +139,7 @@ function [fig_core_stats, fig_extra_stats, fig_match_id_stats] = ...
         [Y, T] = meshgrid(1:entry.max_track_duration, entry.timestamps);
         surf(T, Y, entry.frames_tracked_bins, 'LineStyle', 'none', ...
             'EdgeColor', 'interp', 'FaceColor', 'interp');
+        axis tight;
         subplot(mi_r,mi_c,2);
         hold on;
         plot(x_axis, entry.mean_frames_tracked, 'color', colour);
