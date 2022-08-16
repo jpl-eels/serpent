@@ -214,10 +214,13 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             { return last_preint_imu_timestamp < pointcloud_start; })) {
         return;
     };
+    if (imu_buffer.back().timestamp < pointcloud_start) {
+        throw std::runtime_error("IMU buffer does not contain a recent enough IMU message. Something went wrong.");
+    }
     ROS_INFO_STREAM("Acquired start time IMU message at " << last_preint_imu_timestamp);
 
     if (initialised) {
-        // Accumulate and publish IMU measurements from previous to current scan, removing them from the buffer.
+        // Accumulate and publish IMU measurements from previous to current scan.
         auto imu_s2s = boost::make_shared<serpent::ImuArray>();
         imu_s2s->start_timestamp = previous_pointcloud_start;
         imu_s2s->end_timestamp = pointcloud_start;
@@ -225,16 +228,20 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         imu_s2s_publisher.publish(imu_s2s);
     }
 
-    // Remove messages before pointcloud timestamp
-    delete_old_messages(pointcloud_start, imu_buffer);
-    eigen_ros::Imu imu = imu_buffer.front();
+    // Get imu message after pointcloud start time
+    eigen_ros::Imu pc_start_imu;
+    for (const auto& imu : imu_buffer) {
+        if (imu.timestamp >= pointcloud_start) {
+            pc_start_imu = imu;
+        }
+    }
     imu_mutex.unlock();
 
     // Update preintegration parameters, with IMU noise at scan start time
     optimised_odometry_mutex.lock();
     ROS_WARN_ONCE("DESIGN DECISION: gravity from IMU measurements?");
-    update_preintegration_params(*preintegration_params, imu.linear_acceleration_covariance,
-            imu.angular_velocity_covariance);
+    update_preintegration_params(*preintegration_params, pc_start_imu.linear_acceleration_covariance,
+            pc_start_imu.angular_velocity_covariance);
     optimised_odometry_mutex.unlock();
 
     // If first time, perform initialisation procedure.
@@ -245,9 +252,9 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
         const Eigen::Matrix3d rotation_covariance = Eigen::Matrix3d::Identity()
                 * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        const Eigen::Quaterniond body_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
+        const Eigen::Quaterniond body_orientation = pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
                 Eigen::Quaterniond::Identity() :
-                Eigen::Quaterniond{(imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+                Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
         const eigen_ros::Pose pose{Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0),
                 nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)),
                 body_orientation, position_covariance, rotation_covariance};
@@ -259,13 +266,17 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_WARN_ONCE("TODO FIX: read linear velocity prior from mission file");
         ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
-        const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
-                imu.angular_velocity_covariance};
-        const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame()};
+        const eigen_ros::Twist twist{linear_velocity, pc_start_imu.angular_velocity, linear_twist_covariance,
+                pc_start_imu.angular_velocity_covariance};
+        world_odometry = eigen_ros::Odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame()};
+
+        // Set world state so first deskew is valid (TODO: clean up code duplication)
+        world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
+            world_odometry.twist.linear);
 
         // Publish initial state
         auto odometry_msg = boost::make_shared<nav_msgs::Odometry>();
-        eigen_ros::to_ros(*odometry_msg, odometry);
+        eigen_ros::to_ros(*odometry_msg, world_odometry);
         initial_odometry_publisher.publish(odometry_msg);
         ROS_INFO_STREAM("Sent initial odometry message");
         previous_pointcloud_start = pointcloud_start;
@@ -288,8 +299,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 << pointcloud_end);
 
         // Create new IMU integrator with new biases for deskewing
-        gtsam::PreintegratedCombinedMeasurements preintegrated_imu_over_scan{preintegration_params,
-                previous_imu_biases};
+        gtsam::PreintegratedCombinedMeasurements preintegrated_imu_skew{preintegration_params, previous_imu_biases};
 
         // Sleep until IMU message received after scan end time
         ROS_INFO_STREAM("Waiting for IMU message past " << pointcloud_end);
@@ -299,26 +309,32 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         };
         ROS_INFO_STREAM("Acquired end time IMU message at " << last_preint_imu_timestamp);
 
-        // Integrate IMU messages across pointcloud sweep
-        ros::Time last_timestamp = pointcloud_start;
-        for (const auto& imu : imu_buffer) {
-            if (imu.timestamp > pointcloud_start) {
-                const double dt = (std::min(imu.timestamp, pointcloud_end) - last_timestamp).toSec();
-                last_timestamp = imu.timestamp;
-                preintegrated_imu_over_scan.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-                if (imu.timestamp > pointcloud_end) {
-                    break;
-                }
-            }
+        // Compute state at pointcloud start time (body frame)
+        gtsam::NavState pointcloud_start_state;
+        if (initialised) {
+            // Integrate IMU messages from previous pointcloud timestamp to current pointcloud timestamp
+            integrate_imu(preintegrated_imu_skew, imu_buffer, previous_pointcloud_start, pointcloud_start);
+
+            // Predict and reset integration
+            pointcloud_start_state = preintegrated_imu_skew.predict(world_state, previous_imu_biases);
+            preintegrated_imu_skew.resetIntegration();
+        } else {
+            pointcloud_start_state = world_state;
         }
+
+        // Remove messages before pointcloud start timestamp
+        delete_old_messages(pointcloud_start, imu_buffer);
+
+        // Integrate IMU messages across pointcloud sweep
+        integrate_imu(preintegrated_imu_skew, imu_buffer, pointcloud_start, pointcloud_end);
         imu_mutex.unlock();
 
-        // Generate transform from preintegration, which is in the body frame
-        ROS_WARN_ONCE("TODO FIX: sweep state predicted for deskew is wrong, you cannot predict from"
-                " gtsam::NavState() because you lose velocity. Need to integrate from t_{s,i-1} to t_{s,i}, then"
-                " predict to get a state estimate (with velocity), then integrate from t_{s,i} to t_{e,i}.");
-        const gtsam::NavState sweep_state = preintegrated_imu_over_scan.predict(gtsam::NavState(), previous_imu_biases);
-        skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(sweep_state.pose());
+        // Generate transform from preintegration, which is in the body frame.
+        // T_{B_{i,s}}^{B_{i,e}} = T_{B_{i,s}}^{W} * T_{W}^{B_{i,e}}
+        const gtsam::NavState pointcloud_end_state = preintegrated_imu_skew.predict(pointcloud_start_state,
+                previous_imu_biases);
+        skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_start_state.pose()).inverse() * 
+                eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_end_state.pose());
     
         // Transform skew_transform from body frame to lidar frame
         skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,

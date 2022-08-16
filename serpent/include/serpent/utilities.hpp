@@ -8,6 +8,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/PreintegrationParams.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 #include <ros/time.h>
 #include <sensor_msgs/Imu.h>
 #include <deque>
@@ -25,6 +26,9 @@ bool check_non_zero_diagonals(const Eigen::MatrixBase<Derived>& matrix) {
 bool check_valid(const gtsam::PreintegrationParams& params);
 
 void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& messages);
+
+void integrate_imu(gtsam::PreintegratedCombinedMeasurements& preint, const std::deque<eigen_ros::Imu>& buffer,
+        const ros::Time& start, const ros::Time& end);
 
 std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
         const std::deque<eigen_ros::Imu>& messages);

@@ -18,6 +18,33 @@ void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>&
     }
 }
 
+// There ought to be a a look at how best to integrate on the boundaries. Currently there is a hybrid approach for the
+// integration of the last time fraction.
+void integrate_imu(gtsam::PreintegratedCombinedMeasurements& preint, const std::deque<eigen_ros::Imu>& buffer,
+        const ros::Time& start, const ros::Time& end) {
+    bool integrated_measurements{false};
+    ros::Time integration_time = start;
+    for (const auto& imu : buffer) {
+        if (imu.timestamp > start) {
+            const double dt = (std::min(imu.timestamp, end) - integration_time).toSec();
+            integration_time = imu.timestamp;
+            preint.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
+            integrated_measurements = true;
+            if (imu.timestamp > end) {
+                break;
+            }
+        }
+    }
+    if (!integrated_measurements) {
+        throw std::runtime_error("No IMU measurements within time period");
+    }
+    if (integration_time < end) {
+        const auto& last_imu = buffer.back();
+        preint.integrateMeasurement(last_imu.linear_acceleration, last_imu.angular_velocity,
+                (end - integration_time).toSec());
+    }
+}
+
 Eigen::Matrix<double, 6, 6> reorder_pose_covariance(const Eigen::Matrix<double, 6, 6>& covariance) {
     Eigen::Matrix<double, 6, 6> reordered_covariance;
     reordered_covariance << covariance.block<3, 3>(3, 3), covariance.block<3, 3>(3, 0), covariance.block<3, 3>(0, 3),

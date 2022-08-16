@@ -187,21 +187,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, gm->imu_bias("imu")};
 
     // Preintegrate IMU measurements over sweep
-    ros::Time last_preint_imu_timestamp = msg->start_timestamp;
-    for (std::size_t i = 0; i < imu_s2s.size(); ++i) {
-        const auto& imu = imu_s2s[i];
-        if (imu.timestamp < last_preint_imu_timestamp || imu.timestamp > msg->end_timestamp) {
-            throw std::runtime_error("IMU timestamp " + std::to_string(imu.timestamp.toSec()) + " was outside of "
-                    "expected range [" + std::to_string(last_preint_imu_timestamp.toSec()) + " - "
-                    + std::to_string(msg->end_timestamp.toSec()) + "]");
-        }
-        const double dt = ((i == imu_s2s.size() - 1 ? msg->end_timestamp : imu.timestamp)
-                - last_preint_imu_timestamp).toSec();
-        if (dt > 0.0) {
-            preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-        }
-        last_preint_imu_timestamp = imu.timestamp;
-    }
+    integrate_imu(preintegrated_imu, imu_s2s, msg->start_timestamp, msg->end_timestamp);
     ROS_INFO_STREAM("Preintegrated " << imu_s2s.size() << " IMU messages between t = " << msg->start_timestamp
             << " and t = " << msg->end_timestamp);
     if (preintegrated_imu.preintMeasCov().hasNaN()) {
