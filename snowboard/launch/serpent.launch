@@ -5,6 +5,7 @@
     <arg name="data_dir"        default=""/>
     <arg name="rate"            default="1"/>
     <arg name="start"           default="0"/>
+    <arg name="duration"        default=""/>
 
     <!-- SERPENT -->
     <arg name="use_gdb"         default="false"/>
@@ -49,6 +50,7 @@
         <arg name="rosbag_data_dir"                 value="$(arg data_dir)"/>
         <arg name="rosbag_rate"                     value="$(arg rate)"/>
         <arg name="rosbag_start"                    value="$(arg start)"/>
+        <arg name="rosbag_duration"                 value="$(arg duration)"/>
         <arg name="use_gdb"                         value="$(arg use_gdb)"/>
         <arg name="use_callgrind"                   value="$(arg use_callgrind)"/>
     </include>
