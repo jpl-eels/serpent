@@ -41,7 +41,7 @@ optimisation:
   factors:
     imu: true
     registration: true
-    stereo: false
+    stereo: true
 
 # Registration
 s2s:
@@ -135,23 +135,23 @@ stereo_factors:
     left_x: 5.0
     right_x: 5.0
     y: 10.0
-  left_cam_frame_id: "stereo"
+  left_cam_frame_id: "camera_front_left"
   new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
     fast: &fast
-      threshold: 10
+      threshold: 20
       nonmax_suppression: true
       type: "TYPE_9_16" # Options: TYPE_5_8, TYPE_7_12, TYPE_9_16
     gftt: &gftt
-      max_corners: 1000
+      max_corners: 300
       quality_level: 0.01
       min_distance: 1.0
       block_size: 3
       use_harris_detector: false
       k: 0.04
     orb: &orb
-      num_features: 500
+      num_features: 300
       scale_factor: 1.2
       num_levels: 8
       edge_threshold: 31
@@ -161,7 +161,7 @@ stereo_factors:
       patch_size: 31
       fast_threshold: 20
     sift: &sift
-      num_features: 10
+      num_features: 100
       num_octave_layers: 3
       contrast_threshold: 0.04
       edge_threshold: 10.0
