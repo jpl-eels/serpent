@@ -255,9 +255,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 " orientation for 6-axis IMU");
         const Eigen::Matrix3d linear_twist_covariance = Eigen::Matrix3d::Identity()
                 * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
-        const Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();
-        ROS_WARN_ONCE("TODO FIX: read linear velocity prior from mission file");
-        ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
+        const Eigen::Vector3d linear_velocity = Eigen::Vector3d{nh.param<double>("velocity/linear/x", 0.0),
+                nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
                 imu.angular_velocity_covariance};
