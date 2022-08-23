@@ -83,6 +83,13 @@ public:
             const cv::Rect2i& roi = cv::Rect2i{});
 
     /**
+     * @brief Return the last frame number processed. If no frames have been processed, returns -1.
+     * 
+     * @return int 
+     */
+    int frame_number() const;
+
+    /**
      * @brief Process a new left-right stereo pair, and return the tracked features in the new frame pair.
      * 
      * @param left_image 
@@ -176,7 +183,7 @@ private:
     cv::Mat roi_mask;
 
     //// State
-    int frame_number;
+    int frame_number_;
     int next_match_id;
     LRImages previous_images;
     LRKeyPointMatches previous_track_data;

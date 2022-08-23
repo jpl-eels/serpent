@@ -34,7 +34,11 @@ StereoFeatureTracker::StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector
         const double stereo_match_cost_threshold, const cv::Rect2i& roi):
     detector(detector), sof(sof), stereo_filter(stereo_filter), stereo_matcher(stereo_matcher),
     new_feature_sqr_dist_threshold(std::pow(new_feature_dist_threshold, 2.0)),
-    stereo_match_cost_threshold(stereo_match_cost_threshold), roi(roi), frame_number(0), next_match_id(0) {}
+    stereo_match_cost_threshold(stereo_match_cost_threshold), roi(roi), frame_number_(-1), next_match_id(0) {}
+
+int StereoFeatureTracker::frame_number() const {
+    return frame_number_;
+}
 
 StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::Mat& left_image,
         const cv::Mat& right_image,
@@ -45,9 +49,12 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         throw std::runtime_error("Left and right images did not have the same size.");
     }
 
+    // Increment frame number
+    ++frame_number_;
+
     // Track statistics
     if (stats) {
-        stats->get().frame_number = frame_number;
+        stats->get().frame_number = frame_number_;
     }
 
     // Create mask if ROI is defined and image sizes have changed (or first image)
@@ -79,7 +86,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     }
 
     LRKeyPointMatches new_track_hypotheses;
-    if (frame_number > 0) {
+    if (frame_number_ > 0) {
         // Track features from previous frame, keeping new keypoints and creating hypothetical new matches
         LRKeyPoints all_sof_keypoints;
         LRF2FMatches f2f_matches;
@@ -150,19 +157,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     // Create the new stereo matches, filtering out high cost and invalid matches
     const LRKeyPointMatches new_filtered_keypoint_matches = create_filtered_new_matches(new_keypoints,
             right_keypoint_indices, stereo_match_costs);
-    ROS_DEBUG_STREAM("Filtered new keypoint matches by cost.");
-    for (std::size_t i = 0; i < new_filtered_keypoint_matches.size(); ++i) {
-        ROS_DEBUG_STREAM("New filtered match: ("
-                << new_filtered_keypoint_matches.keypoints[0][new_filtered_keypoint_matches.matches[i].queryIdx].pt.x
-                << ", "
-                << new_filtered_keypoint_matches.keypoints[0][new_filtered_keypoint_matches.matches[i].trainIdx].pt.y
-                << ") <=> ("
-                << new_filtered_keypoint_matches.keypoints[1][new_filtered_keypoint_matches.matches[i].queryIdx].pt.x
-                << ", "
-                << new_filtered_keypoint_matches.keypoints[1][new_filtered_keypoint_matches.matches[i].trainIdx].pt.y
-                << "), cost = " << new_filtered_keypoint_matches.matches[i].distance << ", id = "
-                << new_filtered_keypoint_matches.match_ids[i]);
-    }
     if (stats) {
         stats->get().new_match_count = new_filtered_keypoint_matches.size();
     }
@@ -185,9 +179,6 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
             stats->get().match_ids.push_back(match_id);
         }
     }
-
-    // Increment frame number
-    ++frame_number;
 
     // Update the images
     previous_images = images;
