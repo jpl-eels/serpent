@@ -1,5 +1,8 @@
 #include "serpent/stereo_factor_finder.hpp"
 #include "serpent/StereoLandmarks.h"
+#include <eigen_ros/eigen_ros.hpp>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 #include <sensor_msgs/image_encodings.h>
 
 namespace serpent {
@@ -119,6 +122,26 @@ void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string(
             << "\n\tclass_id: "<< kp.class_id);
 }
 
+pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
+        const Eigen::Matrix3f& intrinsic, const float baseline) {
+    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    pcl::PointXYZ pcl_point;
+    pcl_point.x = point[0];
+    pcl_point.y = point[1];
+    pcl_point.z = point[2];
+    return pcl_point;
+}
+
+geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
+        const Eigen::Matrix3f& intrinsic, const float baseline) {
+    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    geometry_msgs::Point ros_point;
+    ros_point.x = point[0];
+    ros_point.y = point[1];
+    ros_point.z = point[2];
+    return ros_point;
+}
+
 void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
         const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches) {
     stereo_landmarks.clear();
@@ -166,8 +189,9 @@ StereoFactorFinder::StereoFactorFinder():
     stereo_sync.registerCallback(boost::bind(&StereoFactorFinder::stereo_callback, this, _1, _2, _3, _4));
 
     // Additional Publishers
-    nh.param<bool>("debug/stereo/publish_intermediate_results", publish_intermediate_results, false);
     nh.param<bool>("debug/stereo/publish_stats", publish_stats, false);
+    nh.param<bool>("debug/stereo/publish_intermediate_results", publish_intermediate_results, false);
+    nh.param<bool>("debug/stereo/publish_points", publish_points, false);
     if (publish_stats) {
         stereo_tracker_statistics_publisher = nh.advertise<serpent::StereoTrackerStatistics>("stereo/statistics", 1);
     }
@@ -179,6 +203,9 @@ StereoFactorFinder::StereoFactorFinder():
         stereo_filtered_matches_publisher = it.advertise("stereo/stereo_filtered_matches/image", 1);
         new_matches_publisher = it.advertise("stereo/new_matches/image", 1);
         tracked_matches_publisher = it.advertise("stereo/tracked_matches/image", 1);
+    }
+    if (publish_points) {
+        stereo_points_publisher = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("stereo/track_points", 1);
     }
 
     // Components of tracker
@@ -277,6 +304,9 @@ StereoFactorFinder::StereoFactorFinder():
     } else {
         match_draw_flags = cv::DrawMatchesFlags::DEFAULT;
     }
+
+    // Stereo baseline
+    nh.param<float>("stereo/baseline", baseline, 0.1);
 }
 
 void publish_image(image_transport::Publisher& publisher, const cv::Mat& image, const std_msgs::Header& header,
@@ -332,6 +362,26 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
         publish_image(stereo_filtered_matches_publisher, intermediate_images.stereo_filtered_matches, header);
         publish_image(new_matches_publisher, intermediate_images.new_matches, header);
         publish_image(tracked_matches_publisher, intermediate_images.tracked_matches, header);
+    }
+    if (publish_points) {
+        Eigen::Matrix3f intrinsic;
+        eigen_ros::from_ros(left_info->K, intrinsic);
+        ROS_WARN_ONCE("Assumption: left_info and right_info are identical. Valid?");
+        auto stereo_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        pcl_conversions::toPCL(header, stereo_pointcloud->header);
+        for (std::size_t i = 0; i < tracked_matches.size(); ++i) {
+            const auto& match = tracked_matches.matches[i];
+            const float u_L = tracked_matches.keypoints[0][match.queryIdx].pt.x;
+            const float u_R = tracked_matches.keypoints[1][match.trainIdx].pt.x;
+            const float v = (tracked_matches.keypoints[0][match.queryIdx].pt.y +
+                    tracked_matches.keypoints[1][match.trainIdx].pt.y) / 2.f;
+            try {
+                stereo_pointcloud->push_back(stereo_coordinate_to_pcl_point(u_L, u_R, v, intrinsic, baseline));
+            } catch (const std::exception& ex) {}
+        }
+        ROS_INFO_STREAM("Created points for " << stereo_pointcloud->size() << "/" << tracked_matches.size()
+                << " stereo feature pairs.");
+        stereo_points_publisher.publish(stereo_pointcloud);
     }
 
     // Publish Stereo Landmarks

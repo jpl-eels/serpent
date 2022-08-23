@@ -27,4 +27,8 @@
         <arg name="rosbag_start"            value="0"/>
         <arg name="rosbag_duration"         value=""/>
     </include>
+
+    <!-- RViz -->
+    <node pkg="rviz" type="rviz" name="rviz_stereo_markers"
+            args="-d $(find simulator_prcp_missions)/rviz/stereo_markers.rviz"/>
 </launch>

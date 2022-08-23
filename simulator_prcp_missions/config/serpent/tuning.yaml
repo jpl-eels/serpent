@@ -144,14 +144,14 @@ stereo_factors:
       nonmax_suppression: true
       type: "TYPE_9_16" # Options: TYPE_5_8, TYPE_7_12, TYPE_9_16
     gftt: &gftt
-      max_corners: 300
+      max_corners: 250
       quality_level: 0.01
       min_distance: 1.0
       block_size: 3
       use_harris_detector: false
       k: 0.04
     orb: &orb
-      num_features: 300
+      num_features: 250
       scale_factor: 1.2
       num_levels: 8
       edge_threshold: 31

@@ -7,5 +7,6 @@ debug:
     print_stats: true
     publish_stats: true
     publish_intermediate_results: true
+    publish_points: true
     rich_keypoints: false
     rich_matches: false
