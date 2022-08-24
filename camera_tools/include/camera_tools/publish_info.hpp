@@ -9,10 +9,10 @@ namespace camera_tools {
 
 /**
  * @brief ROS node class for publishing camera info messages for a given image stream.
- * 
+ *
  * Subscribes to ~input/image, which may be remapped in a launch file.
  * Publishes to ~output/camera_info, which may be remapped in a launch file.
- * 
+ *
  * Camera info parameters read from ROS parameter server. Monocular camera example:
  *      distortion_model: "plumb_bob"
  *      distortion_coefficients: []
@@ -22,7 +22,7 @@ namespace camera_tools {
  *       cx: 480
  *       cy: 320
  *      P: *K
- * 
+ *
  * A stereo camera will need to set Tx, for example:
  *      P:
  *        fx: 600

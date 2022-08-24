@@ -1,8 +1,9 @@
 #ifndef EIGEN_ROS_NAV_MSGS_HPP
 #define EIGEN_ROS_NAV_MSGS_HPP
 
-#include "eigen_ros/odometry.hpp"
 #include <nav_msgs/Odometry.h>
+
+#include "eigen_ros/odometry.hpp"
 
 namespace eigen_ros {
 

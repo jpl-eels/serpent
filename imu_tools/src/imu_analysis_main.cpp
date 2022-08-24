@@ -1,5 +1,6 @@
-#include "imu_tools/imu_analysis.hpp"
 #include <ros/ros.h>
+
+#include "imu_tools/imu_analysis.hpp"
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "imu_analysis");

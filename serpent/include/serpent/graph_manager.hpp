@@ -12,6 +12,7 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/StereoFactor.h>
 #include <ros/time.h>
+
 #include <deque>
 #include <map>
 #include <string>
@@ -47,89 +48,86 @@ public:
 
 private:
     ros::Time timestamp_;
-    gtsam::Pose3 pose_; // X
-    gtsam::Velocity3 velocity_; // V
-    gtsam::imuBias::ConstantBias imu_bias_; // B
+    gtsam::Pose3 pose_;                      // X
+    gtsam::Velocity3 velocity_;              // V
+    gtsam::imuBias::ConstantBias imu_bias_;  // B
 };
 
 /**
  * @brief Manager for a pose graph consisting of a chain of robot states.
- * 
+ *
  */
 class GraphManager {
 public:
     void add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks);
 
-    void create_combined_imu_factor(const int new_key,
-            const gtsam::PreintegratedCombinedMeasurements& measurements);
+    void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
-    void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform,
-            gtsam::SharedNoiseModel noise);
+    void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise);
 
     void create_prior_imu_bias_factor(const int key, const gtsam::imuBias::ConstantBias& imu_bias,
             gtsam::SharedNoiseModel noise);
 
     void create_prior_pose_factor(const int key, const gtsam::Pose3& pose, gtsam::SharedNoiseModel noise);
 
-    void create_prior_velocity_factor(const int key, const gtsam::Velocity3& velocity,
-            gtsam::SharedNoiseModel noise);
+    void create_prior_velocity_factor(const int key, const gtsam::Velocity3& velocity, gtsam::SharedNoiseModel noise);
 
     /**
      * @brief Get all factors between two key bounds inclusive.
-     * 
+     *
      * The key of a unary factors (e.g. priors) is equal to the key of the state.
-     * 
+     *
      * The key of a binary factors (e.g. between factors) is equal to the key of the second state.
-     * 
-     * @param first 
-     * @param last 
-     * @return gtsam::NonlinearFactorGraph 
+     *
+     * @param first
+     * @param last
+     * @return gtsam::NonlinearFactorGraph
      */
     gtsam::NonlinearFactorGraph factors(const int first, const int last) const;
 
     gtsam::imuBias::ConstantBias imu_bias(const int key) const;
-    
+
     gtsam::imuBias::ConstantBias imu_bias(const std::string name, const int offset = 0) const;
 
     /**
      * @brief Increment a named key.
-     * 
+     *
      * @param name
      */
     void increment(const std::string& name);
 
     /**
      * @brief Get the key value for a registered named key.
-     * 
-     * @param name 
+     *
+     * @param name
      * @return int
      */
     int key(const std::string& name, const int offset = 0) const;
 
     gtsam::NavState navstate(const int key) const;
-    
+
     gtsam::NavState navstate(const std::string name, const int offset = 0) const;
 
     gtsam::Pose3 pose(const int key) const;
-    
+
     gtsam::Pose3 pose(const std::string name, const int offset = 0) const;
 
     /**
      * @brief Convenience function that returns the state associated with a particular key value.
-     * 
+     *
      * See also GraphManager::last_state.
-     * 
-     * @param value 
-     * @return const RobotState& 
+     *
+     * @param value
+     * @return const RobotState&
      */
     RobotState state(const int key) const;
 
     /**
      * @brief Convenience function that returns the state for a particular named key (optionally with an offset).
-     * 
-     * @param name 
-     * @param offset 
-     * @return RobotState 
+     *
+     * @param name
+     * @param offset
+     * @return RobotState
      */
     RobotState state(const std::string& name, const int offset = 0) const;
 
@@ -141,9 +139,9 @@ public:
 
     /**
      * @brief Set/create a named key.
-     * 
-     * @param name 
-     * @param value 
+     *
+     * @param name
+     * @param value
      */
     void set_named_key(const std::string& name, const int value = 0);
 
@@ -180,34 +178,34 @@ public:
 
     /**
      * @brief Get the timestamp associated with a particular key value.
-     * 
-     * @param key 
-     * @return const ros::Time& 
+     *
+     * @param key
+     * @return const ros::Time&
      */
     const ros::Time& timestamp(const int key) const;
 
     /**
      * @brief Get the timestamp associated with a registered key.
-     * 
-     * @param name 
-     * @return const ros::Time& 
+     *
+     * @param name
+     * @return const ros::Time&
      */
     const ros::Time& timestamp(const std::string& key, const int offset = 0) const;
 
     /**
      * @brief Update values within the GraphManager. Any values present within the state manager not present in
      * values will remain in the state manager and not be affected. Will throw an error if there are any new values.
-     * 
-     * @param values 
+     *
+     * @param values
      */
     void update_from_values(const gtsam::Values& values);
 
     /**
      * @brief Return the values between two key bounds (inclusive).
-     * 
-     * @param first 
-     * @param last 
-     * @return gtsam::Values 
+     *
+     * @param first
+     * @param last
+     * @return gtsam::Values
      */
     gtsam::Values values(const int first, const int last) const;
 
@@ -223,7 +221,7 @@ protected:
 
     // Registered keys
     std::map<std::string, int> keys;
-    
+
     // All Timestamps (index = key)
     std::vector<ros::Time> timestamps_;
 
@@ -252,16 +250,16 @@ public:
 
     /**
      * @brief Perform an incremental optimisation up to max_key, and internally update all optimised values.
-     * 
-     * @param max_key 
-     * @return gtsam::ISAM2Result 
+     *
+     * @param max_key
+     * @return gtsam::ISAM2Result
      */
     gtsam::ISAM2Result optimise(const int max_key);
 
     /**
      * @brief Get the optimisation key (max_key of last optimisation, or -1 if no optimisation has occurred)
-     * 
-     * @return int 
+     *
+     * @return int
      */
     int opt_key();
 

@@ -1,21 +1,25 @@
 #include "serpent/graph_manager.hpp"
-#include <gtsam/inference/Symbol.h>
-#include <ros/ros.h> // TEMPORARY
 
-using gtsam::symbol_shorthand::X; // Pose3          (x,y,z,r,p,y)
-using gtsam::symbol_shorthand::V; // Vel            (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::B; // Bias           (ax,ay,az,gx,gy,gz)
-using gtsam::symbol_shorthand::S; // Stereo Point3  (x,y,z)
+#include <gtsam/inference/Symbol.h>
+#include <ros/ros.h>  // TEMPORARY
+
+using gtsam::symbol_shorthand::B;  // Bias           (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::S;  // Stereo Point3  (x,y,z)
+using gtsam::symbol_shorthand::V;  // Vel            (xdot,ydot,zdot)
+using gtsam::symbol_shorthand::X;  // Pose3          (x,y,z,r,p,y)
 
 namespace serpent {
 
-RobotState::RobotState(const ros::Time& timestamp_, const gtsam::Pose3& pose_,
-        const gtsam::Velocity3& velocity_, const gtsam::imuBias::ConstantBias& imu_bias_):
-    timestamp_(timestamp_), pose_(pose_), velocity_(velocity_), imu_bias_(imu_bias_) {}
+RobotState::RobotState(const ros::Time& timestamp_, const gtsam::Pose3& pose_, const gtsam::Velocity3& velocity_,
+        const gtsam::imuBias::ConstantBias& imu_bias_)
+    : timestamp_(timestamp_),
+      pose_(pose_),
+      velocity_(velocity_),
+      imu_bias_(imu_bias_) {}
 
 RobotState::RobotState(const ros::Time& timestamp_, const gtsam::NavState& state,
-        const gtsam::imuBias::ConstantBias& imu_bias_):
-    RobotState(timestamp_, state.pose(), state.velocity(), imu_bias_) {}
+        const gtsam::imuBias::ConstantBias& imu_bias_)
+    : RobotState(timestamp_, state.pose(), state.velocity(), imu_bias_) {}
 
 const gtsam::imuBias::ConstantBias& RobotState::imu_bias() const {
     return imu_bias_;
@@ -53,24 +57,25 @@ gtsam::Velocity3& RobotState::velocity() {
     return velocity_;
 }
 
-void GraphManager::add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks)
-{
+void GraphManager::add_stereo_landmark_measurements(const int key,
+        const std::map<int, gtsam::StereoPoint2>& landmarks) {
     if (!stereo_landmarks.emplace(key, landmarks).second) {
-        throw std::runtime_error("Failed to set stereo landmarks for key " + std::to_string(key) + ". Possible"
-                " duplicate key.");
+        throw std::runtime_error("Failed to set stereo landmarks for key " + std::to_string(key) +
+                                 ". Possible"
+                                 " duplicate key.");
     }
 }
 
 void GraphManager::create_combined_imu_factor(const int new_key,
         const gtsam::PreintegratedCombinedMeasurements& measurements) {
     add_factor(new_key, boost::make_shared<gtsam::CombinedImuFactor>(X(new_key - 1), V(new_key - 1), X(new_key),
-            V(new_key), B(new_key - 1), B(new_key), measurements));
+                                V(new_key), B(new_key - 1), B(new_key), measurements));
 }
 
 void GraphManager::create_between_pose_factor(const int new_key, const gtsam::Pose3& transform,
         gtsam::SharedNoiseModel noise) {
-    add_factor(new_key, boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(new_key - 1), X(new_key), transform,
-            noise));
+    add_factor(new_key,
+            boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(new_key - 1), X(new_key), transform, noise));
 }
 
 void GraphManager::create_prior_imu_bias_factor(const int key_, const gtsam::imuBias::ConstantBias& imu_bias,
@@ -78,8 +83,7 @@ void GraphManager::create_prior_imu_bias_factor(const int key_, const gtsam::imu
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(key_), imu_bias, noise));
 }
 
-void GraphManager::create_prior_pose_factor(const int key_, const gtsam::Pose3& pose,
-        gtsam::SharedNoiseModel noise) {
+void GraphManager::create_prior_pose_factor(const int key_, const gtsam::Pose3& pose, gtsam::SharedNoiseModel noise) {
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(key_), pose, noise));
 }
 
@@ -100,9 +104,10 @@ gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int las
         for (const auto& [id, landmark] : landmarks_i->second) {
             // Add previous state factor if landmark is tracked for the first time (not in i-2 and in i-1)
             const bool in_im1 = landmarks_im1 != stereo_landmarks.end() &&
-                    landmarks_im1->second.find(id) != landmarks_im1->second.end();
+                                landmarks_im1->second.find(id) != landmarks_im1->second.end();
             if ((landmarks_im2 == stereo_landmarks.end() ||
-                    landmarks_im2->second.find(id) == landmarks_im2->second.end()) && in_im1) {
+                        landmarks_im2->second.find(id) == landmarks_im2->second.end()) &&
+                    in_im1) {
                 extracted_factors.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
                         landmarks_im1->second.at(id), stereo_measurement_covariance, X(i - 1), S(id), K,
                         body_to_stereo_left_cam);
@@ -110,8 +115,8 @@ gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int las
             }
             // Add current state factor if landmark is in i-1
             if (in_im1) {
-                extracted_factors.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        landmark, stereo_measurement_covariance, X(i), S(id), K, body_to_stereo_left_cam);
+                extracted_factors.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(landmark,
+                        stereo_measurement_covariance, X(i), S(id), K, body_to_stereo_left_cam);
                 ROS_INFO_STREAM("Created stereo factor between X(" << i << ") and S(" << id << ")");
             }
         }
@@ -293,16 +298,18 @@ gtsam::Values GraphManager::values(const int first, const int last) const {
         for (const auto& [id, landmark] : landmarks_i->second) {
             // Add landmark if landmark is tracked for the first time (not in i-2 and in i-1)
             const bool in_im1 = landmarks_im1 != stereo_landmarks.end() &&
-                    landmarks_im1->second.find(id) != landmarks_im1->second.end();
+                                landmarks_im1->second.find(id) != landmarks_im1->second.end();
             if ((landmarks_im2 == stereo_landmarks.end() ||
-                    landmarks_im2->second.find(id) == landmarks_im2->second.end()) && in_im1) {
-                const gtsam::Pose3 world_to_stereo_left_cam = values_.at<gtsam::Pose3>(X(i)) *
-                        body_to_stereo_left_cam.value();
+                        landmarks_im2->second.find(id) == landmarks_im2->second.end()) &&
+                    in_im1) {
+                const gtsam::Pose3 world_to_stereo_left_cam =
+                        values_.at<gtsam::Pose3>(X(i)) * body_to_stereo_left_cam.value();
                 const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
                 const gtsam::Point3 landmark_position = camera.backproject(landmark);
                 extracted_values.insert(S(id), landmark_position);
                 ROS_INFO_STREAM("Created stereo landmark S(" << id << ") at [" << landmark_position.x() << ", "
-                        << landmark_position.y() << ", " << landmark_position.z() << "]");
+                                                             << landmark_position.y() << ", " << landmark_position.z()
+                                                             << "]");
             }
         }
     }
@@ -321,13 +328,13 @@ gtsam::Velocity3 GraphManager::velocity(const std::string key_, const int offset
 void GraphManager::add_factor(const int key_, const boost::shared_ptr<gtsam::NonlinearFactor>& factor_) {
     if (key_ >= static_cast<int>(factors_.size())) {
         factors_.resize(key_ + 1);
-    } 
+    }
     factors_.at(key_).push_back(factor_);
 }
 
-ISAM2GraphManager::ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params):
-    optimiser(isam2_params), opt_key_(-1)
-{}
+ISAM2GraphManager::ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params)
+    : optimiser(isam2_params),
+      opt_key_(-1) {}
 
 gtsam::ISAM2Result ISAM2GraphManager::optimise(const int max_key) {
     // Update the optimiser with new factors and new values
@@ -355,4 +362,3 @@ Eigen::Matrix3d ISAM2GraphManager::velocity_covariance(const int key_) {
 }
 
 }
-

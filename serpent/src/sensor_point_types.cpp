@@ -1,6 +1,8 @@
 #include "serpent/sensor_point_types.hpp"
-#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
+
 #include <pcl/PCLPointCloud2.h>
+
+#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
 namespace serpent {
 

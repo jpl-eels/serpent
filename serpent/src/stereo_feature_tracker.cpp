@@ -1,5 +1,7 @@
 #include "serpent/stereo_feature_tracker.hpp"
+
 #include <ros/ros.h>
+
 #include <sstream>
 
 namespace serpent {
@@ -16,33 +18,38 @@ bool approximately_near(const cv::KeyPoint& kp1, const cv::KeyPoint& kp2, const 
 std::string StereoFeatureTracker::Statistics::to_string() const {
     std::stringstream ss;
     ss << "StereoFeatureTracker::Statistics (frame #" << frame_number << "):\n";
-    ss << "\t" << "max match id: " << max_match_id << "\n";
-    ss << "\t" << "longest tracked match id: " << longest_tracked_match_id << "\n";
-    ss << "\t" << "tracked kp #: [" << tracked_kp_count[0] << ", " << tracked_kp_count[1] << "]\n";
-    ss << "\t" << "tracked match #: " << tracked_match_count << "\n";
-    ss << "\t" << "extracted kp #: [" << extracted_kp_count[0] << ", " << extracted_kp_count[1] << "]\n";
-    ss << "\t" << "filtered extracted kp #: [" << filtered_extracted_kp_count[0] << ", "
-            << filtered_extracted_kp_count[1] << "]\n";
-    ss << "\t" << "new match #: " << new_match_count << "\n";
-    ss << "\t" << "total match #: " << total_match_count << "\n";
+    ss << "\tmax match id: " << max_match_id << "\n";
+    ss << "\tlongest tracked match id: " << longest_tracked_match_id << "\n";
+    ss << "\ttracked kp #: [" << tracked_kp_count[0] << ", " << tracked_kp_count[1] << "]\n";
+    ss << "\ttracked match #: " << tracked_match_count << "\n";
+    ss << "\textracted kp #: [" << extracted_kp_count[0] << ", " << extracted_kp_count[1] << "]\n";
+    ss << "\tfiltered extracted kp #: [" << filtered_extracted_kp_count[0] << ", " << filtered_extracted_kp_count[1]
+       << "]\n";
+    ss << "\tnew match #: " << new_match_count << "\n";
+    ss << "\ttotal match #: " << total_match_count << "\n";
     return ss.str();
 }
 
 StereoFeatureTracker::StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector,
         const cv::Ptr<cv::SparseOpticalFlow> sof, const cv::Ptr<StereoMatchFilter> stereo_filter,
         const cv::Ptr<StereoKeyPointMatcher> stereo_matcher, const float new_feature_dist_threshold,
-        const double stereo_match_cost_threshold, const cv::Rect2i& roi):
-    detector(detector), sof(sof), stereo_filter(stereo_filter), stereo_matcher(stereo_matcher),
-    new_feature_sqr_dist_threshold(std::pow(new_feature_dist_threshold, 2.0)),
-    stereo_match_cost_threshold(stereo_match_cost_threshold), roi(roi), frame_number_(-1), next_match_id(0) {}
+        const double stereo_match_cost_threshold, const cv::Rect2i& roi)
+    : detector(detector),
+      sof(sof),
+      stereo_filter(stereo_filter),
+      stereo_matcher(stereo_matcher),
+      new_feature_sqr_dist_threshold(std::pow(new_feature_dist_threshold, 2.0)),
+      stereo_match_cost_threshold(stereo_match_cost_threshold),
+      roi(roi),
+      frame_number_(-1),
+      next_match_id(0) {}
 
 int StereoFeatureTracker::frame_number() const {
     return frame_number_;
 }
 
 StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::Mat& left_image,
-        const cv::Mat& right_image,
-        std::optional<std::reference_wrapper<Statistics>> stats, 
+        const cv::Mat& right_image, std::optional<std::reference_wrapper<Statistics>> stats,
         std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images) {
     // Error handling
     if (left_image.size != right_image.size) {
@@ -99,9 +106,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         if (intermediate_images) {
             for (std::size_t lr = 0; lr < 2; ++lr) {
                 cv::drawMatches(previous_images[lr], previous_track_data.keypoints[lr], images[lr],
-                        all_sof_keypoints[lr], f2f_matches[lr],
-                        intermediate_images->get().sof_matches[lr], intermediate_images->get().new_match_colour,
-                        intermediate_images->get().negative_match_colour,
+                        all_sof_keypoints[lr], f2f_matches[lr], intermediate_images->get().sof_matches[lr],
+                        intermediate_images->get().new_match_colour, intermediate_images->get().negative_match_colour,
                         std::vector<char>(), intermediate_images->get().match_draw_flags);
             }
         }
@@ -110,7 +116,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         for (std::size_t lr = 0; lr < 2; ++lr) {
             new_keypoints[lr] = remove_close_keypoints(new_keypoints[lr], new_track_hypotheses.keypoints[lr]);
             ROS_DEBUG_STREAM("Removed keypoints close to already tracked keypoints in the "
-                    << (lr == 0 ? "left" : "right") << " frame");
+                             << (lr == 0 ? "left" : "right") << " frame");
             if (stats) {
                 stats->get().filtered_extracted_kp_count[lr] = new_keypoints[lr].size();
             }
@@ -138,8 +144,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     }
 
     // Extract the keypoints for the matches
-    previous_track_data.keypoints = extract_matched_keypoints(new_track_hypotheses.keypoints,
-            previous_track_data.matches);
+    previous_track_data.keypoints =
+            extract_matched_keypoints(new_track_hypotheses.keypoints, previous_track_data.matches);
     if (intermediate_images) {
         // Draw the tracked matches
         cv::drawMatches(images[0], previous_track_data.keypoints[0], images[1], previous_track_data.keypoints[1],
@@ -155,8 +161,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     ROS_DEBUG_STREAM("Extracted keypoints in right image using stereo matcher");
 
     // Create the new stereo matches, filtering out high cost and invalid matches
-    const LRKeyPointMatches new_filtered_keypoint_matches = create_filtered_new_matches(new_keypoints,
-            right_keypoint_indices, stereo_match_costs);
+    const LRKeyPointMatches new_filtered_keypoint_matches =
+            create_filtered_new_matches(new_keypoints, right_keypoint_indices, stereo_match_costs);
     if (stats) {
         stats->get().new_match_count = new_filtered_keypoint_matches.size();
     }

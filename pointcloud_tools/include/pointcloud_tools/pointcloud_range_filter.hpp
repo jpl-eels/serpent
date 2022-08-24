@@ -11,8 +11,8 @@ public:
 private:
     /**
      * @brief Filters range
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void filter_range(const sensor_msgs::PointCloud2::ConstPtr& msg);
 

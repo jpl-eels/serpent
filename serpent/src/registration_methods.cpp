@@ -35,7 +35,7 @@ NeighborSearchMethod to_neighbor_search_method(const std::string& method) {
         return NeighborSearchMethod::DIRECT7;
     } else if (method == "DIRECT1") {
         return NeighborSearchMethod::DIRECT1;
-    } else if (method == "DIRECT_RADIUS") { // only CUDA
+    } else if (method == "DIRECT_RADIUS") {  // only CUDA
         return NeighborSearchMethod::DIRECT_RADIUS;
     }
     throw std::runtime_error("NeighborSearchMethod \'" + method + "\' not recognized.");

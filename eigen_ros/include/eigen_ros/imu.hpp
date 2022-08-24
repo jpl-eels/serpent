@@ -1,9 +1,10 @@
 #ifndef EIGEN_ROS_IMU_HPP
 #define EIGEN_ROS_IMU_HPP
 
+#include <ros/time.h>
+
 #include <Eigen/Geometry>
 #include <string>
-#include <ros/time.h>
 
 namespace eigen_ros {
 
@@ -21,9 +22,9 @@ struct Imu {
     /**
      * @brief Transform IMU to a new reference frame using a rotation extrinsic. The inverse transform must also be
      * passed to this function, which allows for greater efficiency when this transform can be calculated only once.
-     * 
+     *
      * TODO: The math on the orientation covariance needs to be checked.
-     * 
+     *
      * @param to_frame_ext rotation extrinsic from current (IMU) to new frame
      * @param from_frame_ext rotation extrinsic from new to current (IMU) frame (should equal inverse of to_frame_ext)
      */

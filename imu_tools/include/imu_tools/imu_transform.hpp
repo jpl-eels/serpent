@@ -1,9 +1,10 @@
 #ifndef IMU_TOOLS_IMU_TRANSFORM_HPP
 #define IMU_TOOLS_IMU_TRANSFORM_HPP
 
-#include <Eigen/Geometry>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+
+#include <Eigen/Geometry>
 #include <string>
 
 class ImuTransform {

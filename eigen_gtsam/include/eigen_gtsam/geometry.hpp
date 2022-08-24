@@ -1,9 +1,10 @@
 #ifndef EIGEN_GTSAM_GEOMETRY_HPP
 #define EIGEN_GTSAM_GEOMETRY_HPP
 
-#include <Eigen/Geometry>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
+
+#include <Eigen/Geometry>
 
 namespace eigen_gtsam {
 

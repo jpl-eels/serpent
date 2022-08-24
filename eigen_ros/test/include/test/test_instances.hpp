@@ -1,16 +1,18 @@
-#include "eigen_ros/imu.hpp"
-#include "eigen_ros/odometry.hpp"
-#include "eigen_ros/pose.hpp"
-#include "eigen_ros/twist.hpp"
-#include "eigen_ros/geometry_msgs.hpp"
-#include "eigen_ros/nav_msgs.hpp"
-#include "eigen_ros/sensor_msgs.hpp"
-#include "eigen_ros/eigen_ros.hpp"
-#include <Eigen/Core>
-#include <Eigen/Geometry>
 #include <gtest/gtest.h>
 #include <ros/time.h>
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <string>
+
+#include "eigen_ros/eigen_ros.hpp"
+#include "eigen_ros/geometry_msgs.hpp"
+#include "eigen_ros/imu.hpp"
+#include "eigen_ros/nav_msgs.hpp"
+#include "eigen_ros/odometry.hpp"
+#include "eigen_ros/pose.hpp"
+#include "eigen_ros/sensor_msgs.hpp"
+#include "eigen_ros/twist.hpp"
 
 Eigen::Matrix3d test_covariance_3x3(const unsigned int i);
 

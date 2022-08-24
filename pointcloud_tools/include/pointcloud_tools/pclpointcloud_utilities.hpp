@@ -1,9 +1,10 @@
 #ifndef POINTCLOUD_TOOLS_PCLPOINTCLOUD_UTILITIES_HPP
 #define POINTCLOUD_TOOLS_PCLPOINTCLOUD_UTILITIES_HPP
 
-#include <Eigen/Geometry>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
+#include <Eigen/Geometry>
 #include <string>
 
 namespace pct {

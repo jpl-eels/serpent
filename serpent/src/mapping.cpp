@@ -1,17 +1,20 @@
 #include "serpent/mapping.hpp"
-#include <eigen_ros/geometry_msgs.hpp>
-#include <eigen_ros/eigen_ros.hpp>
+
 #include <pcl/common/transforms.h>
+
 #include <cmath>
+#include <eigen_ros/eigen_ros.hpp>
+#include <eigen_ros/geometry_msgs.hpp>
 
 namespace serpent {
 
-MapFrame::MapFrame(const eigen_ros::PoseStamped& pose, const pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud):
-        pose(pose), pointcloud(pointcloud) {}
+MapFrame::MapFrame(const eigen_ros::PoseStamped& pose, const pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud)
+    : pose(pose),
+      pointcloud(pointcloud) {}
 
-Mapping::Mapping():
-    nh("~"), correct_map_sync(10)
-{
+Mapping::Mapping()
+    : nh("~"),
+      correct_map_sync(10) {
     // Publishers
     local_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("mapping/local_map", 1);
     global_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("output/global_map", 1, true);
@@ -27,7 +30,7 @@ Mapping::Mapping():
 
     // Configuration
     nh.param<double>("mapping/distance_threshold", distance_threshold, 1.0);
-    nh.param<double>("mapping/rotation_threshold", rotation_threshold, M_PI/6.0);
+    nh.param<double>("mapping/rotation_threshold", rotation_threshold, M_PI / 6.0);
     const int frame_extraction_number_ = nh.param<int>("mapping/frame_extraction_number", 10);
     if (frame_extraction_number_ < 1) {
         throw std::runtime_error("Frame extraction number " + std::to_string(frame_extraction_number_) + " invalid");
@@ -94,15 +97,15 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
         const eigen_ros::PoseStamped body_pose_stamped = eigen_ros::from_ros<eigen_ros::PoseStamped>(pose);
         // Convert to the lidar frame: T_W^{L_i} = T_W^{B_i} * T_{B_i}^{L_i}
         const Eigen::Isometry3d lidar_pose = to_transform(body_pose_stamped.data) * body_frames.body_to_frame("lidar");
-        const eigen_ros::PoseStamped lidar_pose_stamped = eigen_ros::PoseStamped{eigen_ros::Pose{lidar_pose},
-                body_pose_stamped.timestamp};
+        const eigen_ros::PoseStamped lidar_pose_stamped =
+                eigen_ros::PoseStamped{eigen_ros::Pose{lidar_pose}, body_pose_stamped.timestamp};
 
         if (lidar_pose_stamped.timestamp == pointcloud_timestamp) {
             // Add new pointcloud (at last path pose) into map
             if (map.empty() || should_add_to_map(lidar_pose_stamped.data, last_frame().pose.data)) {
                 add_to_map(lidar_pose_stamped, pointcloud_msg);
-                ROS_INFO_STREAM("Added frame at " << pointcloud_timestamp << " to map (" << map.size()
-                        << " total keyframes)");
+                ROS_INFO_STREAM(
+                        "Added frame at " << pointcloud_timestamp << " to map (" << map.size() << " total keyframes)");
             }
             pointcloud_lidar_pose = lidar_pose_stamped;
             pointcloud_timestamp_found = true;
@@ -117,7 +120,7 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
     // Pointcloud's pose must be in the path
     if (!pointcloud_timestamp_found) {
         throw std::runtime_error("Pointcloud timestamp (" + std::to_string(pointcloud_timestamp.toSec()) +
-                ") was not in the path poses. Something went wrong.");
+                                 ") was not in the path poses. Something went wrong.");
     }
 
     // Extract map around pose in the pose frame

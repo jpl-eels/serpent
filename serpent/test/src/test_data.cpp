@@ -5,8 +5,8 @@ Eigen::Matrix<double, 6, 6> test_imu_bias_covariance(const unsigned int i) {
     const double i_ = static_cast<double>(i);
     const double accel_noise = (i_ + 1.0) * 1.0e-5;
     const double gyro_noise = (i_ + 1.0) * 1.0e-4;
-    cov << Eigen::Matrix3d::Identity() * std::pow(accel_noise, 2.0), Eigen::Matrix3d::Zero(),
-            Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(gyro_noise, 2.0);
+    cov << Eigen::Matrix3d::Identity() * std::pow(accel_noise, 2.0), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
+            Eigen::Matrix3d::Identity() * std::pow(gyro_noise, 2.0);
     return cov;
 }
 
@@ -47,7 +47,7 @@ Eigen::Matrix<double, 6, 6> test_pose_covariance(const unsigned int i) {
     const double i_ = static_cast<double>(i);
     const double rotation_noise = (i_ + 1.0) * 1.0e-2;
     const double position_noise = (i_ + 1.0) * 1.0e-1;
-    cov <<  Eigen::Matrix3d::Identity() * std::pow(rotation_noise, 2.0), Eigen::Matrix3d::Zero(),
+    cov << Eigen::Matrix3d::Identity() * std::pow(rotation_noise, 2.0), Eigen::Matrix3d::Zero(),
             Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity() * std::pow(position_noise, 2.0);
     return cov;
 }

@@ -1,15 +1,16 @@
 #ifndef SERPENT_TEST_TEST_DATA_HPP
 #define SERPENT_TEST_TEST_DATA_HPP
 
-#include <Eigen/Geometry>
-#include <gtsam/geometry/Rot3.h>
-#include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Point3.h>
-#include <gtsam/navigation/ImuBias.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Rot3.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <ros/time.h>
+
+#include <Eigen/Geometry>
 
 Eigen::Matrix<double, 6, 6> test_imu_bias_covariance(const unsigned int i);
 

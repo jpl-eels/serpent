@@ -1,6 +1,7 @@
-#include "test/test_instances.hpp"
 #include <gtest/gtest.h>
 #include <ros/ros.h>
+
+#include "test/test_instances.hpp"
 
 TEST(point, to_from_ros) {
     test_to_from<geometry_msgs::Point>(Eigen::Vector3d{});

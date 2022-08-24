@@ -1,4 +1,5 @@
 #include "serpent/registration_degeneracy.hpp"
+
 #include <gtest/gtest.h>
 
 #define DOUBLE_PRECISION (1.0e-12)
@@ -34,7 +35,7 @@ TEST(point_to_plane_degeneracy, jacobian) {
 
     const Eigen::Matrix<double, 6, 1> jacobian = serpent::point_to_plane_jacobian(t, r, p, q, n);
     Eigen::Matrix<double, 6, 1> matlab_jacobian;
-    matlab_jacobian << 3.836913399274006, 24.066190794285660,-16.139797708030649, 8.778228207731365,
+    matlab_jacobian << 3.836913399274006, 24.066190794285660, -16.139797708030649, 8.778228207731365,
             13.167342311597046, 10.972785259664207;
     EXPECT_NEAR(jacobian[0], matlab_jacobian[0], DOUBLE_PRECISION);
     EXPECT_NEAR(jacobian[1], matlab_jacobian[1], DOUBLE_PRECISION);

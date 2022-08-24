@@ -1,15 +1,16 @@
 #ifndef CAMERA_TOOLS_IMAGE_OPERATIONS_HPP
 #define CAMERA_TOOLS_IMAGE_OPERATIONS_HPP
 
-#include <opencv2/opencv.hpp>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+
+#include <opencv2/opencv.hpp>
 
 namespace camera_tools {
 
 /**
  * @brief Base class for image operations.
- * 
+ *
  */
 class ImageOperation {
 public:
@@ -20,7 +21,7 @@ public:
 
 /**
  * @brief Rotation image operation. Defines rotations as multiples of 90 degrees.
- * 
+ *
  */
 class Rotate : public ImageOperation {
 public:
@@ -38,7 +39,7 @@ private:
 
 /**
  * @brief Flip image operation. Capable of flipping around the horizontal axis, vertical axis, or both.
- * 
+ *
  */
 class Flip : public ImageOperation {
 public:

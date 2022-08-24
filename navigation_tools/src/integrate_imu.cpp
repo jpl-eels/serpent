@@ -1,12 +1,15 @@
 #include "navigation_tools/integrate_imu.hpp"
+
+#include <nav_msgs/Odometry.h>
+
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
-#include <nav_msgs/Odometry.h>
 
-IntegrateImu::IntegrateImu():
-    nh("~"), integration_timestamp(ros::Time()), initial_state(gtsam::NavState())
-{
+IntegrateImu::IntegrateImu()
+    : nh("~"),
+      integration_timestamp(ros::Time()),
+      initial_state(gtsam::NavState()) {
     // Publishers
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("odometry", 1);
     path_publisher = nh.advertise<nav_msgs::Path>("path", 1);
@@ -16,18 +19,18 @@ IntegrateImu::IntegrateImu():
 
     // Integration parameters
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
-    preintegration_params->setAccelerometerCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0));
-    preintegration_params->setGyroscopeCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0));
-    preintegration_params->setIntegrationCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+    preintegration_params->setAccelerometerCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0));
+    preintegration_params->setGyroscopeCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0));
+    preintegration_params->setIntegrationCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-            std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
-    preintegration_params->setBiasAccCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
-    preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+    preintegration_params->setBiasAccCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+    preintegration_params->setBiasOmegaCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
     preintegration_params->setBodyPSensor(body_to_imu);
@@ -86,11 +89,12 @@ void IntegrateImu::integrate(const sensor_msgs::Imu::ConstPtr& msg) {
         path.poses.emplace_back(pose_stamped);
         path_publisher.publish(path);
     } else {
-        const Eigen::Quaterniond body_orientation = imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
-                Eigen::Quaterniond::Identity() :
-                Eigen::Quaterniond{(imu.orientation * body_frames.frame_to_body("imu")).rotation()};
-        const gtsam::Point3 position{nh.param<double>("pose/position/x", 0.0),
-                nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)};
+        const Eigen::Quaterniond body_orientation =
+                imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))
+                        ? Eigen::Quaterniond::Identity()
+                        : Eigen::Quaterniond{(imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+        const gtsam::Point3 position{nh.param<double>("pose/position/x", 0.0), nh.param<double>("pose/position/y", 0.0),
+                nh.param<double>("pose/position/z", 0.0)};
         const gtsam::Velocity3 linear_velocity{nh.param<double>("velocity/linear/x", 0.0),
                 nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
         initial_state = gtsam::NavState{gtsam::Rot3{body_orientation}, position, linear_velocity};

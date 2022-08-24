@@ -1,18 +1,20 @@
 #ifndef SERPENT_OPTIMISATION_HPP
 #define SERPENT_OPTIMISATION_HPP
 
-#include "serpent/ImuArray.h"
-#include "serpent/StereoLandmarks.h"
-#include "serpent/graph_manager.hpp"
-#include <eigen_ros/body_frames.hpp>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
+
+#include <eigen_ros/body_frames.hpp>
 #include <memory>
 #include <mutex>
+
+#include "serpent/ImuArray.h"
+#include "serpent/StereoLandmarks.h"
+#include "serpent/graph_manager.hpp"
 
 namespace serpent {
 
@@ -25,75 +27,75 @@ public:
 private:
     /**
      * @brief Add registration data to graph manager.
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
 
     /**
      * @brief Add stereo data to graph manager.
-     * 
-     * @param landmarks 
+     *
+     * @param landmarks
      */
     void add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& landmarks);
 
     /**
      * @brief Integrate IMU measurements between current and next graph node, add preintegrated IMU factor to the graph
      * and publish the transform.
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg);
 
     /**
      * @brief Set initial priors, and republish as optimised odometry. Also publish an empty imu transform.
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void initial_odometry_callback(const nav_msgs::Odometry::ConstPtr& msg);
 
     /**
      * @brief Run optimisation and publish the ROS output (optimised odometry, IMU bias, global path and global path
      * changes)
-     * 
+     *
      * @param key max key for optimisation
      */
     void optimise_and_publish(const int key);
 
     /**
      * @brief Add transform factor between current and next graph node to graph, optimise, and publish results.
-     * 
+     *
      * Only called if stereo factors disabled and registration factors enabled.
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void registration_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
 
     /**
      * @brief Combines registration_callback and stereo_landmarks_callback together.
-     * 
+     *
      * Called if both registration and stereo factors enabled.
-     * 
-     * @param registration 
-     * @param landmarks 
+     *
+     * @param registration
+     * @param landmarks
      */
     void registration_stereo_landmarks_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& registration,
             const serpent::StereoLandmarks::ConstPtr& landmarks);
 
     /**
      * @brief Add landmarks and generic stereo factors to graph, optimise, and publish results.
-     * 
+     *
      * Only called if stereo factors enabled and registration factors disabled.
-     * 
-     * @param landmarks 
+     *
+     * @param landmarks
      */
     void stereo_landmarks_callback(const serpent::StereoLandmarks::ConstPtr& landmarks);
 
     /**
      * @brief Update velocity values according to linear twist approximation between poses. Useful when IMU isn't
      * optimised.
-     * 
-     * @param named_key 
+     *
+     * @param named_key
      */
     void update_velocity_from_transforms(const std::string& named_key);
 

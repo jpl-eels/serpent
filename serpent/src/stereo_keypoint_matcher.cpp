@@ -1,4 +1,5 @@
 #include "serpent/stereo_keypoint_matcher.hpp"
+
 #include <opencv2/core/mat.hpp>
 
 namespace serpent {
@@ -12,7 +13,7 @@ double sum_of_absolute_differences(const cv::Mat& image1, const cv::Mat& image2,
     for (int row = 0; row < window.height; ++row) {
         for (int col = 0; col < window.width; ++col) {
             sum += std::abs(
-                    static_cast<double>(image1.at<unsigned char>(image1_top_left.y + row, image1_top_left.x + col)) - 
+                    static_cast<double>(image1.at<unsigned char>(image1_top_left.y + row, image1_top_left.x + col)) -
                     static_cast<double>(image2.at<unsigned char>(image2_top_left.y + row, image2_top_left.x + col)));
         }
     }
@@ -20,13 +21,14 @@ double sum_of_absolute_differences(const cv::Mat& image1, const cv::Mat& image2,
 }
 
 StereoKeyPointMatcher::StereoKeyPointMatcher(const MatchingCostFunction cost_function, const cv::Size& window,
-        const float vertical_pixel_threshold):
-    cost_function(cost_function), window(window), vertical_pixel_threshold(vertical_pixel_threshold)
-{
+        const float vertical_pixel_threshold)
+    : cost_function(cost_function),
+      window(window),
+      vertical_pixel_threshold(vertical_pixel_threshold) {
     if (window.width < 1 || window.width % 2 == 0 || window.height < 1 || window.height % 2 == 0) {
         throw std::runtime_error("Window must have positive odd-length dimensions.");
     }
-    half_window_floor = cv::Size((window.width - 1)/2, (window.height - 1)/2);
+    half_window_floor = cv::Size((window.width - 1) / 2, (window.height - 1) / 2);
 }
 
 cv::Ptr<StereoKeyPointMatcher> StereoKeyPointMatcher::create(const MatchingCostFunction cost_function,
@@ -80,9 +82,9 @@ int StereoKeyPointMatcher::keypoint_index_in_right_image(const cv::KeyPoint& lef
                 right_image_keypoint.pt.x <= left_image_keypoint.pt.x) {
             const cv::Point2i right_image_top_left = top_left(right_image_keypoint.pt);
             // Check window is within image
-            if (window_within_image(right_image_top_left, right_image)){
-                double window_cost = cost_function(left_image, right_image, left_image_top_left, right_image_top_left,
-                        window);
+            if (window_within_image(right_image_top_left, right_image)) {
+                double window_cost =
+                        cost_function(left_image, right_image, left_image_top_left, right_image_top_left, window);
                 if (window_cost < cost) {
                     cost = window_cost;
                     min_cost_index = i;
@@ -122,8 +124,8 @@ cv::Point2i StereoKeyPointMatcher::top_left(const cv::Point2f& centre) const {
 }
 
 bool StereoKeyPointMatcher::window_within_image(const cv::Point2i& top_left_pixel, const cv::Mat& image) const {
-    return top_left_pixel.x >= 0 && (top_left_pixel.x + window.width) <= image.cols &&
-            top_left_pixel.y >= 0 && (top_left_pixel.y + window.height) <= image.rows;
+    return top_left_pixel.x >= 0 && (top_left_pixel.x + window.width) <= image.cols && top_left_pixel.y >= 0 &&
+           (top_left_pixel.y + window.height) <= image.rows;
 }
 
 }

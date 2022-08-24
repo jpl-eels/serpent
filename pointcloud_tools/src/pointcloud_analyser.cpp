@@ -1,10 +1,11 @@
 #include "pointcloud_tools/pointcloud_analyser.hpp"
-#include "pointcloud_tools/pclpointcloud2_utilities.hpp"
+
 #include <pcl_conversions/pcl_conversions.h>
 
-PointcloudAnalyser::PointcloudAnalyser():
-    nh("~")
-{
+#include "pointcloud_tools/pclpointcloud2_utilities.hpp"
+
+PointcloudAnalyser::PointcloudAnalyser()
+    : nh("~") {
     subscriber = nh.subscribe<sensor_msgs::PointCloud2>("input", 100, &PointcloudAnalyser::analyse, this);
 }
 

@@ -1,9 +1,12 @@
 #include "serpent/stereo_factor_finder.hpp"
-#include "serpent/StereoLandmarks.h"
-#include <eigen_ros/eigen_ros.hpp>
+
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <sensor_msgs/image_encodings.h>
+
+#include <eigen_ros/eigen_ros.hpp>
+
+#include "serpent/StereoLandmarks.h"
 
 namespace serpent {
 
@@ -92,8 +95,8 @@ cv::Ptr<cv::ORB> create_from_params<cv::ORB>(const ros::NodeHandle& nh) {
     const int edge_threshold = nh.param<int>("stereo_factors/detector/orb/edge_threshold", 31);
     const int first_level = nh.param<int>("stereo_factors/detector/orb/first_level", 0);
     const int wta_k = nh.param<int>("stereo_factors/detector/orb/wta_k", 2);
-    const cv::ORB::ScoreType score_type = to_orb_score_type(nh.param<std::string>(
-            "stereo_factors/detector/orb/score_type", "HARRIS_SCORE"));
+    const cv::ORB::ScoreType score_type =
+            to_orb_score_type(nh.param<std::string>("stereo_factors/detector/orb/score_type", "HARRIS_SCORE"));
     const int patch_size = nh.param<int>("stereo_factors/detector/orb/patch_size", 31);
     const int fast_threshold = nh.param<int>("stereo_factors/detector/orb/fast_threshold", 20);
     return cv::ORB::create(num_features, scale_factor, num_levels, edge_threshold, first_level, wta_k, score_type,
@@ -114,12 +117,9 @@ cv::Ptr<cv::SIFT> create_from_params<cv::SIFT>(const ros::NodeHandle& nh) {
 
 void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string()) {
     ROS_INFO_STREAM("Keypoint" << (id.empty() ? std::string() : " (" + id + ")") << ":"
-            << "\n\tpt: " << kp.pt.x << ", " << kp.pt.y
-            << "\n\tsize: " << kp.size
-            << "\n\tangle: "<< kp.angle
-            << "\n\tresponse: "<< kp.response
-            << "\n\toctave: "<< kp.octave
-            << "\n\tclass_id: "<< kp.class_id);
+                               << "\n\tpt: " << kp.pt.x << ", " << kp.pt.y << "\n\tsize: " << kp.size
+                               << "\n\tangle: " << kp.angle << "\n\tresponse: " << kp.response
+                               << "\n\toctave: " << kp.octave << "\n\tclass_id: " << kp.class_id);
 }
 
 pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
@@ -174,9 +174,10 @@ void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::S
     }
 }
 
-StereoFactorFinder::StereoFactorFinder():
-    nh("~"), it(nh), stereo_sync(10)
-{
+StereoFactorFinder::StereoFactorFinder()
+    : nh("~"),
+      it(nh),
+      stereo_sync(10) {
     // Publishers
     stereo_landmarks_publisher = nh.advertise<serpent::StereoLandmarks>("stereo/landmarks", 1);
 
@@ -223,43 +224,44 @@ StereoFactorFinder::StereoFactorFinder():
     } else if (feature_type == "ORB") {
         detector = create_from_params<cv::ORB>(nh);
     } else if (feature_type == "SIFT") {
-        #if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 4
+#if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 4
         detector = create_from_params<cv::SIFT>(nh);
-        #else
-        throw std::runtime_error("SIFT requires OpenCV >= 4.4.0. Current OpenCV version: "
-                + std::to_string(CV_VERSION_MAJOR) + "." + std::to_string(CV_VERSION_MINOR) + "."
-                + std::to_string(CV_VERSION_REVISION));
-        #endif
+#else
+        throw std::runtime_error(
+                "SIFT requires OpenCV >= 4.4.0. Current OpenCV version: " + std::to_string(CV_VERSION_MAJOR) + "." +
+                std::to_string(CV_VERSION_MINOR) + "." + std::to_string(CV_VERSION_REVISION));
+#endif
     } else {
         throw std::runtime_error("Stereo factor feature type \'" + feature_type + "\' not recognised.");
     }
 
     // Stereo Filter
-    stereo_filter = serpent::StereoMatchFilter::create(nh.param<float>(
-            "stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.f));
+    stereo_filter = serpent::StereoMatchFilter::create(
+            nh.param<float>("stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.f));
 
     // Sparse Optical Flow
-    const std::string sparse_optical_flow_type = nh.param<std::string>("stereo_factors/sparse_optical_flow/type",
-            "PyrLK");
+    const std::string sparse_optical_flow_type =
+            nh.param<std::string>("stereo_factors/sparse_optical_flow/type", "PyrLK");
     if (sparse_optical_flow_type == "PyrLK") {
-        const std::vector<int> win_size_vec = nh.param<std::vector<int>>("stereo_factors/sparse_optical_flow/win_size",
-                {{21, 21}});
+        const std::vector<int> win_size_vec =
+                nh.param<std::vector<int>>("stereo_factors/sparse_optical_flow/win_size", {{21, 21}});
         const cv::Size win_size = cv::Size{win_size_vec.at(0), win_size_vec.at(1)};
         const int max_level = nh.param<int>("stereo_factors/sparse_optical_flow/max_level", 3);
-        const cv::TermCriteria term_criteria = cv::TermCriteria{to_term_criteria_type(
-                nh.param<std::string>("stereo_factors/sparse_optical_flow/term_criteria/type", "COUNT+EPS")),
+        const cv::TermCriteria term_criteria = cv::TermCriteria{
+                to_term_criteria_type(
+                        nh.param<std::string>("stereo_factors/sparse_optical_flow/term_criteria/type", "COUNT+EPS")),
                 nh.param<int>("stereo_factors/sparse_optical_flow/term_criteria/max_count", 30),
                 nh.param<double>("stereo_factors/sparse_optical_flow/term_criteria/epsilon", 0.01)};
         const int flags = nh.param<int>("stereo_factors/sparse_optical_flow/flags", 0);
         const double min_eig_threshold = nh.param<double>("stereo_factors/sparse_optical_flow/min_eig_threshold", 0);
-        sparse_optical_flow = cv::SparsePyrLKOpticalFlow::create(win_size, max_level, term_criteria, flags,
-                min_eig_threshold);
+        sparse_optical_flow =
+                cv::SparsePyrLKOpticalFlow::create(win_size, max_level, term_criteria, flags, min_eig_threshold);
     } else if (sparse_optical_flow_type == "RLOF") {
-        throw std::runtime_error("Stereo factor sparse optical flow type \'" + sparse_optical_flow_type
-                + "\' not yet implemented.");
+        throw std::runtime_error(
+                "Stereo factor sparse optical flow type \'" + sparse_optical_flow_type + "\' not yet implemented.");
     } else {
-        throw std::runtime_error("Stereo factor sparse optical flow type \'" + sparse_optical_flow_type
-                + "\' not recognised.");
+        throw std::runtime_error(
+                "Stereo factor sparse optical flow type \'" + sparse_optical_flow_type + "\' not recognised.");
     }
 
     // Stereo KeyPoint Matcher
@@ -275,8 +277,8 @@ StereoFactorFinder::StereoFactorFinder():
     }
     stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window,
             nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
-    const double stereo_match_cost_threshold = nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold",
-            1.0);
+    const double stereo_match_cost_threshold =
+            nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold", 1.0);
 
     // Region of Interest
     cv::Rect2i roi;
@@ -336,12 +338,14 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
         intermediate_images.match_draw_flags = match_draw_flags;
         intermediate_images_ref = intermediate_images;
     }
-    
+
     // Run processing pipeline
     const ros::WallTime tic = ros::WallTime::now();
     auto tracked_matches = tracker->process(left_image->image, right_image->image, stats_ref, intermediate_images_ref);
-    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec() << " seconds for stereo"
-            " data at t = " << left_image->header.stamp);
+    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec()
+                                                       << " seconds for stereo"
+                                                          " data at t = "
+                                                       << left_image->header.stamp);
 
     // Optional printing and publishing of internal information
     if (print_stats) {
@@ -374,13 +378,15 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
             const float u_L = tracked_matches.keypoints[0][match.queryIdx].pt.x;
             const float u_R = tracked_matches.keypoints[1][match.trainIdx].pt.x;
             const float v = (tracked_matches.keypoints[0][match.queryIdx].pt.y +
-                    tracked_matches.keypoints[1][match.trainIdx].pt.y) / 2.f;
+                                    tracked_matches.keypoints[1][match.trainIdx].pt.y) /
+                            2.f;
             try {
                 stereo_pointcloud->push_back(stereo_coordinate_to_pcl_point(u_L, u_R, v, intrinsic, baseline));
-            } catch (const std::exception& ex) {}
+            } catch (const std::exception& ex) {
+            }
         }
         ROS_INFO_STREAM("Created points for " << stereo_pointcloud->size() << "/" << tracked_matches.size()
-                << " stereo feature pairs.");
+                                              << " stereo feature pairs.");
         stereo_points_publisher.publish(stereo_pointcloud);
     }
 

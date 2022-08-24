@@ -1,22 +1,24 @@
 #ifndef SERPENT_STEREO_FACTOR_FINDER_HPP
 #define SERPENT_STEREO_FACTOR_FINDER_HPP
 
-#include "serpent/StereoLandmarks.h"
-#include "serpent/StereoTrackerStatistics.h"
-#include "serpent/stereo_feature_tracker.hpp"
 #include <cv_bridge/cv_bridge.h>
-#include <Eigen/Core>
 #include <geometry_msgs/Point.h>
 #include <image_transport/image_transport.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
-#include <opencv2/features2d.hpp>
-#include <opencv2/video/tracking.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+
+#include <Eigen/Core>
+#include <opencv2/features2d.hpp>
+#include <opencv2/video/tracking.hpp>
+
+#include "serpent/StereoLandmarks.h"
+#include "serpent/StereoTrackerStatistics.h"
+#include "serpent/stereo_feature_tracker.hpp"
 
 namespace serpent {
 
@@ -40,7 +42,7 @@ pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, c
 
 geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline);
-    
+
 void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
         const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches);
 
@@ -65,7 +67,8 @@ private:
     message_filters::Subscriber<sensor_msgs::CameraInfo> left_info_subcriber;
     message_filters::Subscriber<sensor_msgs::CameraInfo> right_info_subcriber;
     message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo,
-            sensor_msgs::CameraInfo> stereo_sync;
+            sensor_msgs::CameraInfo>
+            stereo_sync;
     //// Intermediate Results
     image_transport::Publisher extracted_keypoints_left_publisher;
     image_transport::Publisher extracted_keypoints_right_publisher;

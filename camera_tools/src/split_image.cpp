@@ -1,11 +1,12 @@
 #include "camera_tools/split_image.hpp"
+
 #include <cv_bridge/cv_bridge.h>
 
 namespace camera_tools {
 
-ImageSplitter::ImageSplitter():
-    nh("~"), it(nh)
-{
+ImageSplitter::ImageSplitter()
+    : nh("~"),
+      it(nh) {
     image_subscriber = it.subscribe("input/image", 10, &ImageSplitter::split, this);
     parse_configuration();
 }
@@ -51,8 +52,10 @@ void ImageSplitter::parse_configuration() {
         camera_info.P[10] = camera_info.K[8];
         ROS_WARN_ONCE("Camera info R matrices not set, P matrix missing Tx Ty for stereo");
         image_configs.emplace_back(ImageSplitConfig{.publisher = it.advertise(topic, 1),
-                .info_publisher = nh.advertise<sensor_msgs::CameraInfo>(info_topic, 1), .frame_id = image["frame_id"],
-                .region = region_rect, .camera_info = camera_info});
+                .info_publisher = nh.advertise<sensor_msgs::CameraInfo>(info_topic, 1),
+                .frame_id = image["frame_id"],
+                .region = region_rect,
+                .camera_info = camera_info});
         if (image.hasMember("operations")) {
             XmlRpc::XmlRpcValue operations = image["operations"];
             if (region.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
@@ -62,7 +65,8 @@ void ImageSplitter::parse_configuration() {
                 if (it->first == "rotate_cw") {
                     image_configs.back().operations.emplace_back(std::make_shared<Rotate>(it->second));
                 } else if (it->first == "rotate_acw") {
-                    image_configs.back().operations.emplace_back(std::make_shared<Rotate>((360-(int)it->second)%360));
+                    image_configs.back().operations.emplace_back(
+                            std::make_shared<Rotate>((360 - (int)it->second) % 360));
                 } else if (it->first == "flip") {
                     const std::string flip_direction = it->second;
                     if (flip_direction == "horiz") {
@@ -77,7 +81,7 @@ void ImageSplitter::parse_configuration() {
                 } else {
                     throw std::runtime_error("Unrecognised operation \'" + it->first + "\'");
                 }
-            }   
+            }
         }
         ROS_INFO_STREAM("Publishing images on topic = " << topic << " with CameraInfo on topic = " << info_topic);
     }

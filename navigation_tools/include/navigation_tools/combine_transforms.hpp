@@ -1,9 +1,10 @@
 #ifndef NAVIGATION_TOOLS_COMBINE_TRANSFORMS_HPP
 #define NAVIGATION_TOOLS_COMBINE_TRANSFORMS_HPP
 
-#include <eigen_ros/eigen_ros.hpp>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
+
+#include <eigen_ros/eigen_ros.hpp>
 
 class CombineTransforms {
 public:
@@ -12,9 +13,9 @@ public:
 private:
     /**
      * @brief Apply transform to current state, i.e. new pose T_{W}^{B_i} = T_{W}^{B_i-1} * T_{B_i-1}^{B_i}
-     * 
-     * @tparam T 
-     * @param msg 
+     *
+     * @tparam T
+     * @param msg
      */
     template<typename T>
     void combine_callback(const typename T::ConstPtr& msg);

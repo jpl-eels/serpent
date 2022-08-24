@@ -1,14 +1,15 @@
 #ifndef SERPENT_STEREO_FEATURE_TRACKER_HPP
 #define SERPENT_STEREO_FEATURE_TRACKER_HPP
 
-#include "serpent/match_filters.hpp"
-#include "serpent/stereo_keypoint_matcher.hpp"
+#include <array>
 #include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
-#include <array>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "serpent/match_filters.hpp"
+#include "serpent/stereo_keypoint_matcher.hpp"
 
 namespace serpent {
 
@@ -84,76 +85,76 @@ public:
 
     /**
      * @brief Return the last frame number processed. If no frames have been processed, returns -1.
-     * 
-     * @return int 
+     *
+     * @return int
      */
     int frame_number() const;
 
     /**
      * @brief Process a new left-right stereo pair, and return the tracked features in the new frame pair.
-     * 
-     * @param left_image 
-     * @param right_image 
+     *
+     * @param left_image
+     * @param right_image
      * @return LRKeyPointMatches
      */
     LRKeyPointMatches process(const cv::Mat& left_image, const cv::Mat& right_image,
-            std::optional<std::reference_wrapper<Statistics>> stats = std::nullopt, 
+            std::optional<std::reference_wrapper<Statistics>> stats = std::nullopt,
             std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images = std::nullopt);
 
 private:
     /**
      * @brief Append new keypoint matches onto track data.
-     * 
-     * @param new_keypoint_matches 
-     * @param track_data 
+     *
+     * @param new_keypoint_matches
+     * @param track_data
      */
     void append_keypoint_matches(const LRKeyPointMatches& new_keypoint_matches, LRKeyPointMatches& track_data);
 
     /**
      * @brief Filter the new keypoint matches, removing high cost and invalid keypoints. Create matches and match ids.
-     * 
-     * @param new_keypoints 
-     * @param right_indices 
-     * @param stereo_match_costs 
-     * @return LRKeyPointMatches 
+     *
+     * @param new_keypoints
+     * @param right_indices
+     * @param stereo_match_costs
+     * @return LRKeyPointMatches
      */
     LRKeyPointMatches create_filtered_new_matches(const LRKeyPoints& new_keypoints,
             const std::vector<int>& right_indices, const std::vector<double>& stereo_match_costs);
 
     /**
      * @brief Extract keypoints from an image using the detector.
-     * 
+     *
      * @param image image for feature detection
      * @param roi region of interest to restrict feature detection
-     * @return std::vector<cv::KeyPoint> 
+     * @return std::vector<cv::KeyPoint>
      */
     std::vector<cv::KeyPoint> extract_keypoints(const cv::Mat& image, cv::InputArray roi = cv::noArray()) const;
 
     /**
      * @brief Extract just the keypoints present in the matches, and update the match indices.
-     * 
-     * @param keypoints 
-     * @param matches 
-     * @return LRKeyPoints 
+     *
+     * @param keypoints
+     * @param matches
+     * @return LRKeyPoints
      */
     LRKeyPoints extract_matched_keypoints(const LRKeyPoints& keypoints, LRMatches& matches) const;
 
     /**
      * @brief Extract the match ids by index.
-     * 
-     * @param match_ids 
-     * @param indices 
-     * @return LRMatchIds 
+     *
+     * @param match_ids
+     * @param indices
+     * @return LRMatchIds
      */
     LRMatchIds extract_match_ids(const LRMatchIds& match_ids, const std::vector<std::size_t>& indices) const;
 
     /**
      * @brief Return a filtered set of keypoints which are not too close to any reference keypoints, according to a
      * Euclidean pixel distance threshold set upon construction of the class.
-     * 
-     * @param keypoints 
-     * @param reference_keypoints 
-     * @return std::vector<cv::KeyPoint> 
+     *
+     * @param keypoints
+     * @param reference_keypoints
+     * @return std::vector<cv::KeyPoint>
      */
     std::vector<cv::KeyPoint> remove_close_keypoints(const std::vector<cv::KeyPoint>& keypoints,
             const std::vector<cv::KeyPoint>& reference_keypoints) const;
@@ -162,10 +163,10 @@ private:
      * @brief Track keypoints from previous images. Only if the keypoints of a match are tracked successfully in both
      * frames are they kept. Even though the matches are set, they could also be inferred, since keypoints with the same
      * index were matched previously.
-     * 
-     * @param images 
-     * @param f2f_matches 
-     * @return LRKeyPointMatches 
+     *
+     * @param images
+     * @param f2f_matches
+     * @return LRKeyPointMatches
      */
     LRKeyPointMatches track_previous_keypoints(const LRImages& images, LRKeyPoints& all_sof_keypoints,
             LRF2FMatches& f2f_matches) const;

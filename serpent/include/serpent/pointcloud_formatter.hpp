@@ -1,9 +1,10 @@
 #ifndef SERPENT_POINTCLOUD_FORMATTER_HPP
 #define SERPENT_POINTCLOUD_FORMATTER_HPP
 
-#include "serpent/sensor_point_types.hpp"
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+
+#include "serpent/sensor_point_types.hpp"
 
 namespace serpent {
 
