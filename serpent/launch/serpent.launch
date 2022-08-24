@@ -24,8 +24,6 @@
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
     <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
-    <!-- <env name="ROSCONSOLE_FORMAT"
-            value="[${severity}] [${time}] [${node}] [${file}/${function}:${line}]: ${message}"/> -->
 
     <!-- Rosbag Playback Arguments-->
     <arg name="play_rosbag"                     default="false"/>
