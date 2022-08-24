@@ -1,6 +1,8 @@
 #include "eigen_ros/geometry_msgs.hpp"
-#include "eigen_ros/eigen_ros.hpp"
+
 #include <eigen_ext/covariance.hpp>
+
+#include "eigen_ros/eigen_ros.hpp"
 
 namespace eigen_ros {
 

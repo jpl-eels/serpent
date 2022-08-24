@@ -1,8 +1,3 @@
-#include "test/read_data.hpp"
-#include "test/test_utils.hpp"
-#include "serpent/utilities.hpp"
-#include "serpent/ImuBiases.h"
-#include <eigen_ros/eigen_ros.hpp>
 #include <gtest/gtest.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/navigation/ImuFactor.h>
@@ -13,9 +8,16 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <ros/ros.h>
 
-using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
-using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
+#include <eigen_ros/eigen_ros.hpp>
+
+#include "serpent/ImuBiases.h"
+#include "serpent/utilities.hpp"
+#include "test/read_data.hpp"
+#include "test/test_utils.hpp"
+
+using gtsam::symbol_shorthand::B;  // Bias  (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::V;  // Vel   (xdot,ydot,zdot)
+using gtsam::symbol_shorthand::X;  // Pose3 (x,y,z,r,p,y)
 
 TEST(serpent, isam2_optimise) {
     // Noise characteristics
@@ -30,19 +32,20 @@ TEST(serpent, isam2_optimise) {
 
     // Noise models
     const auto prior_pose_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << rotation_noise,
-            rotation_noise, rotation_noise, position_noise, position_noise, position_noise).finished());
-    const auto prior_vel_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(3) << vel_noise, vel_noise, vel_noise)
-            .finished());
-    const auto prior_bias_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << accel_noise, accel_noise,
-            accel_noise, gyro_noise, gyro_noise, gyro_noise).finished());
+            rotation_noise, rotation_noise, position_noise, position_noise, position_noise)
+                                                                              .finished());
+    const auto prior_vel_noise =
+            gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(3) << vel_noise, vel_noise, vel_noise).finished());
+    const auto prior_bias_noise = gtsam::noiseModel::Diagonal::Sigmas(
+            (gtsam::Vector(6) << accel_noise, accel_noise, accel_noise, gyro_noise, gyro_noise, gyro_noise).finished());
     const auto between_pose_noise = prior_pose_noise;
     const auto between_bias_noise = prior_pose_noise;
     const Eigen::Matrix3d integration_covariance = Eigen::Matrix3d::Identity() * std::pow(integration_noise, 2.0);
-    const Eigen::Matrix3d overwrite_accelerometer_covariance = Eigen::Matrix3d::Identity() *
-            std::pow(overwrite_accelerometer_noise, 2.0);
-    const Eigen::Matrix3d overwrite_gyroscope_covariance = Eigen::Matrix3d::Identity() *
-            std::pow(overwrite_gyroscope_noise, 2.0);
-    
+    const Eigen::Matrix3d overwrite_accelerometer_covariance =
+            Eigen::Matrix3d::Identity() * std::pow(overwrite_accelerometer_noise, 2.0);
+    const Eigen::Matrix3d overwrite_gyroscope_covariance =
+            Eigen::Matrix3d::Identity() * std::pow(overwrite_gyroscope_noise, 2.0);
+
     // Data structures setup
     gtsam::NonlinearFactorGraph new_factors;
     gtsam::Values new_values;
@@ -86,8 +89,7 @@ TEST(serpent, isam2_optimise) {
     gtsam::NavState predicted = preintegrated_imu.predict(prior_state, zero_bias);
 
     // IMU and Bias Between factors
-    new_factors.emplace_shared<gtsam::ImuFactor>(X(key - 1), V(key - 1), X(key), V(key), B(key - 1),
-            preintegrated_imu);
+    new_factors.emplace_shared<gtsam::ImuFactor>(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preintegrated_imu);
     new_factors.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(B(key - 1), B(key), zero_bias,
             between_bias_noise);
     new_values.insert(X(key), predicted.pose());
@@ -95,8 +97,9 @@ TEST(serpent, isam2_optimise) {
     new_values.insert(B(key), zero_bias);
 
     // Generate a guessed between factor close to the IMU with a 5 degree rotation and 2% translation change
-    gtsam::Pose3 registration_pose{predicted.pose().rotation() *
-            gtsam::Rot3(Eigen::Quaterniond(0.999, 0.044, 0.0, 0.0).normalized()), predicted.pose().translation() * 0.98};
+    gtsam::Pose3 registration_pose{
+            predicted.pose().rotation() * gtsam::Rot3(Eigen::Quaterniond(0.999, 0.044, 0.0, 0.0).normalized()),
+            predicted.pose().translation() * 0.98};
 
     // Registration between factor
     new_factors.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(key - 1), X(key), registration_pose);

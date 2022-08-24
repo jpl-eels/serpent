@@ -1,7 +1,9 @@
 #include "pointcloud_tools/pclpointcloud2_utilities.hpp"
-#include <eigen_ext/geometry.hpp>
-#include <pcl/common/io.h>
+
 #include <pcl/PCLPointField.h>
+#include <pcl/common/io.h>
+
+#include <eigen_ext/geometry.hpp>
 #include <sstream>
 
 namespace pct {
@@ -14,13 +16,13 @@ void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
                 const std::uint32_t* t = reinterpret_cast<const std::uint32_t*>(&pointcloud.data[i + field.offset]);
                 const float f = static_cast<float>(*t);
                 std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
-            } else if (field.datatype ==pcl::PCLPointField::PointFieldTypes::INT32) {
+            } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::INT32) {
                 const std::int32_t* t = reinterpret_cast<const std::int32_t*>(&pointcloud.data[i + field.offset]);
                 const float f = static_cast<float>(*t);
                 std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
             } else {
-                throw std::runtime_error("Converting field.datatype " + std::to_string(field.datatype)
-                        + " not supported yet.");
+                throw std::runtime_error(
+                        "Converting field.datatype " + std::to_string(field.datatype) + " not supported yet.");
             }
         }
         field.datatype = pcl::PCLPointField::PointFieldTypes::FLOAT32;
@@ -114,10 +116,10 @@ void deskew(const Eigen::Isometry3d& transform, const double dt, const pcl::PCLP
             // Compute the deskewed point
             const double interp_fraction = t / dt;
             const Eigen::Vector3d interp_translation = interp_fraction * deskew_translation;
-            const Eigen::Quaterniond interp_quaternion = Eigen::Quaterniond::Identity().slerp(interp_fraction,
-                    deskew_quaternion);
+            const Eigen::Quaterniond interp_quaternion =
+                    Eigen::Quaterniond::Identity().slerp(interp_fraction, deskew_quaternion);
             const Eigen::Isometry3d interp_transform = eigen_ext::to_transform(interp_translation, interp_quaternion);
-            const Eigen::Vector3d p_deskew = interp_transform *  p;
+            const Eigen::Vector3d p_deskew = interp_transform * p;
 
             // Copy the deskewed point data
             for (std::size_t j = 0; j < p_fields.size(); ++j) {
@@ -145,7 +147,7 @@ bool empty(const pcl::PCLPointCloud2& pointcloud) {
 std::string field_string(const pcl::PCLPointField& field) {
     std::stringstream ss;
     ss << "name: " << field.name << ", offset: " << field.offset << ", datatype: " << static_cast<int>(field.datatype)
-            << ", count: " << field.count;
+       << ", count: " << field.count;
     return ss.str();
 }
 
@@ -179,16 +181,16 @@ bool has_field(const pcl::PCLPointCloud2& pointcloud, const std::string& name) {
 std::string info_string(const pcl::PCLPointCloud2& pointcloud) {
     std::stringstream ss;
     ss << "Pointcloud (" << pointcloud.header.seq << ", " << pointcloud.header.stamp << ", "
-            << pointcloud.header.frame_id << ")\n\tsize: h = " << pointcloud.height << ", w = " << pointcloud.width;
+       << pointcloud.header.frame_id << ")\n\tsize: h = " << pointcloud.height << ", w = " << pointcloud.width;
     for (const auto& field : pointcloud.fields) {
-        ss << "\n\t" << field_string(field) << "\n\t\tmax: " << max_value_str(pointcloud, field) << ", min: "
-                << min_value_str(pointcloud, field);
+        ss << "\n\t" << field_string(field) << "\n\t\tmax: " << max_value_str(pointcloud, field)
+           << ", min: " << min_value_str(pointcloud, field);
     }
     return ss.str();
 }
 
 std::string max_value_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
-    switch(field.datatype) {
+    switch (field.datatype) {
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(max_value<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -211,7 +213,7 @@ std::string max_value_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLP
 }
 
 std::string min_value_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
-    switch(field.datatype) {
+    switch (field.datatype) {
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(min_value<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -241,8 +243,8 @@ void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& nam
             *f *= scale;
         }
     } else {
-        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " + std::to_string(field.datatype )
-                + "Not yet supported.");
+        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " + std::to_string(field.datatype) +
+                                 "Not yet supported.");
     }
 }
 

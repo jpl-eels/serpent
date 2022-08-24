@@ -1,7 +1,9 @@
-#include "test/test_instances.hpp"
 #include "eigen_ros/pose.hpp"
+
 #include <gtest/gtest.h>
 #include <ros/ros.h>
+
+#include "test/test_instances.hpp"
 
 TEST(pose, equality) {
     EXPECT_EQ(eigen_ros::Pose{}, eigen_ros::Pose{});

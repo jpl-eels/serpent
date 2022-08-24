@@ -1,14 +1,16 @@
 #ifndef CAMERA_TOOLS_SPLIT_IMAGE_HPP
 #define CAMERA_TOOLS_SPLIT_IMAGE_HPP
 
-#include "camera_tools/image_operations.hpp"
 #include <image_transport/image_transport.h>
-#include <opencv2/core/types.hpp>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+
 #include <memory>
+#include <opencv2/core/types.hpp>
 #include <optional>
+
+#include "camera_tools/image_operations.hpp"
 
 namespace camera_tools {
 
@@ -24,9 +26,9 @@ struct ImageSplitConfig {
 /**
  * @brief ROS node for splitting up or extracting regions from an image and republishing them as new image + camera_info
  * streams.
- * 
+ *
  * Subscribes to ~input/image, which may be remapped in a launch file.
- * 
+ *
  * Reads configuration from ROS parameter server. For example:
  *      images:
  *        - topic: "/camera1/image_raw"
@@ -53,12 +55,12 @@ struct ImageSplitConfig {
  *            cx: 400
  *            cy: 300
  *        ...
- * 
+ *
  * Valid operations:
  *  rotate_cw: <0, 90, 180, 270>
  *  rotate_acw: <0, 90, 180, 270>
  *  flip: "horiz", "vert", "both"
- * 
+ *
  */
 class ImageSplitter {
 public:

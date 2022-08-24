@@ -2,6 +2,7 @@
 #define SERPENT_SENSOR_POINT_TYPES_HPP
 
 #include <pcl/PCLPointCloud2.h>
+
 #include <string>
 
 namespace serpent {
@@ -13,24 +14,24 @@ enum class SensorType {
 
 /**
  * @brief Convert string to sensor type
- * 
- * @param sensor_type 
- * @return SensorType 
+ *
+ * @param sensor_type
+ * @return SensorType
  */
 SensorType to_sensor_type(const std::string& sensor_type);
 
 /**
  * @brief Get type field for sensor type
- * 
- * @param sensor_type 
- * @return const pcl::PCLPointField& 
+ *
+ * @param sensor_type
+ * @return const pcl::PCLPointField&
  */
 pcl::PCLPointField& time_field(pcl::PCLPointCloud2& pointcloud, const SensorType sensor_type);
 
 /**
  * @brief Converts integer nanoseconds to floating point seconds for time field.
- * 
- * @param pointcloud 
+ *
+ * @param pointcloud
  */
 void ouster_ns_to_s(pcl::PCLPointCloud2& pointcloud);
 

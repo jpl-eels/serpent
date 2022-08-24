@@ -1,11 +1,11 @@
 #ifndef SERPENT_POINTCLOUD_FILTER_HPP
 #define SERPENT_POINTCLOUD_FILTER_HPP
 
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/PCLPointCloud2.h>
 #include <ros/ros.h>
 
 namespace serpent {

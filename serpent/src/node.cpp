@@ -1,3 +1,8 @@
+#include <ros/ros.h>
+
+#include <eigen_ros/body_frames_tf.hpp>
+#include <memory>
+
 #include "serpent/frontend.hpp"
 #include "serpent/mapping.hpp"
 #include "serpent/optimisation.hpp"
@@ -6,9 +11,6 @@
 #include "serpent/pointcloud_normal_estimation.hpp"
 #include "serpent/registration.hpp"
 #include "serpent/stereo_factor_finder.hpp"
-#include <eigen_ros/body_frames_tf.hpp>
-#include <ros/ros.h>
-#include <memory>
 
 int main(int argc, char** argv) {
     // Initialise ROS

@@ -1,6 +1,7 @@
 <launch>
     <arg name="rate"     default="1"/>
     <arg name="start"    default="0"/>
+    <arg name="duration" default=""/>
 
     <!-- SERPENT -->
     <include file="$(find snowboard)/launch/serpent.launch">
@@ -11,5 +12,6 @@
         <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/LIDAR-IMU_dataset_challenging_flat_snow_surface_2022-03-31"/>
         <arg name="rate"            value="$(arg rate)"/>
         <arg name="start"           value="$(arg start)"/>
+        <arg name="duration"        value="$(arg duration)"/>
     </include>
 </launch>

@@ -1,15 +1,15 @@
 #include "serpent/utilities.hpp"
+
+#include <eigen_ros/eigen_ros.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
 #include <eigen_ros/sensor_msgs.hpp>
-#include <eigen_ros/eigen_ros.hpp>
 
 namespace serpent {
 
 bool check_valid(const gtsam::PreintegrationParams& params) {
     return params.getGravity().norm() > 0.0 && check_non_zero_diagonals(params.getAccelerometerCovariance()) &&
-            check_non_zero_diagonals(params.getGyroscopeCovariance()) &&
-            check_non_zero_diagonals(params.getIntegrationCovariance());
-
+           check_non_zero_diagonals(params.getGyroscopeCovariance()) &&
+           check_non_zero_diagonals(params.getIntegrationCovariance());
 }
 
 void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& messages) {
@@ -53,8 +53,7 @@ Eigen::Matrix<double, 6, 6> reorder_pose_covariance(const Eigen::Matrix<double, 
 }
 
 std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
-        const std::deque<eigen_ros::Imu>& messages)
-{
+        const std::deque<eigen_ros::Imu>& messages) {
     std::vector<sensor_msgs::Imu> extracted;
     for (const auto& msg : messages) {
         if (msg.timestamp < timestamp) {
@@ -81,14 +80,15 @@ bool protected_sleep(std::mutex& mutex, const double sleep_period_, const bool a
     return ros::ok();
 }
 
-void update_preintegration_params(gtsam::PreintegrationParams& params,
-        const Eigen::Matrix3d& accelerometer_covariance, const Eigen::Matrix3d& gyroscope_covariance) {
+void update_preintegration_params(gtsam::PreintegrationParams& params, const Eigen::Matrix3d& accelerometer_covariance,
+        const Eigen::Matrix3d& gyroscope_covariance) {
     params.setAccelerometerCovariance(accelerometer_covariance);
     params.setGyroscopeCovariance(gyroscope_covariance);
     if (!check_valid(params)) {
         ROS_WARN_STREAM("Accelerometer covariance:\n" << accelerometer_covariance);
         ROS_WARN_STREAM("Gyroscope covariance:\n" << gyroscope_covariance);
-        throw std::runtime_error("IMU preintegration parameters were not valid. Covariances with zero diagonal elements"
+        throw std::runtime_error(
+                "IMU preintegration parameters were not valid. Covariances with zero diagonal elements"
                 " can cause this.");
     }
 }

@@ -2,9 +2,8 @@
 
 namespace camera_tools {
 
-PublishInfo::PublishInfo():
-    nh("~")
-{
+PublishInfo::PublishInfo()
+    : nh("~") {
     // Subscribers
     image_subscriber = nh.subscribe<sensor_msgs::Image>("input/image", 10, &PublishInfo::callback, this);
 
@@ -19,7 +18,7 @@ PublishInfo::PublishInfo():
     camera_info.K[4] = nh.param<double>("K/fy", 0.0);
     camera_info.K[5] = nh.param<double>("K/cy", 0.0);
     camera_info.K[8] = 1.0;
-    
+
     camera_info.R[0] = 1.0;
     camera_info.R[4] = 1.0;
     camera_info.R[8] = 1.0;

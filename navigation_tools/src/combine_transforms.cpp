@@ -1,13 +1,13 @@
 #include "navigation_tools/combine_transforms.hpp"
+
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 
-CombineTransforms::CombineTransforms():
-    nh("~")
-{
+CombineTransforms::CombineTransforms()
+    : nh("~") {
     // Publishers
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("odometry", 1);
     path_publisher = nh.advertise<nav_msgs::Path>("path", 1);

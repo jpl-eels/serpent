@@ -1,6 +1,8 @@
-#include "serpent/stereo_factor_finder.hpp"
-#include <eigen_ros/body_frames_tf.hpp>
 #include <ros/ros.h>
+
+#include <eigen_ros/body_frames_tf.hpp>
+
+#include "serpent/stereo_factor_finder.hpp"
 
 int main(int argc, char** argv) {
     // Initialise ROS

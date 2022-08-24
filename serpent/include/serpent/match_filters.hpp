@@ -9,8 +9,8 @@ class DistanceMatchFilter {
 public:
     DistanceMatchFilter(const float descriptor_distance_threshold = std::numeric_limits<float>::max());
 
-    static cv::Ptr<DistanceMatchFilter> create(const float descriptor_distance_threshold =
-            std::numeric_limits<float>::max());
+    static cv::Ptr<DistanceMatchFilter> create(
+            const float descriptor_distance_threshold = std::numeric_limits<float>::max());
 
     std::vector<cv::DMatch> filter(const std::vector<cv::DMatch>& matches);
 
@@ -19,8 +19,8 @@ public:
 
     /**
      * @brief Get indices of match indices from last call to filter (the matches that passed).
-     * 
-     * @return const std::vector<int>& 
+     *
+     * @return const std::vector<int>&
      */
     const std::vector<std::size_t>& indices() const;
 
@@ -37,9 +37,9 @@ protected:
  *  1. The left x coordinate must be greater than the right x coordinate (i.e. features in the left frame are further
  *      to the right)
  *  2. The y coordinates must be within a vertical pixel threshold of each other.
- * 
+ *
  */
-class StereoMatchFilter{
+class StereoMatchFilter {
 public:
     StereoMatchFilter(const float vertical_pixels_threshold = 1.0);
 
@@ -54,8 +54,8 @@ public:
 
     /**
      * @brief Get indices of match indices from last call to filter (the matches that passed).
-     * 
-     * @return const std::vector<int>& 
+     *
+     * @return const std::vector<int>&
      */
     const std::vector<std::size_t>& indices() const;
 

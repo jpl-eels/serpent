@@ -1,13 +1,15 @@
 #include "imu_tools/imu_analysis.hpp"
+
+#include <geometry_msgs/TransformStamped.h>
+
 #include <eigen_ros/eigen_ros.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
 #include <eigen_ros/sensor_msgs.hpp>
-#include <geometry_msgs/TransformStamped.h>
 #include <iostream>
 #include <sstream>
 
 ImuAnalysis::ImuAnalysis()
-    :   nh("~") {
+    : nh("~") {
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>(nh.param<std::string>("imu_topic", "imu"), 1000,
             &ImuAnalysis::analyse, this);
     fixed_frame = nh.param<std::string>("fixed_frame", "fixed");
@@ -22,15 +24,15 @@ ImuAnalysis::ImuAnalysis()
     Eigen::Matrix3d rotation_mat;
     for (std::size_t r = 0; r < 3; ++r) {
         for (std::size_t c = 0; c < 3; ++c) {
-            rotation_mat(r, c) = rotation_vec.at(r*3 + c);
+            rotation_mat(r, c) = rotation_vec.at(r * 3 + c);
         }
     }
     rotation = Eigen::Quaterniond(rotation_mat);
     if (apply_transform) {
         std::cerr << "An additional TF will be displayed with the following translation:\n"
-                << "[" << translation(0) << ", " << translation(1) << ", " << translation(2) << "]\n"
-                << "and rotation:\n"
-                << rotation_mat.matrix() << "\n";
+                  << "[" << translation(0) << ", " << translation(1) << ", " << translation(2) << "]\n"
+                  << "and rotation:\n"
+                  << rotation_mat.matrix() << "\n";
     }
 }
 
@@ -48,7 +50,7 @@ void ImuAnalysis::analyse(const sensor_msgs::ImuConstPtr& msg) {
     imu.print();
 
     if (apply_transform) {
-        // Note we apply rotation then q since R_FX = R_FI * R_IX = q_FI * q_IX, where F is the fixed frame, X is the 
+        // Note we apply rotation then q since R_FX = R_FI * R_IX = q_FI * q_IX, where F is the fixed frame, X is the
         // new frame and I is the IMU frame.
         tf.child_frame_id = transformed_frame;
         tf.transform.translation.x = translation(0);
@@ -61,13 +63,14 @@ void ImuAnalysis::analyse(const sensor_msgs::ImuConstPtr& msg) {
         const Eigen::Vector3d rpy_FX = eigen_ros::rpy(q_FX);
         std::stringstream ss;
         ss << std::setprecision(3);
-        ss  << "Applied TF (" << tf.header.frame_id << " => " << tf.child_frame_id << ")\n"
-            << "\ttranslation: [" << translation(0) << ", " << translation(1) << ", " << translation(2) << "]\n"
-            << "\torientation:\n"
-            << "\t\tquaternion (wxyz): [" << q_FX.w() << ", " << q_FX.x() << ", " << q_FX.y() << ", " << q_FX.z() << "]\n"
-            << "\t\tRPY (radians):     [" << rpy_FX[0] << ", " << rpy_FX[1] << ", " << rpy_FX[2] << "]\n"
-            << "\t\tRPY (degrees):     [" << 180.0 * rpy_FX[0] / M_PI << ", " << 180.0 * rpy_FX[1] / M_PI << ", "
-            << 180.0 * rpy_FX[2] / M_PI << "]\n";
+        ss << "Applied TF (" << tf.header.frame_id << " => " << tf.child_frame_id << ")\n"
+           << "\ttranslation: [" << translation(0) << ", " << translation(1) << ", " << translation(2) << "]\n"
+           << "\torientation:\n"
+           << "\t\tquaternion (wxyz): [" << q_FX.w() << ", " << q_FX.x() << ", " << q_FX.y() << ", " << q_FX.z()
+           << "]\n"
+           << "\t\tRPY (radians):     [" << rpy_FX[0] << ", " << rpy_FX[1] << ", " << rpy_FX[2] << "]\n"
+           << "\t\tRPY (degrees):     [" << 180.0 * rpy_FX[0] / M_PI << ", " << 180.0 * rpy_FX[1] / M_PI << ", "
+           << 180.0 * rpy_FX[2] / M_PI << "]\n";
         std::cerr << ss.str();
     }
 }

@@ -1,12 +1,13 @@
 #ifndef NAVIGATION_TOOLS_INTEGRATE_IMU_HPP
 #define NAVIGATION_TOOLS_INTEGRATE_IMU_HPP
 
-#include <eigen_ros/body_frames.hpp>
-#include <eigen_ros/eigen_ros.hpp>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <nav_msgs/Path.h>
-#include <sensor_msgs/Imu.h>
 #include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
+
+#include <eigen_ros/body_frames.hpp>
+#include <eigen_ros/eigen_ros.hpp>
 #include <memory>
 
 class IntegrateImu {

@@ -1,4 +1,5 @@
 #include "eigen_ros/body_frames.hpp"
+
 #include "eigen_ext/geometry.hpp"
 
 namespace eigen_ros {
@@ -32,9 +33,8 @@ Eigen::Isometry3d transform_from_node(const XmlRpc::XmlRpcValue& node) {
     return eigen_ext::to_transform(translation, rotation);
 }
 
-BodyFrames::BodyFrames():
-    nh("~")
-{
+BodyFrames::BodyFrames()
+    : nh("~") {
     XmlRpc::XmlRpcValue body_frames = nh.param<XmlRpc::XmlRpcValue>("body_frames", XmlRpc::XmlRpcValue{});
     if (body_frames.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
         throw std::runtime_error("body_frames param was not a struct");
@@ -69,7 +69,7 @@ std::vector<std::string> BodyFrames::frames() const {
     std::vector<std::string> frames_;
     for (const auto& key_value : body_to_frame_map) {
         frames_.push_back(key_value.first);
-    } 
+    }
     return frames_;
 }
 

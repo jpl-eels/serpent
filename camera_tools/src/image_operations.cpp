@@ -1,17 +1,18 @@
 #include "camera_tools/image_operations.hpp"
+
 #include <ros/ros.h>
 
 namespace camera_tools {
 
-Rotate::Rotate(const cv::RotateFlags option):
-    option(option) {}
+Rotate::Rotate(const cv::RotateFlags option)
+    : option(option) {}
 
 Rotate::Rotate(int degrees_clockwise) {
-    degrees_clockwise = degrees_clockwise % 360; 
+    degrees_clockwise = degrees_clockwise % 360;
     if (degrees_clockwise <= 0) {
         throw std::runtime_error("Rotate degrees_clockwise must be > 0");
     }
-     if (degrees_clockwise == 90) {
+    if (degrees_clockwise == 90) {
         option = cv::RotateFlags::ROTATE_90_CLOCKWISE;
     } else if (degrees_clockwise == 180) {
         option = cv::RotateFlags::ROTATE_180;
@@ -64,8 +65,7 @@ sensor_msgs::CameraInfo Rotate::apply(const sensor_msgs::CameraInfo& in) {
     return out;
 }
 
-
-Flip::Flip(const Option option){
+Flip::Flip(const Option option) {
     switch (option) {
         case Option::FLIP_HORIZ:
             flip_code = 1;
@@ -90,15 +90,15 @@ cv::Mat Flip::apply(const cv::Mat& in) {
 sensor_msgs::CameraInfo Flip::apply(const sensor_msgs::CameraInfo& in) {
     sensor_msgs::CameraInfo out = in;
     switch (flip_code) {
-        case 1: // horiz
+        case 1:  // horiz
             // cx flips
             out.K[2] = in.width - in.K[2];
             break;
-        case 0: // vert
+        case 0:  // vert
             // cy flips
             out.K[5] = in.height - in.K[5];
             break;
-        case -1: // both
+        case -1:  // both
             // both cx/cy flip
             out.K[2] = in.width - in.K[2];
             out.K[5] = in.height - in.K[5];

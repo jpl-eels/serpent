@@ -1,8 +1,10 @@
-#include "test/test_instances.hpp"
 #include "eigen_ros/sensor_msgs.hpp"
-#include "eigen_ros/eigen_ros.hpp"
+
 #include <gtest/gtest.h>
 #include <ros/ros.h>
+
+#include "eigen_ros/eigen_ros.hpp"
+#include "test/test_instances.hpp"
 
 TEST(imu, to_from_ros) {
     test_to_from<sensor_msgs::Imu>(eigen_ros::Imu{});

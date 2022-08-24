@@ -20,8 +20,9 @@ bool operator==(const Stamped<T>& lhs, const Stamped<T>& rhs);
 /* Implementation ****************************************************************************************************/
 
 template<typename T>
-Stamped<T>::Stamped(const T& data, const ros::Time& timestamp):
-    data(data), timestamp(timestamp) {}
+Stamped<T>::Stamped(const T& data, const ros::Time& timestamp)
+    : data(data),
+      timestamp(timestamp) {}
 
 template<typename T>
 bool operator==(const Stamped<T>& lhs, const Stamped<T>& rhs) {

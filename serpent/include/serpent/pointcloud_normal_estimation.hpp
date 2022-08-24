@@ -1,8 +1,8 @@
 #ifndef SERPENT_POINTCLOUD_NORMAL_ESTIMATION_HPP
 #define SERPENT_POINTCLOUD_NORMAL_ESTIMATION_HPP
 
-#include <pcl/features/normal_3d_omp.h>
 #include <pcl/PCLPointCloud2.h>
+#include <pcl/features/normal_3d_omp.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/ros.h>

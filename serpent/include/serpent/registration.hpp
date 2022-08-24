@@ -1,18 +1,20 @@
 #ifndef SERPENT_REGISTRATION_HPP
 #define SERPENT_REGISTRATION_HPP
 
-#include "serpent/registration_degeneracy.hpp"
-#include <eigen_ros/body_frames.hpp>
 #include <geometry_msgs/TransformStamped.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <nav_msgs/Odometry.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/registration/registration.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/registration/registration.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
+
+#include <eigen_ros/body_frames.hpp>
+
+#include "serpent/registration_degeneracy.hpp"
 
 namespace serpent {
 
@@ -23,31 +25,31 @@ public:
 private:
     /**
      * @brief Publish the registration-refined transform with covariance
-     * 
-     * @param transform 
-     * @param covariance 
-     * @param timestamp 
+     *
+     * @param transform
+     * @param covariance
+     * @param timestamp
      */
     void publish_refined_transform(const Eigen::Matrix4d transform, const Eigen::Matrix<double, 6, 6> covariance,
             const ros::Time& timestamp);
 
     /**
      * @brief Scan-to-Scan Registration
-     * 
+     *
      * Register scan to the previous scan (with initial guess). Then request a map region at the refined pose.
-     * 
-     * @param pointcloud_msg 
-     * @param transform_msg 
+     *
+     * @param pointcloud_msg
+     * @param transform_msg
      */
     void s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
             const geometry_msgs::TransformStamped::ConstPtr& transform_msg);
 
     /**
      * @brief Scan-to-Map Registration
-     * 
+     *
      * Register scan to a map region (with initial guess from Scan-to-Scan registration).
-     * 
-     * @param msg 
+     *
+     * @param msg
      */
     void s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& msg);
 
@@ -113,13 +115,13 @@ Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<Point
             const Eigen::Matrix<double, 6, 6> point_to_plane_J = point_to_plane_J_.cast<double>();
             ROS_INFO_STREAM("Point to plane J:\n" << point_to_plane_J);
             ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic2).toSec() << " seconds to compute jacobian ("
-                    << count << " correspondences).");
+                                    << count << " correspondences).");
             // return base_covariance;
             if (count > 0) {
                 // 0.1 deg, 1mm
                 const Eigen::Matrix<double, 6, 6> min_covariance = base_covariance * 0.001;
-                Eigen::Matrix<double, 6, 6> covariance = (point_to_plane_J.transpose() * base_covariance.inverse()
-                        * point_to_plane_J).inverse();
+                Eigen::Matrix<double, 6, 6> covariance =
+                        (point_to_plane_J.transpose() * base_covariance.inverse() * point_to_plane_J).inverse();
                 covariance = covariance.cwiseMax(min_covariance);
                 ROS_INFO_STREAM("Reg Covariance:\n" << covariance);
                 return covariance;
@@ -136,8 +138,9 @@ Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<Point
 template<typename PointSource, typename PointTarget>
 std::string registration_result(pcl::Registration<PointSource, PointTarget>& registration) {
     std::stringstream ss;
-    ss << "Converged: " << (registration.hasConverged() ? "True" : "False") << ", Fitness Score: "
-            << registration.getFitnessScore() << ", Final Transform:\n" << registration.getFinalTransformation();
+    ss << "Converged: " << (registration.hasConverged() ? "True" : "False")
+       << ", Fitness Score: " << registration.getFitnessScore() << ", Final Transform:\n"
+       << registration.getFinalTransformation();
     return ss.str();
 }
 

@@ -1,6 +1,8 @@
 #include "eigen_ext/geometry.hpp"
-#include "eigen_ext/matrix.hpp"
+
 #include <gtest/gtest.h>
+
+#include "eigen_ext/matrix.hpp"
 
 #define DOUBLE_PRECISION (1.0e-12)
 
@@ -27,8 +29,8 @@ TEST(relative_transform, linear_rates_0) {
     const Eigen::Vector3d linear_velocity{1.0, 2.0, 3.0};
     const double dt = 1.0;
     const Eigen::Vector3d angular_velocity = rotation_angle_rate * dt * rotation_axis;
-    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt}
-            * Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt} *
+                                   Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
     Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(I, pose, dt);
     const Eigen::Vector3d angular_velocity_out = rates.block<3, 1>(0, 0);
     const Eigen::Vector3d linear_velocity_out = rates.block<3, 1>(3, 0);
@@ -41,10 +43,10 @@ TEST(relative_transform, linear_rates_1) {
     const Eigen::Vector3d rotation_axis = Eigen::Vector3d(0.8, 0.1, 0.05).normalized();
     const double rotation_angle_rate{0.492};
     const Eigen::Vector3d linear_velocity{1.0, 2.0, 3.0};
-    const double dt = M_PI / rotation_angle_rate; // Too large a dt will invalidate test because the rotation will wrap
+    const double dt = M_PI / rotation_angle_rate;  // Too large a dt will invalidate test because the rotation will wrap
     const Eigen::Vector3d angular_velocity = rotation_angle_rate * rotation_axis;
-    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt}
-            * Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
+    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{linear_velocity * dt} *
+                                   Eigen::AngleAxisd{rotation_angle_rate * dt, rotation_axis};
     Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(I, pose, dt);
     const Eigen::Vector3d angular_velocity_out = rates.block<3, 1>(0, 0);
     const Eigen::Vector3d linear_velocity_out = rates.block<3, 1>(3, 0);
@@ -54,8 +56,8 @@ TEST(relative_transform, linear_rates_1) {
 
 TEST(relative_transform, transform_0) {
     const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
-    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{1.0, 2.0, 3.0} *
-            Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized(); 
+    const Eigen::Isometry3d pose =
+            Eigen::Translation<double, 3>{1.0, 2.0, 3.0} * Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized();
     const Eigen::Isometry3d transform = eigen_ext::relative_transform(I, pose);
     EXPECT_TRUE(transform.isApprox(pose));
 }
@@ -63,18 +65,18 @@ TEST(relative_transform, transform_0) {
 TEST(relative_transform, transform_0_inv) {
     const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
     const Eigen::Vector3d translation{1.0, 2.0, 3.0};
-    const Eigen::Isometry3d pose = Eigen::Translation<double, 3>{translation} *
-            Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized(); 
+    const Eigen::Isometry3d pose =
+            Eigen::Translation<double, 3>{translation} * Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized();
     const Eigen::Isometry3d transform = eigen_ext::relative_transform(pose, I);
     EXPECT_TRUE(transform.isApprox(pose.inverse()));
 }
 
 TEST(change_relative_transform_frame, identity_with_identity) {
     const Eigen::Isometry3d relative_transform_A = Eigen::Isometry3d::Identity();
-    const Eigen::Isometry3d transform_B_A = Eigen::Translation<double, 3>{1.0, 2.0, 3.0} *
-            Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized(); 
-    const Eigen::Isometry3d relative_transform_B = eigen_ext::change_relative_transform_frame(relative_transform_A,
-            transform_B_A);
+    const Eigen::Isometry3d transform_B_A =
+            Eigen::Translation<double, 3>{1.0, 2.0, 3.0} * Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized();
+    const Eigen::Isometry3d relative_transform_B =
+            eigen_ext::change_relative_transform_frame(relative_transform_A, transform_B_A);
     const Eigen::Isometry3d expected = Eigen::Isometry3d::Identity();
     EXPECT_TRUE(relative_transform_B.isApprox(expected));
 }
@@ -82,18 +84,18 @@ TEST(change_relative_transform_frame, identity_with_identity) {
 TEST(relative_transform_change_frame, identity_with_transform) {
     const Eigen::Isometry3d relative_transform_A = Eigen::Isometry3d::Identity();
     const Eigen::Isometry3d transform_B_A = Eigen::Isometry3d::Identity();
-    const Eigen::Isometry3d relative_transform_B = eigen_ext::change_relative_transform_frame(relative_transform_A,
-            transform_B_A);
+    const Eigen::Isometry3d relative_transform_B =
+            eigen_ext::change_relative_transform_frame(relative_transform_A, transform_B_A);
     const Eigen::Isometry3d expected = Eigen::Isometry3d::Identity();
     EXPECT_TRUE(relative_transform_B.isApprox(expected));
 }
 
 TEST(change_relative_transform_frame, transform_with_identity) {
-    const Eigen::Isometry3d relative_transform_A = Eigen::Translation<double, 3>{-5.0, 6.0, -10.0} *
-            Eigen::Quaterniond{0.4, 0.2, 0.7, 0.15}.normalized();
+    const Eigen::Isometry3d relative_transform_A =
+            Eigen::Translation<double, 3>{-5.0, 6.0, -10.0} * Eigen::Quaterniond{0.4, 0.2, 0.7, 0.15}.normalized();
     const Eigen::Isometry3d transform_B_A = Eigen::Isometry3d::Identity();
-    const Eigen::Isometry3d relative_transform_B = eigen_ext::change_relative_transform_frame(relative_transform_A,
-            transform_B_A);
+    const Eigen::Isometry3d relative_transform_B =
+            eigen_ext::change_relative_transform_frame(relative_transform_A, transform_B_A);
     const Eigen::Isometry3d expected = relative_transform_A;
     EXPECT_TRUE(relative_transform_B.isApprox(expected));
 }
@@ -101,8 +103,8 @@ TEST(change_relative_transform_frame, transform_with_identity) {
 TEST(change_relative_transform_frame, translation_with_translation) {
     const Eigen::Isometry3d relative_transform_A{Eigen::Translation<double, 3>{-5.0, 6.0, -10.0}};
     const Eigen::Isometry3d transform_B_A{Eigen::Translation<double, 3>{1.0, 2.0, 3.0}};
-    const Eigen::Isometry3d relative_transform_B = eigen_ext::change_relative_transform_frame(relative_transform_A,
-            transform_B_A);
+    const Eigen::Isometry3d relative_transform_B =
+            eigen_ext::change_relative_transform_frame(relative_transform_A, transform_B_A);
     const Eigen::Isometry3d expected = relative_transform_A;
     EXPECT_TRUE(relative_transform_B.isApprox(expected));
 }
@@ -110,8 +112,8 @@ TEST(change_relative_transform_frame, translation_with_translation) {
 TEST(change_relative_transform_frame, rotation_with_rotation) {
     const Eigen::Isometry3d relative_transform_A{Eigen::Quaterniond{0.4, 0.2, 0.7, 0.15}.normalized()};
     const Eigen::Isometry3d transform_B_A{Eigen::Quaterniond{0.8, 0.1, 0.05, 0.2}.normalized()};
-    const Eigen::Isometry3d relative_transform_B = eigen_ext::change_relative_transform_frame(relative_transform_A,
-            transform_B_A);
+    const Eigen::Isometry3d relative_transform_B =
+            eigen_ext::change_relative_transform_frame(relative_transform_A, transform_B_A);
     EXPECT_NEAR(Eigen::AngleAxisd(relative_transform_B.rotation()).angle(),
             Eigen::AngleAxisd(relative_transform_A.rotation()).angle(), DOUBLE_PRECISION);
 }

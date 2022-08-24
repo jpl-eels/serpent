@@ -1,22 +1,29 @@
 #include "serpent/frontend.hpp"
-#include "serpent/utilities.hpp"
-#include "serpent/ImuArray.h"
+
+#include <geometry_msgs/TransformStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <pcl_ros/point_cloud.h>
+
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
 #include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
-#include <geometry_msgs/TransformStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <pcl_ros/point_cloud.h>
+
+#include "serpent/ImuArray.h"
+#include "serpent/utilities.hpp"
 
 namespace serpent {
 
-Frontend::Frontend():
-    nh("~"), optimised_odometry_sync(10), it(nh), stereo_sync(10), last_preint_imu_timestamp(0.0), initialised(false),
-    publish_next_stereo(false)
-{
+Frontend::Frontend()
+    : nh("~"),
+      optimised_odometry_sync(10),
+      it(nh),
+      stereo_sync(10),
+      last_preint_imu_timestamp(0.0),
+      initialised(false),
+      publish_next_stereo(false) {
     // Publishers
     deskewed_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("frontend/deskewed_pointcloud", 1);
     imu_s2s_publisher = nh.advertise<serpent::ImuArray>("frontend/imu_s2s", 1);
@@ -35,7 +42,7 @@ Frontend::Frontend():
     // Deskew
     nh.param<bool>("deskew/translation", deskew_translation, false);
     nh.param<bool>("deskew/rotation", deskew_rotation, false);
-    
+
     // Stereo data
     nh.param<bool>("optimisation/factors/stereo", stereo_enabled, true);
     if (stereo_enabled) {
@@ -59,19 +66,19 @@ Frontend::Frontend():
     nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
-    preintegration_params->setIntegrationCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+    preintegration_params->setIntegrationCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-            std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
-    preintegration_params->setBiasAccCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
-    preintegration_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() *
-            std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+    preintegration_params->setBiasAccCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+    preintegration_params->setBiasOmegaCovariance(
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
     if (overwrite_imu_covariance) {
-        overwrite_accelerometer_covariance = Eigen::Matrix3d::Identity() *
-                std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0);
-        overwrite_gyroscope_covariance = Eigen::Matrix3d::Identity() *
-                std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0);
+        overwrite_accelerometer_covariance =
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0);
+        overwrite_gyroscope_covariance =
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0);
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
         ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
         ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
@@ -94,7 +101,7 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     // Save transformed IMU message to buffer for deskewing
     std::lock_guard<std::mutex> guard(optimised_odometry_mutex);
     imu_mutex.lock();
-    double dt = (imu.timestamp - last_preint_imu_timestamp).toSec(); // invalid but not used on 1st iteration
+    double dt = (imu.timestamp - last_preint_imu_timestamp).toSec();  // invalid but not used on 1st iteration
     last_preint_imu_timestamp = imu.timestamp;
     imu_buffer.push_back(imu);
     imu_mutex.unlock();
@@ -114,10 +121,10 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
                 linear_velocity_covariance;
         */
         ROS_WARN_ONCE("TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even"
-                " possible? A rotation may be a good approximation.");
-        const Eigen::Vector3d angular_velocity = body_frames.body_to_frame("imu").rotation()
-                * (imu.angular_velocity + imu_biases.gyroscope());
-        
+                      " possible? A rotation may be a good approximation.");
+        const Eigen::Vector3d angular_velocity =
+                body_frames.body_to_frame("imu").rotation() * (imu.angular_velocity + imu_biases.gyroscope());
+
         // Publish current state as odometry output
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
@@ -138,7 +145,7 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
         const nav_msgs::Odometry::ConstPtr& optimised_odometry_msg) {
     std::lock_guard<std::mutex> guard{optimised_odometry_mutex};
 
-    // Save optimised odometry 
+    // Save optimised odometry
     world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
     world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
             world_odometry.twist.linear);
@@ -200,8 +207,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
     // Wait until previous imu_biases received (before sending publishing IMU S2S)
     ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
-    if (!protected_sleep(optimised_odometry_mutex, 0.01, false, true, [this]()
-            { return imu_bias_timestamp != previous_pointcloud_start; })) {
+    if (!protected_sleep(optimised_odometry_mutex, 0.01, false, true,
+                [this]() { return imu_bias_timestamp != previous_pointcloud_start; })) {
         return;
     };
     const gtsam::imuBias::ConstantBias previous_imu_biases = imu_biases;
@@ -210,8 +217,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
     // Sleep until IMU message after scan start time
     ROS_INFO_STREAM("Waiting for start time IMU message past " << pointcloud_start);
-    if (!protected_sleep(imu_mutex, 0.01, false, true, [this, pointcloud_start]()
-            { return last_preint_imu_timestamp < pointcloud_start; })) {
+    if (!protected_sleep(imu_mutex, 0.01, false, true,
+                [this, pointcloud_start]() { return last_preint_imu_timestamp < pointcloud_start; })) {
         return;
     };
     if (imu_buffer.back().timestamp < pointcloud_start) {
@@ -248,23 +255,24 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     Eigen::Isometry3d skew_transform;
     if (!initialised) {
         // Compute initial state using user-defined position & yaw, and gravity-defined roll and pitch
-        const Eigen::Matrix3d position_covariance = Eigen::Matrix3d::Identity()
-                * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
-        const Eigen::Matrix3d rotation_covariance = Eigen::Matrix3d::Identity()
-                * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        const Eigen::Quaterniond body_orientation = pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0)) ?
-                Eigen::Quaterniond::Identity() :
-                Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
-        const eigen_ros::Pose pose{Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0),
-                nh.param<double>("pose/position/y", 0.0), nh.param<double>("pose/position/z", 0.0)),
+        const Eigen::Matrix3d position_covariance =
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
+        const Eigen::Matrix3d rotation_covariance =
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
+        const Eigen::Quaterniond body_orientation =
+                pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))
+                        ? Eigen::Quaterniond::Identity()
+                        : Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+        const eigen_ros::Pose pose{
+                Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0), nh.param<double>("pose/position/y", 0.0),
+                        nh.param<double>("pose/position/z", 0.0)),
                 body_orientation, position_covariance, rotation_covariance};
-        ROS_WARN_ONCE("MUST FIX: initial pose based on orientation but should be based on gravity. Can't use"
-                " orientation for 6-axis IMU");
-        const Eigen::Matrix3d linear_twist_covariance = Eigen::Matrix3d::Identity()
-                * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
-        const Eigen::Vector3d linear_velocity = Eigen::Vector3d::Zero();
-        ROS_WARN_ONCE("TODO FIX: read linear velocity prior from mission file");
-        ROS_WARN_ONCE("DESIGN DECISION: Can we estimate initial linear velocity through initialisation procedure?");
+        ROS_WARN_ONCE("MUST FIX: initial pose based on orientation but should be based on gravity. Can't use "
+                      "orientation for 6-axis IMU");
+        const Eigen::Matrix3d linear_twist_covariance =
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/linear_velocity", 1.0e-3), 2.0);
+        const Eigen::Vector3d linear_velocity = Eigen::Vector3d{nh.param<double>("velocity/linear/x", 0.0),
+                nh.param<double>("velocity/linear/y", 0.0), nh.param<double>("velocity/linear/z", 0.0)};
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, pc_start_imu.angular_velocity, linear_twist_covariance,
                 pc_start_imu.angular_velocity_covariance};
@@ -272,7 +280,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
         // Set world state so first deskew is valid (TODO: clean up code duplication)
         world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
-            world_odometry.twist.linear);
+                world_odometry.twist.linear);
 
         // Publish initial state
         auto odometry_msg = boost::make_shared<nav_msgs::Odometry>();
@@ -296,15 +304,15 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     } else {
         const ros::Time pointcloud_end = pointcloud_start + sweep_duration;
         ROS_INFO_STREAM("Pointcloud points span over " << sweep_duration << " s from " << pointcloud_start << " to "
-                << pointcloud_end);
+                                                       << pointcloud_end);
 
         // Create new IMU integrator with new biases for deskewing
         gtsam::PreintegratedCombinedMeasurements preintegrated_imu_skew{preintegration_params, previous_imu_biases};
 
         // Sleep until IMU message received after scan end time
         ROS_INFO_STREAM("Waiting for IMU message past " << pointcloud_end);
-        if (!protected_sleep(imu_mutex, 0.01, false, true, [this, pointcloud_end]()
-                { return last_preint_imu_timestamp < pointcloud_end; })) {
+        if (!protected_sleep(imu_mutex, 0.01, false, true,
+                    [this, pointcloud_end]() { return last_preint_imu_timestamp < pointcloud_end; })) {
             return;
         };
         ROS_INFO_STREAM("Acquired end time IMU message at " << last_preint_imu_timestamp);
@@ -331,19 +339,18 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
         // Generate transform from preintegration, which is in the body frame.
         // T_{B_{i,s}}^{B_{i,e}} = T_{B_{i,s}}^{W} * T_{W}^{B_{i,e}}
-        const gtsam::NavState pointcloud_end_state = preintegrated_imu_skew.predict(pointcloud_start_state,
-                previous_imu_biases);
-        skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_start_state.pose()).inverse() * 
-                eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_end_state.pose());
-    
+        const gtsam::NavState pointcloud_end_state =
+                preintegrated_imu_skew.predict(pointcloud_start_state, previous_imu_biases);
+        skew_transform = eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_start_state.pose()).inverse() *
+                         eigen_gtsam::to_eigen<Eigen::Isometry3d>(pointcloud_end_state.pose());
+
         // Transform skew_transform from body frame to lidar frame
-        skew_transform = eigen_ext::change_relative_transform_frame(skew_transform,
-                body_frames.body_to_frame("lidar"));
+        skew_transform = eigen_ext::change_relative_transform_frame(skew_transform, body_frames.body_to_frame("lidar"));
         
         // Deskew configuration
         skew_transform = eigen_ext::to_transform(
-            (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),
-            (deskew_rotation ? skew_transform.rotation() : Eigen::Matrix3d::Identity()));
+                (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),
+                (deskew_rotation ? skew_transform.rotation() : Eigen::Matrix3d::Identity()));
 
         // Deskew pointcloud
         const ros::WallTime tic = ros::WallTime::now();
@@ -380,9 +387,9 @@ void Frontend::publish_stereo_data(const StereoData& data, const ros::Time& time
         right_image_publisher.publish(right_image);
         left_info_publisher.publish(left_info);
         right_info_publisher.publish(right_info);
-        ROS_INFO_STREAM("Re-publishing stereo data with new timestamp = " << timestamp << " (originally "
-                << data.left_image->header.stamp << ", diff = "
-                << (data.left_image->header.stamp - timestamp).toSec() << " s)");
+        ROS_INFO_STREAM("Re-publishing stereo data with new timestamp = "
+                        << timestamp << " (originally " << data.left_image->header.stamp
+                        << ", diff = " << (data.left_image->header.stamp - timestamp).toSec() << " s)");
     }
 }
 

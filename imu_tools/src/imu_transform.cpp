@@ -1,11 +1,12 @@
 #include "imu_tools/imu_transform.hpp"
+
 #include <eigen_ros/eigen_ros.hpp>
 #include <eigen_ros/sensor_msgs.hpp>
 
 ImuTransform::ImuTransform()
-    :   nh("~") {
-    imu_publisher = nh.advertise<sensor_msgs::Imu>(nh.param<std::string>("imu_transformed_topic", "imu_transformed"),
-            1000);
+    : nh("~") {
+    imu_publisher =
+            nh.advertise<sensor_msgs::Imu>(nh.param<std::string>("imu_transformed_topic", "imu_transformed"), 1000);
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>(nh.param<std::string>("imu_topic", "imu"), 1000,
             &ImuTransform::transform, this);
     rotation = Eigen::Quaterniond(eigen_ros::matrix3d_from_param(nh, "rotation"));

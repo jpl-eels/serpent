@@ -1,19 +1,20 @@
 #include "serpent/pointcloud_formatter.hpp"
-#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
-#include <pcl_conversions/pcl_conversions.h>
+
 #include <pcl/PCLPointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
 namespace serpent {
 
-PointcloudFormatter::PointcloudFormatter():
-    nh("~")
-{
+PointcloudFormatter::PointcloudFormatter()
+    : nh("~") {
     // Publishers
     pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1);
 
     // Subscribers
-    pointcloud_subscriber = nh.subscribe<sensor_msgs::PointCloud2>("input/pointcloud", 100,
-            &PointcloudFormatter::format, this);
+    pointcloud_subscriber =
+            nh.subscribe<sensor_msgs::PointCloud2>("input/pointcloud", 100, &PointcloudFormatter::format, this);
 
     // Configuration
     sensor_type = to_sensor_type(nh.param<std::string>("pointcloud_type", "OUSTER"));
@@ -48,7 +49,8 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
     if (time_field_filter_enabled) {
         // Ensure time field is present
         if (!pct::has_field(*pointcloud, "t")) {
-            throw std::runtime_error("Point cloud must t field with time field filter enabled. Disable filter or add t"
+            throw std::runtime_error(
+                    "Point cloud must t field with time field filter enabled. Disable filter or add t"
                     "field to input point cloud.");
         }
 
@@ -65,7 +67,7 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 
     // Change frame
     pointcloud->header.frame_id = "lidar";
-    
+
     // Publish pointcloud
     pointcloud_publisher.publish(pointcloud);
 }

@@ -1,19 +1,20 @@
 #ifndef EIGEN_ROS_GEOMETRY_MSGS_HPP
 #define EIGEN_ROS_GEOMETRY_MSGS_HPP
 
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovariance.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Transform.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistWithCovariance.h>
+#include <geometry_msgs/Vector3.h>
+
 #include "eigen_ros/pose.hpp"
 #include "eigen_ros/twist.hpp"
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/PoseWithCovariance.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/TwistWithCovariance.h>
-#include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Vector3.h>
 
 namespace eigen_ros {
 

@@ -1,10 +1,11 @@
 #include "pointcloud_tools/pointcloud_range_filter.hpp"
+
 #include <open3d_conversions/open3d_conversions.h>
+
 #include <limits>
 
-PointcloudRangeFilter::PointcloudRangeFilter():
-    nh("~")
-{
+PointcloudRangeFilter::PointcloudRangeFilter()
+    : nh("~") {
     publisher = nh.advertise<sensor_msgs::PointCloud2>("output", 1);
     subscriber = nh.subscribe<sensor_msgs::PointCloud2>("input", 1, &PointcloudRangeFilter::filter_range, this);
     nh.param("min_range", min_range, 0.0);

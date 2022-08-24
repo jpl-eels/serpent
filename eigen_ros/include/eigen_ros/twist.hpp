@@ -7,9 +7,9 @@ namespace eigen_ros {
 
 class Twist {
 public:
-    Twist(const Eigen::Vector3d& linear = Eigen::Vector3d::Zero(), const Eigen::Vector3d& angular =
-            Eigen::Vector3d::Zero(), const Eigen::Matrix<double, 6, 6>& covariance =
-            Eigen::Matrix<double, 6, 6>::Zero());
+    Twist(const Eigen::Vector3d& linear = Eigen::Vector3d::Zero(),
+            const Eigen::Vector3d& angular = Eigen::Vector3d::Zero(),
+            const Eigen::Matrix<double, 6, 6>& covariance = Eigen::Matrix<double, 6, 6>::Zero());
 
     Twist(const Eigen::Vector3d& linear, const Eigen::Vector3d& angular, const Eigen::Matrix3d& linear_covariance,
             const Eigen::Matrix3d& angular_covariance);
@@ -17,7 +17,7 @@ public:
     Eigen::Matrix3d angular_velocity_covariance() const;
 
     Eigen::Matrix3d linear_velocity_covariance() const;
-    
+
     // Linear velocity
     Eigen::Vector3d linear;
     // Angular velocity

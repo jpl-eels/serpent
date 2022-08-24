@@ -1,9 +1,6 @@
 #ifndef SERPENT_UTILITIES_HPP
 #define SERPENT_UTILITIES_HPP
 
-#include "serpent/ImuBiases.h"
-#include <eigen_ros/imu.hpp>
-#include <Eigen/Core>
 #include <geometry_msgs/Pose.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuBias.h>
@@ -11,10 +8,15 @@
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <ros/time.h>
 #include <sensor_msgs/Imu.h>
+
+#include <Eigen/Core>
 #include <deque>
+#include <eigen_ros/imu.hpp>
 #include <functional>
 #include <mutex>
 #include <vector>
+
+#include "serpent/ImuBiases.h"
 
 namespace serpent {
 
@@ -35,11 +37,11 @@ std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
 
 /**
  * @brief Sleep while condition is true, and ROS is ok(). The latter check is necessary so that ROS can exit cleanly.
- * 
- * @param mutex 
- * @param sleep_period 
- * @param leave_locked 
- * @param condition 
+ *
+ * @param mutex
+ * @param sleep_period
+ * @param leave_locked
+ * @param condition
  * @return true if ROS is ok() (i.e. condition broke)
  * @return false if ROS is not ok()
  */
@@ -55,8 +57,8 @@ std::string to_flat_string(const typename Eigen::Matrix<double, Size, 1>& vector
     return ss.str();
 }
 
-void update_preintegration_params(gtsam::PreintegrationParams& params,
-        const Eigen::Matrix3d& accelerometer_covariance, const Eigen::Matrix3d& gyroscope_covariance);
+void update_preintegration_params(gtsam::PreintegrationParams& params, const Eigen::Matrix3d& accelerometer_covariance,
+        const Eigen::Matrix3d& gyroscope_covariance);
 
 /* Serialisation */
 

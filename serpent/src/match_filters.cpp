@@ -2,8 +2,8 @@
 
 namespace serpent {
 
-DistanceMatchFilter::DistanceMatchFilter(const float descriptor_distance_threshold):
-    descriptor_distance_threshold(descriptor_distance_threshold) {}
+DistanceMatchFilter::DistanceMatchFilter(const float descriptor_distance_threshold)
+    : descriptor_distance_threshold(descriptor_distance_threshold) {}
 
 cv::Ptr<DistanceMatchFilter> DistanceMatchFilter::create(const float descriptor_distance_threshold) {
     return cv::makePtr<DistanceMatchFilter>(descriptor_distance_threshold);
@@ -31,8 +31,8 @@ const std::vector<std::size_t>& DistanceMatchFilter::indices() const {
     return indices_;
 }
 
-StereoMatchFilter::StereoMatchFilter(const float vertical_pixel_threshold_):
-    vertical_pixel_threshold_(vertical_pixel_threshold_) {}
+StereoMatchFilter::StereoMatchFilter(const float vertical_pixel_threshold_)
+    : vertical_pixel_threshold_(vertical_pixel_threshold_) {}
 
 cv::Ptr<StereoMatchFilter> StereoMatchFilter::create(const float vertical_pixel_threshold_) {
     return cv::makePtr<StereoMatchFilter>(vertical_pixel_threshold_);

@@ -8,10 +8,15 @@
     <arg name="use_gdb"         default="false"/>
     <arg name="use_callgrind"   default="false"/>
     <arg name="threads"         default="8"/>
+    <arg name="stereo_camera"   default="camera_front"/>
 
     <include file="$(find serpent)/launch/serpent.launch">
-        <arg name="imu_topic"               value="/imu"/>
-        <arg name="pointcloud_topic"        value="/points"/>
+        <arg name="imu_topic"                       value="/imu"/>
+        <arg name="pointcloud_topic"                value="/points"/>
+        <arg name="stereo_left_cam_image_topic"     value="/$(arg stereo_camera)/left/image_raw"/>
+        <arg name="stereo_right_cam_image_topic"    value="/$(arg stereo_camera)/right/image_raw"/>
+        <arg name="stereo_left_cam_info_topic"      value="/$(arg stereo_camera)/left/camera_info"/>
+        <arg name="stereo_right_cam_info_topic"     value="/$(arg stereo_camera)/right/camera_info"/>
         <arg name="robot_file"              value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
         <arg name="mission_file"            value="$(find simulator_prcp_missions)/config/serpent/mission/$(arg mission).yaml"/>
         <arg name="filter_file"             value="$(find simulator_prcp_missions)/config/serpent/filter.yaml"/>

@@ -1,6 +1,8 @@
 #include "eigen_ros/body_frames_tf.hpp"
-#include "eigen_ros/geometry_msgs.hpp"
+
 #include <geometry_msgs/TransformStamped.h>
+
+#include "eigen_ros/geometry_msgs.hpp"
 
 namespace eigen_ros {
 

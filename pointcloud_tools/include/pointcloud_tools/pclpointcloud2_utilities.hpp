@@ -1,9 +1,10 @@
 #ifndef POINTCLOUD_TOOLS_PCLPOINTCLOUD2_UTILITIES_HPP
 #define POINTCLOUD_TOOLS_PCLPOINTCLOUD2_UTILITIES_HPP
 
-#include <Eigen/Geometry>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/point_traits.h>
+
+#include <Eigen/Geometry>
 #include <string>
 
 namespace pct {
@@ -18,7 +19,7 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name
 /**
  * @brief Deskew a pointcloud under the assumption that there has been a constant twist applied over a time dt resulting
  * in a transform from the starting origin frame to the final frame.
- * 
+ *
  * @param transform skew transform
  * @param dt time of point cloud sweep
  * @param src skewed point cloud
@@ -34,8 +35,8 @@ bool empty(const pcl::PCLPointCloud2& pointcloud);
 std::string field_string(const pcl::PCLPointField& field);
 
 template<typename T>
-void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const pcl::PCLPointField& field, const T max)
-{
+void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const pcl::PCLPointField& field,
+        const T max) {
     if (pcl::traits::asEnum<T>::value != field.datatype) {
         throw std::runtime_error("Field type did not match user-requested type T");
     }

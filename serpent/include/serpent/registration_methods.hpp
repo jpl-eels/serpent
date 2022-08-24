@@ -1,13 +1,14 @@
 #ifndef SERPENT_REGISTRATION_METHODS_HPP
 #define SERPENT_REGISTRATION_METHODS_HPP
 
+#include <pcl/registration/gicp.h>
+#include <pcl/registration/ndt.h>
+#include <ros/ros.h>
+
 #include <fast_gicp/gicp/fast_gicp.hpp>
 #include <fast_gicp/gicp/fast_gicp_st.hpp>
 #include <fast_gicp/gicp/fast_vgicp.hpp>
 #include <fast_gicp/gicp/lsq_registration.hpp>
-#include <pcl/registration/gicp.h>
-#include <pcl/registration/ndt.h>
-#include <ros/ros.h>
 
 namespace fast_gicp {
 
@@ -26,13 +27,13 @@ void set_registration_parameters(const ros::NodeHandle& nh, const std::string& p
         typename pcl::Registration<PointIn, PointOut>& registration) {
     registration.setMaximumIterations(nh.param<int>(prefix + "base/maximum_iterations", 10));
     registration.setRANSACIterations(nh.param<int>(prefix + "base/ransac_iterations", 0));
-    registration.setRANSACOutlierRejectionThreshold(nh.param<double>(
-            prefix + "base/ransac_outlier_rejection_threshold", 0.05));
-    registration.setMaxCorrespondenceDistance(nh.param<double>(prefix + "base/max_correspondence_distance",
-            std::numeric_limits<double>::max()));
+    registration.setRANSACOutlierRejectionThreshold(
+            nh.param<double>(prefix + "base/ransac_outlier_rejection_threshold", 0.05));
+    registration.setMaxCorrespondenceDistance(
+            nh.param<double>(prefix + "base/max_correspondence_distance", std::numeric_limits<double>::max()));
     registration.setTransformationEpsilon(nh.param<double>(prefix + "base/transformation_epsilon", 0.0));
-    registration.setTransformationRotationEpsilon(nh.param<double>(prefix + "base/transformation_rotation_epsilon",
-            0.0));
+    registration.setTransformationRotationEpsilon(
+            nh.param<double>(prefix + "base/transformation_rotation_epsilon", 0.0));
     registration.setEuclideanFitnessEpsilon(nh.param<double>(prefix + "base/euclidean_fitness_epsilon", 0.0));
 }
 
@@ -70,8 +71,8 @@ void set_fast_gicp_parameters(const ros::NodeHandle& nh, const std::string& pref
     set_lsq_parameters(nh, prefix, fast_gicp);
     fast_gicp.setNumThreads(nh.param<int>(prefix + "fast_gicp/num_threads", 4));
     fast_gicp.setCorrespondenceRandomness(nh.param<int>(prefix + "fast_gicp/correspondence_randomness", 20));
-    fast_gicp.setRegularizationMethod(fast_gicp::to_regularization_method(nh.param<std::string>(prefix +
-            "fast_gicp/regularization_method", "PLANE")));
+    fast_gicp.setRegularizationMethod(fast_gicp::to_regularization_method(
+            nh.param<std::string>(prefix + "fast_gicp/regularization_method", "PLANE")));
 }
 
 template<typename PointIn, typename PointOut>
@@ -100,7 +101,7 @@ void set_ndt_parameters(const ros::NodeHandle& nh, const std::string& prefix,
     ndt.setMaximumIterations(nh.param<int>(prefix + "base/maximum_iterations", 35));
     ndt.setResolution(nh.param<float>(prefix + "ndt/resolution", 1.0f));
     ndt.setStepSize(nh.param<double>(prefix + "ndt/step_size", 0.1));
-    ndt.setOulierRatio(nh.param<double>(prefix + "ndt/outlier_ratio", 0.55)); // Note pcl function typo
+    ndt.setOulierRatio(nh.param<double>(prefix + "ndt/outlier_ratio", 0.55));  // Note pcl function typo
 }
 
 template<typename PointIn, typename PointOut>
@@ -133,7 +134,7 @@ typename pcl::Registration<PointIn, PointOut>::Ptr registration_method(const ros
         set_ndt_parameters(nh, prefix, *ndt);
         registration = ndt;
     } else {
-        throw std::runtime_error("Registration method \'" + method  + "\' not supported");
+        throw std::runtime_error("Registration method \'" + method + "\' not supported");
     }
     return registration;
 }

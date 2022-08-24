@@ -1,13 +1,14 @@
 #include "serpent/pointcloud_filter.hpp"
-#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
+
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 
+#include <pointcloud_tools/pclpointcloud2_utilities.hpp>
+
 namespace serpent {
 
-PointcloudFilter::PointcloudFilter():
-    nh("~")
-{
+PointcloudFilter::PointcloudFilter()
+    : nh("~") {
     const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", true);
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", false);
@@ -18,17 +19,18 @@ PointcloudFilter::PointcloudFilter():
     const std::string final_output_topic{"filter/filtered_pointcloud"};
 
     // Voxel grid
-    voxel_grid_filter.setDownsampleAllData(true); // Necessary to keep all fields
-    std::string output_topic = (sor_enabled || range_filter_enabled || body_filter_enabled) ?
-            "filter/voxel_filtered_pointcloud" : final_output_topic;
+    voxel_grid_filter.setDownsampleAllData(true);  // Necessary to keep all fields
+    std::string output_topic = (sor_enabled || range_filter_enabled || body_filter_enabled)
+                                       ? "filter/voxel_filtered_pointcloud"
+                                       : final_output_topic;
     if (nh.param<bool>("voxel_grid_filter/enabled", true)) {
         const double leaf_size = nh.param<double>("voxel_grid_filter/leaf_size", 0.1);
         voxel_grid_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
-        voxel_grid_filter.setMinimumPointsNumberPerVoxel(nh.param<double>(
-                "voxel_grid_filter/minimum_points_number_per_voxel", 1));
+        voxel_grid_filter.setMinimumPointsNumberPerVoxel(
+                nh.param<double>("voxel_grid_filter/minimum_points_number_per_voxel", 1));
         voxel_grid_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>(output_topic, 1);
-        voxel_grid_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
-                &PointcloudFilter::voxel_grid_callback, this);
+        voxel_grid_pointcloud_subscriber =
+                nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudFilter::voxel_grid_callback, this);
         input_topic = voxel_grid_pointcloud_publisher.getTopic();
     }
 
@@ -44,8 +46,8 @@ PointcloudFilter::PointcloudFilter():
         body_filter.setRotation(Eigen::Vector3f(nh.param<float>("body_filter/rotation/rx", 0.f),
                 nh.param<float>("body_filter/rotation/ry", 0.f), nh.param<float>("body_filter/rotation/rz", 0.f)));
         body_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>(output_topic, 1);
-        body_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
-                &PointcloudFilter::body_filter_callback, this);
+        body_pointcloud_subscriber =
+                nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudFilter::body_filter_callback, this);
         input_topic = body_pointcloud_publisher.getTopic();
     }
 
@@ -53,11 +55,11 @@ PointcloudFilter::PointcloudFilter():
     output_topic = sor_enabled ? "filter/range_filtered_pointcloud" : final_output_topic;
     if (range_filter_enabled) {
         range_filter.setFilterFieldName("range");
-        range_filter.setFilterLimits(nh.param<double>("range_filter/min", 0.0), 
+        range_filter.setFilterLimits(nh.param<double>("range_filter/min", 0.0),
                 nh.param<double>("range_filter/max", std::numeric_limits<double>::max()));
         range_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>(output_topic, 1);
-        range_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
-                &PointcloudFilter::range_filter_callback, this);
+        range_pointcloud_subscriber =
+                nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudFilter::range_filter_callback, this);
         input_topic = range_pointcloud_publisher.getTopic();
     }
 
@@ -86,7 +88,8 @@ void PointcloudFilter::body_filter_callback(const pcl::PCLPointCloud2::ConstPtr&
 
 void PointcloudFilter::range_filter_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     if (!pct::has_field(*msg, "range")) {
-        throw std::runtime_error("Point cloud has no field \'range\' but range filter was enabled. Disable range filter"
+        throw std::runtime_error(
+                "Point cloud has no field \'range\' but range filter was enabled. Disable range filter"
                 " or add \'range\' field to input point cloud.");
     }
     range_pointcloud_publisher.publish(filter(msg, range_filter));

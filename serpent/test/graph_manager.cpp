@@ -1,18 +1,21 @@
 #include "serpent/graph_manager.hpp"
-#include "test/read_data.hpp"
-#include "test/test_data.hpp"
-#include "test/test_utils.hpp"
-#include <eigen_ext/covariance.hpp>
-#include <eigen_ext/geometry.hpp>
-#include <eigen_gtsam/eigen_gtsam.hpp>
+
 #include <gtest/gtest.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <eigen_ext/covariance.hpp>
+#include <eigen_ext/geometry.hpp>
+#include <eigen_gtsam/eigen_gtsam.hpp>
+
+#include "test/read_data.hpp"
+#include "test/test_data.hpp"
+#include "test/test_utils.hpp"
+
 #define DOUBLE_PRECISION (1.0e-12)
 
-using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
-using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
-using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::B;  // Bias  (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::V;  // Vel   (xdot,ydot,zdot)
+using gtsam::symbol_shorthand::X;  // Pose3 (x,y,z,r,p,y)
 
 TEST(graph_manager, imu_bias_set_get_values) {
     serpent::GraphManager gm;
@@ -59,7 +62,7 @@ TEST(graph_manager, navstate_set_get_values) {
         gm.set_navstate(i, test_navstate(i));
     }
     gtsam::Values v = gm.values(0, size - 1);
-    EXPECT_EQ(v.size(), 2*size);
+    EXPECT_EQ(v.size(), 2 * size);
     for (int i = 0; i < size; ++i) {
         const gtsam::NavState navstate = test_navstate(i);
         EXPECT_TRUE(gm.navstate(i).pose().matrix().isApprox(navstate.pose().matrix()));
@@ -243,7 +246,7 @@ TEST(graph_manager, combined_imu_with_priors_optimise) {
 
     // IMU Measurements
     auto imu_measurements = from_ros(read_imu(std::string(DATA_DIR) + "/imu_up_10msg.bag", "/imu"));
-    
+
     // Prior values
     gm.set_timestamp(0, imu_measurements.front().timestamp);
     gm.set_imu_bias(0, gtsam::imuBias::ConstantBias{});
@@ -254,7 +257,7 @@ TEST(graph_manager, combined_imu_with_priors_optimise) {
     gm.create_prior_imu_bias_factor(0, gm.imu_bias(0), test_imu_bias_noise_model(0));
     gm.create_prior_pose_factor(0, gm.pose(0), test_pose_noise_model(0));
     gm.create_prior_velocity_factor(0, gm.velocity(0), test_velocity_noise_model(0));
-    
+
     // Preintegration
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu = test_preintegrated_measurements();
     for (std::size_t i = 1; i < imu_measurements.size(); ++i) {
@@ -313,7 +316,7 @@ TEST(graph_manager, combined_imu_each_measurement_with_priors_optimise) {
     gm.create_prior_imu_bias_factor(0, gm.imu_bias(0), test_imu_bias_noise_model(0));
     gm.create_prior_pose_factor(0, gm.pose(0), test_pose_noise_model(0));
     gm.create_prior_velocity_factor(0, gm.velocity(0), test_velocity_noise_model(0));
-    
+
     // Preintegration
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu = test_preintegrated_measurements();
     for (std::size_t i = 1; i < imu_measurements.size(); ++i) {
@@ -374,7 +377,7 @@ TEST(graph_manager, update_from_values) {
 
     // Load from values
     gm.update_from_values(values);
-    
+
     // Check values
     for (int i = 0; i < size; ++i) {
         EXPECT_TRUE(gm.imu_bias(i).vector().isApprox(test_imu_bias(i).vector()));
@@ -417,8 +420,8 @@ TEST(graph_manager, pose_graph_reg_optimise) {
     // Check covariance 1 against composition
     const Eigen::Isometry3d transform_ = eigen_gtsam::to_eigen<Eigen::Isometry3d>(transform);
     EXPECT_TRUE(transform.matrix().isApprox(transform_.matrix()));
-    Eigen::Matrix<double, 6, 6> pose_cov_1_compose = eigen_ext::compose_transform_covariance(prior_cov, relative_cov,
-            transform_);
+    Eigen::Matrix<double, 6, 6> pose_cov_1_compose =
+            eigen_ext::compose_transform_covariance(prior_cov, relative_cov, transform_);
     EXPECT_TRUE(eigen_ext::is_valid_covariance(pose_cov_1_compose, DOUBLE_PRECISION));
     EXPECT_TRUE(pose_cov_1.isApprox(pose_cov_1_compose));
 }
@@ -482,8 +485,8 @@ TEST(graph_manager, two_pose_high_covariance) {
     const gtsam::Pose3 transform = gm.pose(0).inverse() * gm.pose(1);
     const Eigen::Isometry3d transform_ = eigen_gtsam::to_eigen<Eigen::Isometry3d>(transform);
     gm.create_between_pose_factor(1, transform, relative_cov_noise);
-    const Eigen::Matrix<double, 6, 6> next_cov_compose = eigen_ext::compose_transform_covariance(prior_cov,
-            relative_cov, transform_);
+    const Eigen::Matrix<double, 6, 6> next_cov_compose =
+            eigen_ext::compose_transform_covariance(prior_cov, relative_cov, transform_);
 
     // Optimisation
     auto result = gm.optimise(1);

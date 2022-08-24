@@ -1,8 +1,9 @@
 #ifndef EIGEN_ROS_SENSOR_MSGS_HPP
 #define EIGEN_ROS_SENSOR_MSGS_HPP
 
-#include "eigen_ros/imu.hpp"
 #include <sensor_msgs/Imu.h>
+
+#include "eigen_ros/imu.hpp"
 
 namespace eigen_ros {
 

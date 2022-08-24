@@ -1,7 +1,9 @@
-#include "test/test_instances.hpp"
 #include "eigen_ros/odometry.hpp"
+
 #include <gtest/gtest.h>
 #include <ros/ros.h>
+
+#include "test/test_instances.hpp"
 
 TEST(odometry, equality) {
     EXPECT_EQ(eigen_ros::Odometry{}, eigen_ros::Odometry{});

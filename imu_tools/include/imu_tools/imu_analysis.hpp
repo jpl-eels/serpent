@@ -1,10 +1,11 @@
 #ifndef IMU_TOOLS_IMU_ANALYSIS_HPP
 #define IMU_TOOLS_IMU_ANALYSIS_HPP
 
-#include <Eigen/Geometry>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include <Eigen/Geometry>
 
 class ImuAnalysis {
 public:
