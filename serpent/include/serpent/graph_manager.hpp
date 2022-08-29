@@ -59,7 +59,6 @@ private:
  */
 class GraphManager {
 public:
-    void add_stereo_features(const int key, const std::map<int, gtsam::StereoPoint2>& features);
 
     void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
@@ -71,6 +70,17 @@ public:
     void create_prior_pose_factor(const int key, const gtsam::Pose3& pose, gtsam::SharedNoiseModel noise);
 
     void create_prior_velocity_factor(const int key, const gtsam::Velocity3& velocity, gtsam::SharedNoiseModel noise);
+
+    /**
+     * @brief Create the stereo factors and values for a specified key. Requires that:
+     *  - the pose has been set for the specified key
+     * 
+     * Throws std::runtime_error otherwise.
+     * 
+     * @param key 
+     * @param features 
+     */
+    void create_stereo_factors_and_values(const int key, const std::map<int, gtsam::StereoPoint2>& features);
 
     /**
      * @brief Get all factors between two key bounds inclusive.
@@ -85,9 +95,20 @@ public:
      */
     gtsam::NonlinearFactorGraph factors(const int first, const int last) const;
 
+    /**
+     * @brief Returns true if the pose has been set for the specified key.
+     * 
+     * @param key 
+     * @return true 
+     * @return false 
+     */
+    bool has_pose(const int key) const;
+
+    bool has_pose(const std::string& name, const int offset = 0) const;
+
     gtsam::imuBias::ConstantBias imu_bias(const int key) const;
 
-    gtsam::imuBias::ConstantBias imu_bias(const std::string name, const int offset = 0) const;
+    gtsam::imuBias::ConstantBias imu_bias(const std::string& name, const int offset = 0) const;
 
     /**
      * @brief Increment a named key.
@@ -164,7 +185,7 @@ public:
 
     void set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration);
 
-    void set_stereo_measurement_covariance(gtsam::SharedNoiseModel covariance);
+    void set_stereo_noise_model(gtsam::SharedNoiseModel noise_model);
 
     void set_timestamp(const int key, const ros::Time& timestamp);
 
@@ -248,8 +269,8 @@ protected:
     // Body to Stereo Left Cam Pose
     boost::optional<gtsam::Pose3> body_to_stereo_left_cam;
 
-    // Stereo Measurement Covariance
-    gtsam::SharedNoiseModel stereo_measurement_covariance;
+    // Stereo Measurement Noise Model
+    gtsam::SharedNoiseModel stereo_noise_model;
 
     // Stereo Features [key = key, value = map[key = id, value = feature]]
     std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_features;

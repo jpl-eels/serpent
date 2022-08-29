@@ -132,9 +132,36 @@ mapping:
 # Stereo Factors
 stereo_factors:
   noise:
-    left_x: 5.0
-    right_x: 5.0
-    y: 10.0
+    left_x: 20.0
+    right_x: 20.0
+    y: 40.0
+  robust:
+    enabled: true
+    type: "huber" # Options: cauchy, dcs, fair, geman_mcclure, huber, l2_with_dead_zone, null (no config), tukey, welsch
+    cauchy:
+      k: 0.1
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    dcs:
+      c: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    fair:
+      c: 1.3998
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    geman_mcclure:
+      c: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    huber:
+      k: 1.345
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    l2_with_dead_zone:
+      k: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    tukey:
+      c: 4.6851
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    welsch:
+      c: 2.9846
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
   left_cam_frame_id: "camera_front_left"
   new_feature_dist_threshold: 5.0
   detector:

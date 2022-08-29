@@ -24,6 +24,8 @@ void to_pcl(const std::map<int, gtsam::Point3>& points, pcl::PointCloud<pcl::Poi
 
 void to_pcl(const std::vector<gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud);
 
+gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std::string& reweight_scheme);
+
 class Optimisation {
 public:
     explicit Optimisation();

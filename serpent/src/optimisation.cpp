@@ -1,5 +1,6 @@
 #include "serpent/optimisation.hpp"
 
+#include <gtsam/linear/LossFunctions.h>
 #include <pcl_ros/point_cloud.h>
 
 #include <eigen_ext/covariance.hpp>
@@ -35,6 +36,15 @@ void to_pcl(const std::vector<gtsam::Point3>& points, pcl::PointCloud<pcl::Point
     }
 }
 
+gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std::string& reweight_scheme) {
+    if (reweight_scheme == "BLOCK") {
+        return gtsam::noiseModel::mEstimator::Base::ReweightScheme::Block;
+    } else if (reweight_scheme == "SCALAR") {
+        return gtsam::noiseModel::mEstimator::Base::ReweightScheme::Scalar;
+    }
+    throw std::runtime_error("ReweightScheme \'" + reweight_scheme + "\' not recognised.");
+}
+
 Optimisation::Optimisation()
     : nh("~") {
     // Publishers
@@ -53,8 +63,7 @@ Optimisation::Optimisation()
     nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
     nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
-    ROS_INFO_STREAM("Factors:"
-                    << "\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
+    ROS_INFO_STREAM("Factors:\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
                     << (registration_factors_enabled ? "ENABLED" : "DISABLED") << "\nStereo         "
                     << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
 
@@ -130,15 +139,69 @@ Optimisation::Optimisation()
     }
     if (stereo_factors_enabled) {
         gm->set_named_key("stereo", -1);
+
+        // Stereo reference frame
         const std::string stereo_left_cam_frame = nh.param<std::string>("stereo_factors/left_cam_frame_id", "stereo");
         gm->set_body_to_stereo_left_cam_pose(
                 eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame(stereo_left_cam_frame)));
+
+        // Create robust noise model if required
         auto stereo_measurement_covariance = gtsam::noiseModel::Diagonal::Sigmas((
                 gtsam::Vector(3) << nh.param<double>("stereo_factors/noise/left_x", 5.0),
                 nh.param<double>("stereo_factors/noise/right_x", 5.0), nh.param<double>("stereo_factors/noise/y", 10.0))
                                                                                          .finished());
         ROS_INFO_STREAM("Set stereo measurement covariance:\n" << stereo_measurement_covariance->covariance());
-        gm->set_stereo_measurement_covariance(stereo_measurement_covariance);
+        gtsam::SharedNoiseModel stereo_noise_model = stereo_measurement_covariance;
+        if (nh.param<bool>("stereo_factors/robust/enabled", true)) {
+            gtsam::noiseModel::mEstimator::Base::shared_ptr robust_noise_model;
+            const std::string robust_noise_type = nh.param<std::string>("stereo_factors/robust/type", "huber");
+            if (robust_noise_type == "cauchy") {
+                const double k = nh.param<double>("stereo_factors/robust/cauchy/k", 0.1);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/cauchy/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::Cauchy::Create(k, reweight_scheme);
+            } else if (robust_noise_type == "dcs") {
+                const double c = nh.param<double>("stereo_factors/robust/dcs/c", 1.0);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/dcs/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::DCS::Create(c, reweight_scheme);
+            } else if (robust_noise_type == "fair") {
+                const double c = nh.param<double>("stereo_factors/robust/fair/c", 1.3998);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/fair/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::Fair::Create(c, reweight_scheme);
+            } else if (robust_noise_type == "geman_mcclure") {
+                const double c = nh.param<double>("stereo_factors/robust/geman_mcclure/c", 1.0);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/geman_mcclure/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::GemanMcClure::Create(c, reweight_scheme);
+            } else if (robust_noise_type == "huber") {
+                const double k = nh.param<double>("stereo_factors/robust/huber/k", 1.345);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/huber/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::Huber::Create(k, reweight_scheme);
+            } else if (robust_noise_type == "l2_with_dead_zone") {
+                const double k = nh.param<double>("stereo_factors/robust/l2_with_dead_zone/k", 1.0);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/l2_with_dead_zone/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::L2WithDeadZone::Create(k, reweight_scheme);
+            } else if (robust_noise_type == "null") {
+                robust_noise_model = gtsam::noiseModel::mEstimator::Null::Create();
+            } else if (robust_noise_type == "tukey") {
+                const double c = nh.param<double>("stereo_factors/robust/tukey/c", 4.6851);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/tukey/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::Tukey::Create(c, reweight_scheme);
+            } else if (robust_noise_type == "welsch") {
+                const double c = nh.param<double>("stereo_factors/robust/welsch/c", 2.9846);
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
+                        nh.param<std::string>("stereo_factors/robust/welsch/reweight_scheme", "BLOCK"));
+                robust_noise_model = gtsam::noiseModel::mEstimator::Welsch::Create(c, reweight_scheme);
+            }
+            stereo_noise_model = gtsam::noiseModel::Robust::Create(robust_noise_model, stereo_measurement_covariance);
+            ROS_INFO_STREAM("Created robust stereo noise model of type \'" << robust_noise_type << "\'");
+        }
+        gm->set_stereo_noise_model(stereo_noise_model);
     }
 }
 
@@ -184,7 +247,7 @@ void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& f
     }
     std::map<int, gtsam::StereoPoint2> stereo_features;
     from_ros(features->features, stereo_features);
-    gm->add_stereo_features(gm->key("stereo"), stereo_features);
+    gm->create_stereo_factors_and_values(gm->key("stereo"), stereo_features);
     ROS_INFO_STREAM(
             "Added " << stereo_features.size() << " stereo measurements to graph manager at key " << gm->key("stereo"));
 }
@@ -213,8 +276,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
         const auto& imu = imu_s2s[i];
         if (imu.timestamp < last_preint_imu_timestamp || imu.timestamp > msg->end_timestamp) {
             throw std::runtime_error("IMU timestamp " + std::to_string(imu.timestamp.toSec()) +
-                                     " was outside of "
-                                     "expected range [" +
+                                     " was outside of expected range [" +
                                      std::to_string(last_preint_imu_timestamp.toSec()) + " - " +
                                      std::to_string(msg->end_timestamp.toSec()) + "]");
         }
@@ -348,7 +410,6 @@ void Optimisation::optimise_and_publish(const int key) {
     // Optimise graph with iSAM2
     const ros::WallTime tic = ros::WallTime::now();
     const gtsam::ISAM2Result isam2_result = gm->optimise(key);
-    ROS_INFO_STREAM("finished optimisation");
     ROS_INFO_STREAM("Optimised and calculated estimate for key = "
                     << key << ", t = " << gm->timestamp(key) << " in " << (ros::WallTime::now() - tic).toSec()
                     << " seconds.\n#Reeliminated = " << isam2_result.getVariablesReeliminated() << ", #Relinearized = "
@@ -422,7 +483,10 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
 }
 
 void Optimisation::stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features) {
-    std::lock_guard<std::mutex> guard{graph_mutex};
+    // Pose at (the next) stereo key must be set in order to create landmarks.
+    if (!protected_sleep(graph_mutex, 0.01, false, true, [this]() { return !gm->has_pose("stereo", 1); })) {
+        return;
+    };
 
     // Integrate stereo data
     add_stereo_factors(features);
@@ -436,6 +500,8 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
             update_velocity_from_transforms("stereo");
         }
     }
+
+    graph_mutex.unlock();
 }
 
 void Optimisation::update_velocity_from_transforms(const std::string& named_key) {

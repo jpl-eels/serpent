@@ -57,54 +57,6 @@ gtsam::Velocity3& RobotState::velocity() {
     return velocity_;
 }
 
-void GraphManager::add_stereo_features(const int key_, const std::map<int, gtsam::StereoPoint2>& features) {
-    // Save the stereo features
-    auto feat_emplace_it = stereo_features.emplace(key_, features);
-    if (!feat_emplace_it.second) {
-        throw std::runtime_error(
-                "Failed to set stereo features for key " + std::to_string(key_) + ". Possible duplicate key.");
-    }
-
-    //// Create the stereo factors and values
-    // Stereo features
-    const auto features_im2 = stereo_features.find(key_ - 2);
-    const auto features_im1 = stereo_features.find(key_ - 1);
-    const auto features_i = feat_emplace_it.first;
-    // Stereo factors
-    auto factors_emplace_it = factors_.emplace(key_, gtsam::NonlinearFactorGraph{});
-    auto& factors__ = factors_emplace_it.first->second;
-    // Stereo Camera
-    const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
-    const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
-    // Stereo feature ids
-    auto ids_emplace_it = stereo_landmark_ids.emplace(key_, std::vector<int>{});
-    auto& ids = ids_emplace_it.first->second;
-    for (const auto& [id, feature] : features_i->second) {
-        if (features_im1 != stereo_features.end() && features_im1->second.find(id) != features_im1->second.end()) {
-            // Add feature and previous state factor if feature is tracked for the first time (not in i-2 and in i-1)
-            if (features_im2 == stereo_features.end() || features_im2->second.find(id) == features_im2->second.end()) {
-                // Previous state factor
-                factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        features_im1->second.at(id), stereo_measurement_covariance, X(key_ - 1), S(id), K,
-                        body_to_stereo_left_cam);
-                ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ - 1 << ") and S(" << id << ")");
-
-                // Compute landmark position in world frame
-                const gtsam::Point3 landmark = camera.backproject(feature);
-                // Add to values
-                values_.insert(S(id), landmark);
-                // Save id
-                ids.emplace_back(id);
-            }
-
-            // Add current state factor if feature is in i-1
-            factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(feature,
-                    stereo_measurement_covariance, X(key_), S(id), K, body_to_stereo_left_cam);
-            ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ << ") and S(" << id << ")");
-        }
-    }
-}
-
 void GraphManager::create_combined_imu_factor(const int new_key,
         const gtsam::PreintegratedCombinedMeasurements& measurements) {
     add_factor(new_key, boost::make_shared<gtsam::CombinedImuFactor>(X(new_key - 1), V(new_key - 1), X(new_key),
@@ -131,6 +83,67 @@ void GraphManager::create_prior_velocity_factor(const int key_, const gtsam::Vel
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::Velocity3>>(V(key_), velocity, noise));
 }
 
+void GraphManager::create_stereo_factors_and_values(const int key_,
+        const std::map<int, gtsam::StereoPoint2>& features) {
+    // Save the stereo features
+    auto feat_emplace_it = stereo_features.emplace(key_, features);
+    if (!feat_emplace_it.second) {
+        throw std::runtime_error(
+                "Failed to set stereo features for key " + std::to_string(key_) + ". Possible duplicate key.");
+    }
+
+    // Stereo features
+    const auto features_im2 = stereo_features.find(key_ - 2);
+    const auto features_im1 = stereo_features.find(key_ - 1);
+    const auto features_i = feat_emplace_it.first;
+
+    // Stereo factors
+    auto factors_emplace_it = factors_.emplace(key_, gtsam::NonlinearFactorGraph{});
+    auto& factors__ = factors_emplace_it.first->second;
+
+    // Factors can only be created if the previous frame features were set
+    if (features_im1 != stereo_features.end()) {
+        // Error handling
+        if (!has_pose(key_)) {
+            throw std::runtime_error(
+                    "Failed to create stereo factors and values. Pose X(" + std::to_string(key_) + ") wasn't set.");
+        }
+
+        // Stereo Camera
+        const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
+        const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
+
+        // Stereo feature ids
+        auto ids_emplace_it = stereo_landmark_ids.emplace(key_, std::vector<int>{});
+        auto& ids = ids_emplace_it.first->second;
+        for (const auto& [id, feature] : features_i->second) {
+            if (features_im1->second.find(id) != features_im1->second.end()) {
+                // Add feature and previous state factor if feature is tracked for the first time (not in i-2, in i-1)
+                if (features_im2 == stereo_features.end() ||
+                        features_im2->second.find(id) == features_im2->second.end()) {
+                    // Previous state factor
+                    factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
+                            features_im1->second.at(id), stereo_noise_model, X(key_ - 1), S(id), K,
+                            body_to_stereo_left_cam);
+                    ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ - 1 << ") and S(" << id << ")");
+
+                    // Compute landmark position in world frame
+                    const gtsam::Point3 landmark = camera.backproject(feature);
+                    // Add to values
+                    values_.insert(S(id), landmark);
+                    // Save id
+                    ids.emplace_back(id);
+                }
+
+                // Add current state factor if feature is in i-1
+                factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(feature,
+                        stereo_noise_model, X(key_), S(id), K, body_to_stereo_left_cam);
+                ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ << ") and S(" << id << ")");
+            }
+        }
+    }
+}
+
 gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int last) const {
     gtsam::NonlinearFactorGraph extracted_factors;
     for (int i = first; i <= last; ++i) {
@@ -143,12 +156,21 @@ gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int las
     return extracted_factors;
 }
 
+bool GraphManager::has_pose(const int key_) const {
+    assert(key_ >= 0);
+    return values_.exists(X(key_));
+}
+
+bool GraphManager::has_pose(const std::string& key_, const int offset) const {
+    return has_pose(key(key_, offset));
+}
+
 gtsam::imuBias::ConstantBias GraphManager::imu_bias(const int key_) const {
     assert(key_ >= 0);
     return values_.at<gtsam::imuBias::ConstantBias>(B(key_));
 }
 
-gtsam::imuBias::ConstantBias GraphManager::imu_bias(const std::string key_, const int offset) const {
+gtsam::imuBias::ConstantBias GraphManager::imu_bias(const std::string& key_, const int offset) const {
     return imu_bias(key(key_, offset));
 }
 
@@ -157,8 +179,8 @@ int GraphManager::key(const std::string& name, const int offset) const {
     return key_;
 }
 
-void GraphManager::increment(const std::string& name) {
-    ++keys.at(name);
+void GraphManager::increment(const std::string& key_) {
+    ++keys.at(key_);
 }
 
 int GraphManager::minimum_key() const {
@@ -243,8 +265,8 @@ void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_cal
     K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration);
 }
 
-void GraphManager::set_stereo_measurement_covariance(gtsam::SharedNoiseModel covariance) {
-    stereo_measurement_covariance = covariance;
+void GraphManager::set_stereo_noise_model(gtsam::SharedNoiseModel noise_model) {
+    stereo_noise_model = noise_model;
 }
 
 void GraphManager::set_timestamp(const int key_, const ros::Time& timestamp_) {
