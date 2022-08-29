@@ -10,3 +10,6 @@ debug:
     publish_points: false
     rich_keypoints: false
     rich_matches: false
+
+  optimisation:
+    publish_stereo_points: false

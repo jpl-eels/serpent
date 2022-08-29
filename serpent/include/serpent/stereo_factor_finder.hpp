@@ -16,7 +16,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 
-#include "serpent/StereoLandmarks.h"
+#include "serpent/StereoFeatures.h"
 #include "serpent/StereoTrackerStatistics.h"
 #include "serpent/stereo_feature_tracker.hpp"
 
@@ -43,7 +43,7 @@ pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, c
 geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline);
 
-void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
+void to_ros(std::vector<serpent::StereoFeature>& stereo_features,
         const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches);
 
 void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::Statistics& statistics);
@@ -58,7 +58,7 @@ private:
 
     //// ROS Communication
     ros::NodeHandle nh;
-    ros::Publisher stereo_landmarks_publisher;
+    ros::Publisher stereo_features_publisher;
     ros::Publisher stereo_tracker_statistics_publisher;
     ros::Publisher stereo_points_publisher;
     image_transport::ImageTransport it;

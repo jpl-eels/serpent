@@ -59,7 +59,7 @@ private:
  */
 class GraphManager {
 public:
-    void add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks);
+    void add_stereo_features(const int key, const std::map<int, gtsam::StereoPoint2>& features);
 
     void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
@@ -103,6 +103,13 @@ public:
      * @return int
      */
     int key(const std::string& name, const int offset = 0) const;
+    
+    /**
+     * @brief Return the smallest key value of the registered named keys.
+     * 
+     * @return int 
+     */
+    int minimum_key() const;
 
     gtsam::NavState navstate(const int key) const;
 
@@ -169,12 +176,22 @@ public:
 
     gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
 
+    gtsam::Point3 stereo_landmark(const int id) const;
+
+    /**
+     * @brief Get the stereo landmarks for a particular key. A key of -1 returns the stereo landmarks for all keys.
+     * 
+     * @param key 
+     * @return std::map<int, gtsam::Point3> 
+     */
+    std::map<int, gtsam::Point3> stereo_landmarks(const int key = -1) const;
+
     const ros::Duration time_between(const int key1, const int key2) const;
 
     const ros::Duration time_between(const std::string& key1_name, const std::string& key2_name,
             const int key1_offset = 0, const int key2_offset = 0) const;
 
-    const std::vector<ros::Time>& timestamps() const;
+    const std::map<int, ros::Time>& timestamps() const;
 
     /**
      * @brief Get the timestamp associated with a particular key value.
@@ -191,7 +208,7 @@ public:
      * @return const ros::Time&
      */
     const ros::Time& timestamp(const std::string& key, const int offset = 0) const;
-
+    
     /**
      * @brief Update values within the GraphManager. Any values present within the state manager not present in
      * values will remain in the state manager and not be affected. Will throw an error if there are any new values.
@@ -222,8 +239,8 @@ protected:
     // Registered keys
     std::map<std::string, int> keys;
 
-    // All Timestamps (index = key)
-    std::vector<ros::Time> timestamps_;
+    // All Timestamps (key -> time)
+    std::map<int, ros::Time> timestamps_;
 
     // Stereo Calibration
     gtsam::Cal3_S2Stereo::shared_ptr K;
@@ -234,14 +251,25 @@ protected:
     // Stereo Measurement Covariance
     gtsam::SharedNoiseModel stereo_measurement_covariance;
 
-    // Stereo Landmarks [key = key, value = map[key = landmark id, value = landmark]]
-    std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_landmarks;
+    // Stereo Features [key = key, value = map[key = id, value = feature]]
+    std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_features;
+
+    // Stereo Landmark Ids added to values [key = key when added, value = ids]
+    std::map<int, std::vector<int>> stereo_landmark_ids;
 
     // Values
     gtsam::Values values_;
 
-    // Factors (index = key)
-    std::vector<gtsam::NonlinearFactorGraph> factors_;
+    /**
+     * @brief Factors (key -> graph of factors)
+     * 
+     * Contains:
+     * - robot state to robot state factors
+     * - prior factors
+     * - stereo factors (created at that key, which may include factors connecting a landmark with a previous robot
+     *      state)
+     */
+    std::map<int, gtsam::NonlinearFactorGraph> factors_;
 };
 
 class ISAM2GraphManager : public GraphManager {

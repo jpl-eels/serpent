@@ -6,7 +6,7 @@
 
 #include <eigen_ros/eigen_ros.hpp>
 
-#include "serpent/StereoLandmarks.h"
+#include "serpent/StereoFeatures.h"
 
 namespace serpent {
 
@@ -142,18 +142,18 @@ geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float
     return ros_point;
 }
 
-void to_ros(std::vector<serpent::StereoLandmark>& stereo_landmarks,
+void to_ros(std::vector<serpent::StereoFeature>& stereo_features,
         const StereoFeatureTracker::LRKeyPointMatches& stereo_keypoint_matches) {
-    stereo_landmarks.clear();
+    stereo_features.clear();
     for (std::size_t i = 0; i < stereo_keypoint_matches.matches.size(); ++i) {
         const auto& match = stereo_keypoint_matches.matches[i];
-        serpent::StereoLandmark stereo_landmark;
-        stereo_landmark.left_x = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.x;
-        stereo_landmark.left_y = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.y;
-        stereo_landmark.right_x = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.x;
-        stereo_landmark.right_y = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.y;
-        stereo_landmark.id = stereo_keypoint_matches.match_ids[i];
-        stereo_landmarks.push_back(stereo_landmark);
+        serpent::StereoFeature stereo_feature;
+        stereo_feature.left_x = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.x;
+        stereo_feature.left_y = stereo_keypoint_matches.keypoints[0][match.queryIdx].pt.y;
+        stereo_feature.right_x = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.x;
+        stereo_feature.right_y = stereo_keypoint_matches.keypoints[1][match.trainIdx].pt.y;
+        stereo_feature.id = stereo_keypoint_matches.match_ids[i];
+        stereo_features.push_back(stereo_feature);
     }
 }
 
@@ -179,7 +179,7 @@ StereoFactorFinder::StereoFactorFinder()
       it(nh),
       stereo_sync(10) {
     // Publishers
-    stereo_landmarks_publisher = nh.advertise<serpent::StereoLandmarks>("stereo/landmarks", 1);
+    stereo_features_publisher = nh.advertise<serpent::StereoFeatures>("stereo/features", 1);
 
     // Subscribers
     left_image_subcriber.subscribe(nh, "stereo/left/image", 10);
@@ -390,13 +390,13 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
         stereo_points_publisher.publish(stereo_pointcloud);
     }
 
-    // Publish Stereo Landmarks
-    auto stereo_landmarks = boost::make_shared<serpent::StereoLandmarks>();
-    stereo_landmarks->header = header;
-    to_ros(stereo_landmarks->landmarks, tracked_matches);
-    stereo_landmarks->left_info = *left_info;
-    stereo_landmarks->right_info = *right_info;
-    stereo_landmarks_publisher.publish(stereo_landmarks);
+    // Publish Stereo Features
+    auto stereo_features = boost::make_shared<serpent::StereoFeatures>();
+    stereo_features->header = header;
+    to_ros(stereo_features->features, tracked_matches);
+    stereo_features->left_info = *left_info;
+    stereo_features->right_info = *right_info;
+    stereo_features_publisher.publish(stereo_features);
 
     // Keep images in scope
     previous_left_image = left_image;

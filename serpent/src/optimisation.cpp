@@ -1,5 +1,7 @@
 #include "serpent/optimisation.hpp"
 
+#include <pcl_ros/point_cloud.h>
+
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_gtsam/eigen_gtsam.hpp>
@@ -10,18 +12,31 @@
 
 namespace serpent {
 
-void from_ros(const std::vector<serpent::StereoLandmark>& msgs, std::map<int, gtsam::StereoPoint2>& landmarks) {
+void from_ros(const std::vector<serpent::StereoFeature>& msgs, std::map<int, gtsam::StereoPoint2>& features) {
     for (const auto& msg : msgs) {
         const double mean_y = (msg.left_y + msg.right_y) / 2.0;
-        if (!landmarks.emplace(msg.id, gtsam::StereoPoint2{msg.left_x, msg.right_x, mean_y}).second) {
-            throw std::runtime_error("Failed to convert landmark. This could indicate a duplicate id.");
+        if (!features.emplace(msg.id, gtsam::StereoPoint2{msg.left_x, msg.right_x, mean_y}).second) {
+            throw std::runtime_error("Failed to convert stereo feature. This could indicate a duplicate id.");
         }
     }
 }
 
+void to_pcl(const std::map<int, gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud) {
+    for (const auto& [id, point] : points) {
+        pointcloud.push_back(pcl::PointXYZ{static_cast<float>(point.x()), static_cast<float>(point.y()),
+                static_cast<float>(point.z())});
+    }
+}
+
+void to_pcl(const std::vector<gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud) {
+    for (const gtsam::Point3& point : points) {
+        pointcloud.push_back(pcl::PointXYZ{static_cast<float>(point.x()), static_cast<float>(point.y()),
+                static_cast<float>(point.z())});
+    }
+}
+
 Optimisation::Optimisation()
-    : nh("~"),
-      opt_sync(10) {
+    : nh("~") {
     // Publishers
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
     imu_transform_publisher = nh.advertise<geometry_msgs::TransformStamped>("optimisation/imu_transform", 1);
@@ -38,25 +53,26 @@ Optimisation::Optimisation()
     nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
     nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
-    ROS_INFO_STREAM("IMU Factors " << (imu_factors_enabled ? "ENABLED" : "DISABLED"));
-    ROS_INFO_STREAM("Registration Factors " << (registration_factors_enabled ? "ENABLED" : "DISABLED"));
-    ROS_INFO_STREAM("Stereo Factors " << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
-    if (!imu_factors_enabled && !registration_factors_enabled) {
-        throw std::runtime_error("Must have at least one of imu and registration factors enabled");
-    }
+    ROS_INFO_STREAM("Factors:"
+                    << "\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
+                    << (registration_factors_enabled ? "ENABLED" : "DISABLED") << "\nStereo         "
+                    << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
 
     // Optimisation subscribers
-    if (registration_factors_enabled && stereo_factors_enabled) {
-        registration_filter_subscriber.subscribe(nh, "registration/transform", 10);
-        stereo_landmarks_filter_subscriber.subscribe(nh, "stereo/landmarks", 10);
-        opt_sync.connectInput(registration_filter_subscriber, stereo_landmarks_filter_subscriber);
-        opt_sync.registerCallback(boost::bind(&Optimisation::registration_stereo_landmarks_callback, this, _1, _2));
-    } else if (registration_factors_enabled) {
+    if (registration_factors_enabled) {
         registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
                 &Optimisation::registration_callback, this);
     } else if (stereo_factors_enabled) {
-        stereo_landmarks_subscriber = nh.subscribe<serpent::StereoLandmarks>("stereo/landmarks", 10,
-                &Optimisation::stereo_landmarks_callback, this);
+        stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>("stereo/features", 10,
+                &Optimisation::stereo_features_callback, this);
+    }
+
+    // Debugging
+    nh.param<bool>("debug/optimisation/publish_stereo_points", publish_stereo_points, false);
+
+    // Debugging publishers
+    if (publish_stereo_points) {
+        stereo_points_publisher = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("debug/stereo_points", 1);
     }
 
     // Preintegration parameters
@@ -101,15 +117,17 @@ Optimisation::Optimisation()
     isam2_params.setCacheLinearizedFactors(nh.param<bool>("isam2/cache_linearized_factors", true));
     if (isam2_params.isEvaluateNonlinearError()) {
         ROS_WARN(
-                "Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error ="
-                " true). This incurs a computational cost, so should only be used while debugging.");
+                "Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error = "
+                "true). This incurs a computational cost, so should only be used while debugging.");
     }
     isam2_params.print();
 
     // Set up GraphManager
     gm = std::make_unique<ISAM2GraphManager>(isam2_params);
     gm->set_named_key("imu");
-    gm->set_named_key("reg");
+    if (registration_factors_enabled) {
+        gm->set_named_key("reg");
+    }
     if (stereo_factors_enabled) {
         gm->set_named_key("stereo", -1);
         const std::string stereo_left_cam_frame = nh.param<std::string>("stereo_factors/left_cam_frame_id", "stereo");
@@ -150,10 +168,10 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
     ROS_INFO_STREAM("Created factor: X(" << reg_key - 1 << ") => X(" << reg_key << ")");
 }
 
-void Optimisation::add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& landmarks) {
+void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features) {
     gm->increment("stereo");
     if (!gm->stereo_calibration()) {
-        const auto& left_info = landmarks->left_info;
+        const auto& left_info = features->left_info;
         const double fx = left_info.K[0];
         const double skew = left_info.K[1];
         const double cx = left_info.K[2];
@@ -164,10 +182,11 @@ void Optimisation::add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& 
         gm->set_stereo_calibration(K);
         ROS_INFO_STREAM("Set stereo calibration matrix:\n" << K->matrix());
     }
-    std::map<int, gtsam::StereoPoint2> stereo_landmarks;
-    from_ros(landmarks->landmarks, stereo_landmarks);
-    gm->add_stereo_landmark_measurements(gm->key("stereo"), stereo_landmarks);
-    ROS_INFO_STREAM("Added " << stereo_landmarks.size() << " stereo landmarks measurements to graph manager");
+    std::map<int, gtsam::StereoPoint2> stereo_features;
+    from_ros(features->features, stereo_features);
+    gm->add_stereo_features(gm->key("stereo"), stereo_features);
+    ROS_INFO_STREAM(
+            "Added " << stereo_features.size() << " stereo measurements to graph manager at key " << gm->key("stereo"));
 }
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
@@ -241,10 +260,9 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
 
     // Publish imu estimated transform
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
-    imu_transform->header.stamp =
-            gm->timestamp("imu");                  // Timestamp must be that of the child frame for synchronisation
-    imu_transform->header.frame_id = "lidar_i-1";  // i-1
-    imu_transform->child_frame_id = "lidar";       // i
+    imu_transform->header.stamp = gm->timestamp("imu");  // Timestamp must be the child frame's for synchronisation
+    imu_transform->header.frame_id = "lidar_i-1";        // i-1
+    imu_transform->child_frame_id = "lidar";             // i
     eigen_ros::to_ros(imu_transform->transform, s2s_pose_lidar);
     imu_transform_publisher.publish(imu_transform);
 
@@ -256,8 +274,8 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
                                              << ") => X(" << imu_key << "), V(" << imu_key << "), B(" << imu_key
                                              << ")");
 
-        // If no other factors, optimise
-        if (!registration_factors_enabled && !stereo_factors_enabled) {
+        // Optimise if not waiting on other factors
+        if (gm->minimum_key() == imu_key) {
             optimise_and_publish(imu_key);
         }
     }
@@ -330,6 +348,7 @@ void Optimisation::optimise_and_publish(const int key) {
     // Optimise graph with iSAM2
     const ros::WallTime tic = ros::WallTime::now();
     const gtsam::ISAM2Result isam2_result = gm->optimise(key);
+    ROS_INFO_STREAM("finished optimisation");
     ROS_INFO_STREAM("Optimised and calculated estimate for key = "
                     << key << ", t = " << gm->timestamp(key) << " in " << (ros::WallTime::now() - tic).toSec()
                     << " seconds.\n#Reeliminated = " << isam2_result.getVariablesReeliminated() << ", #Relinearized = "
@@ -375,57 +394,41 @@ void Optimisation::optimise_and_publish(const int key) {
     auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path, isam2_result));
     path_publisher.publish(global_path);
     path_changes_publisher.publish(global_path_changes);
+
+    // Publish stereo points
+    if (publish_stereo_points) {
+        auto stereo_points = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        pcl_conversions::toPCL(optimised_odometry_msg->header, stereo_points->header);
+        to_pcl(gm->stereo_landmarks(), *stereo_points);
+        stereo_points_publisher.publish(stereo_points);
+    }
 }
 
 void Optimisation::registration_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
-    // Add registration transform to graph, update value guess
     std::lock_guard<std::mutex> guard{graph_mutex};
 
     // Integrate registration data
     add_registration_factor(msg);
 
     // Optimise and publish
-    optimise_and_publish(gm->key("reg"));
+    if (gm->minimum_key() == gm->key("reg")) {
+        optimise_and_publish(gm->key("reg"));
 
-    // Update values that weren't optimised
-    if (!imu_factors_enabled) {
-        update_velocity_from_transforms("reg");
+        // Update values that weren't optimised
+        if (!imu_factors_enabled) {
+            update_velocity_from_transforms("reg");
+        }
     }
 }
 
-void Optimisation::registration_stereo_landmarks_callback(
-        const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& registration,
-        const serpent::StereoLandmarks::ConstPtr& landmarks) {
+void Optimisation::stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features) {
     std::lock_guard<std::mutex> guard{graph_mutex};
 
-    // Integrate registration data
-    add_registration_factor(registration);
-
     // Integrate stereo data
-    add_stereo_factors(landmarks);
+    add_stereo_factors(features);
 
     // Optimise and publish
-    optimise_and_publish(gm->key("reg"));
-
-    // Update velocity if no IMU factors
-    if (!imu_factors_enabled) {
-        update_velocity_from_transforms("reg");
-    }
-}
-
-void Optimisation::stereo_landmarks_callback(const serpent::StereoLandmarks::ConstPtr& landmarks) {
-    // Wait until IMU data has been processed
-    ROS_INFO_STREAM("Waiting for IMU data to be processed by graph manager");
-    if (!protected_sleep(graph_mutex, 0.01, false, true, [this]() { return gm->key("imu") <= gm->key("stereo"); })) {
-        return;
-    }
-    ROS_INFO_STREAM("Finished waiting for IMU data to be processed by graph manager");
-
-    // Integrate stereo data
-    add_stereo_factors(landmarks);
-
-    // Optimise and publish
-    if (gm->key("stereo") > 0) {
+    if (gm->minimum_key() == gm->key("stereo") && gm->key("stereo") > 0) {
         optimise_and_publish(gm->key("stereo"));
 
         // Update velocity if no IMU factors
@@ -433,8 +436,6 @@ void Optimisation::stereo_landmarks_callback(const serpent::StereoLandmarks::Con
             update_velocity_from_transforms("stereo");
         }
     }
-
-    graph_mutex.unlock();
 }
 
 void Optimisation::update_velocity_from_transforms(const std::string& named_key) {

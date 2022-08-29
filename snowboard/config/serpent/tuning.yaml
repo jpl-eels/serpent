@@ -39,7 +39,7 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: false
+    imu: true
     registration: true
     stereo: false
 

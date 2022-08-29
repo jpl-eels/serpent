@@ -1,5 +1,8 @@
 body_frames:
   head_base:
+    imu:
+      translation:
+        x: 0.0
     lidar:
       translation:
         x: 0.3
