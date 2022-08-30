@@ -109,7 +109,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
                     "Failed to create stereo factors and values. Pose X(" + std::to_string(key_) + ") wasn't set.");
         }
 
-        // Stereo Camera
+        // Stereo Camera (pose corresponds to current feature set)
         const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
         const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
 
@@ -156,6 +156,18 @@ gtsam::NonlinearFactorGraph GraphManager::factors(const int first, const int las
     return extracted_factors;
 }
 
+gtsam::NonlinearFactorGraph GraphManager::factors_for_key(const gtsam::Key key_) {
+    gtsam::NonlinearFactorGraph factors_for_key_;
+    for (const auto& [key__, factors__] : factors_) {
+        for (const auto& factor : factors__) {
+            if (factor->find(key_) != factor->end()) {
+                factors_for_key_.push_back(factor);
+            }
+        }
+    }
+    return factors_for_key_;
+}
+
 bool GraphManager::has_pose(const int key_) const {
     assert(key_ >= 0);
     return values_.exists(X(key_));
@@ -163,6 +175,10 @@ bool GraphManager::has_pose(const int key_) const {
 
 bool GraphManager::has_pose(const std::string& key_, const int offset) const {
     return has_pose(key(key_, offset));
+}
+
+bool GraphManager::has_stereo_landmark(const int id) const {
+    return values_.exists(S(id));
 }
 
 gtsam::imuBias::ConstantBias GraphManager::imu_bias(const int key_) const {
@@ -207,6 +223,16 @@ gtsam::Pose3 GraphManager::pose(const int key_) const {
 
 gtsam::Pose3 GraphManager::pose(const std::string key_, const int offset) const {
     return pose(key(key_, offset));
+}
+
+void GraphManager::print_errors(const double min_error) const {
+    const gtsam::NonlinearFactorGraph all_factors_ = all_factors();
+    all_factors_.printErrors(values_, "NonlinearFactorGraph", gtsam::DefaultKeyFormatter,
+            [min_error](const gtsam::Factor*, double error, size_t) { return error >= min_error; });
+}
+
+void GraphManager::save(const std::string& file_prefix) const {
+    ROS_WARN_STREAM("Save not implemented");
 }
 
 RobotState GraphManager::state(const int key_) const {
@@ -372,6 +398,14 @@ gtsam::Values GraphManager::values(const int first, const int last) const {
     return extracted_values;
 }
 
+const gtsam::Values& GraphManager::values() const {
+    return values_;
+}
+
+const gtsam::Value& GraphManager::value(const gtsam::Key key_) const {
+    return values_.at(key_);
+}
+
 gtsam::Velocity3 GraphManager::velocity(const int key_) const {
     assert(key_ >= 0);
     return values_.at<gtsam::Velocity3>(V(key_));
@@ -385,6 +419,14 @@ void GraphManager::add_factor(const int key_, const boost::shared_ptr<gtsam::Non
     // Add a graph, if one doesn't already exist, then add the factor
     auto emplace_it = factors_.emplace(key_, gtsam::NonlinearFactorGraph{});
     emplace_it.first->second.push_back(factor_);
+}
+
+gtsam::NonlinearFactorGraph GraphManager::all_factors() const {
+    gtsam::NonlinearFactorGraph all_factors_;
+    for (const auto& [key_, factors__] : factors_) {
+        all_factors_.push_back(factors__);
+    }
+    return all_factors_;
 }
 
 ISAM2GraphManager::ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params)
@@ -404,15 +446,19 @@ int ISAM2GraphManager::opt_key() {
     return opt_key_;
 }
 
-Eigen::Matrix<double, 6, 6> ISAM2GraphManager::imu_bias_covariance(const int key_) {
+Eigen::MatrixXd ISAM2GraphManager::covariance(const gtsam::Key key_) const {
+    return optimiser.marginalCovariance(key_);
+}
+
+Eigen::Matrix<double, 6, 6> ISAM2GraphManager::imu_bias_covariance(const int key_) const {
     return optimiser.marginalCovariance(B(key_));
 }
 
-Eigen::Matrix<double, 6, 6> ISAM2GraphManager::pose_covariance(const int key_) {
+Eigen::Matrix<double, 6, 6> ISAM2GraphManager::pose_covariance(const int key_) const {
     return optimiser.marginalCovariance(X(key_));
 }
 
-Eigen::Matrix3d ISAM2GraphManager::velocity_covariance(const int key_) {
+Eigen::Matrix3d ISAM2GraphManager::velocity_covariance(const int key_) const {
     return optimiser.marginalCovariance(V(key_));
 }
 

@@ -88,12 +88,24 @@ public:
      * The key of a unary factors (e.g. priors) is equal to the key of the state.
      *
      * The key of a binary factors (e.g. between factors) is equal to the key of the second state.
+     * 
+     * The key of landmark factors is the key at which they were added.
      *
      * @param first
      * @param last
      * @return gtsam::NonlinearFactorGraph
      */
     gtsam::NonlinearFactorGraph factors(const int first, const int last) const;
+
+    /**
+     * @brief Potentially slow function to search through all factors and find those that contain the gtsam key.
+     * 
+     * This is a debugging function, see factors() for standard use.
+     * 
+     * @param key 
+     * @return gtsam::NonlinearFactorGraph 
+     */
+    gtsam::NonlinearFactorGraph factors_for_key(const gtsam::Key key);
 
     /**
      * @brief Returns true if the pose has been set for the specified key.
@@ -105,6 +117,8 @@ public:
     bool has_pose(const int key) const;
 
     bool has_pose(const std::string& name, const int offset = 0) const;
+
+    bool has_stereo_landmark(const int id) const;
 
     gtsam::imuBias::ConstantBias imu_bias(const int key) const;
 
@@ -139,6 +153,10 @@ public:
     gtsam::Pose3 pose(const int key) const;
 
     gtsam::Pose3 pose(const std::string name, const int offset = 0) const;
+
+    void print_errors(const double min_error) const;
+
+    void save(const std::string& file_prefix) const;
 
     /**
      * @brief Convenience function that returns the state associated with a particular key value.
@@ -247,12 +265,29 @@ public:
      */
     gtsam::Values values(const int first, const int last) const;
 
+    /**
+     * @brief Return a reference to all values
+     * 
+     * @return const gtsam::Values& 
+     */
+    const gtsam::Values& values() const;
+
+    /**
+     * @brief Get a value for a known gtsam key.
+     * 
+     * @param key 
+     * @return gtsam::Value 
+     */
+    const gtsam::Value& value(const gtsam::Key key) const;
+
     gtsam::Velocity3 velocity(const int key) const;
 
     gtsam::Velocity3 velocity(const std::string name, const int offset = 0) const;
 
 protected:
     void add_factor(const int key, const boost::shared_ptr<gtsam::NonlinearFactor>& factor);
+
+    gtsam::NonlinearFactorGraph all_factors() const;
 
     template<typename ValueType>
     void set(const gtsam::Key key, const ValueType& value);
@@ -312,11 +347,13 @@ public:
      */
     int opt_key();
 
-    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key);
+    Eigen::MatrixXd covariance(const gtsam::Key key) const;
 
-    Eigen::Matrix<double, 6, 6> pose_covariance(const int key);
+    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
 
-    Eigen::Matrix3d velocity_covariance(const int key);
+    Eigen::Matrix<double, 6, 6> pose_covariance(const int key) const;
+
+    Eigen::Matrix3d velocity_covariance(const int key) const;
 
 private:
     // Optimiser
