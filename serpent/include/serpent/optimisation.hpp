@@ -69,6 +69,17 @@ private:
     void optimise_and_publish(const int key);
 
     /**
+     * @brief Perform a number of operations when a crash is detected, potentially including:
+     *  - printing information about factors
+     *  - saving graph data to file
+     * 
+     * @param ex 
+     */
+    void precrash_operations(const std::exception& ex);
+
+    void print_information_at_key(const gtsam::Key key);
+
+    /**
      * @brief Add transform factor between current and next graph node to graph, optimise, and publish results.
      *
      * Only called if stereo factors disabled and registration factors enabled.

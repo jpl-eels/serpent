@@ -1,5 +1,6 @@
 #include "serpent/optimisation.hpp"
 
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/LossFunctions.h>
 #include <pcl_ros/point_cloud.h>
 
@@ -64,8 +65,9 @@ Optimisation::Optimisation()
     nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
     ROS_INFO_STREAM("Factors:\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
-                    << (registration_factors_enabled ? "ENABLED" : "DISABLED") << "\nStereo         "
-                    << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
+                                                << (registration_factors_enabled ? "ENABLED" : "DISABLED")
+                                                << "\nStereo         "
+                                                << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
 
     // Optimisation subscribers
     if (registration_factors_enabled) {
@@ -162,8 +164,8 @@ Optimisation::Optimisation()
                 robust_noise_model = gtsam::noiseModel::mEstimator::Cauchy::Create(k, reweight_scheme);
             } else if (robust_noise_type == "dcs") {
                 const double c = nh.param<double>("stereo_factors/robust/dcs/c", 1.0);
-                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme = to_reweight_scheme(
-                        nh.param<std::string>("stereo_factors/robust/dcs/reweight_scheme", "BLOCK"));
+                const gtsam::noiseModel::mEstimator::Base::ReweightScheme reweight_scheme =
+                        to_reweight_scheme(nh.param<std::string>("stereo_factors/robust/dcs/reweight_scheme", "BLOCK"));
                 robust_noise_model = gtsam::noiseModel::mEstimator::DCS::Create(c, reweight_scheme);
             } else if (robust_noise_type == "fair") {
                 const double c = nh.param<double>("stereo_factors/robust/fair/c", 1.3998);
@@ -233,6 +235,9 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 
 void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features) {
     gm->increment("stereo");
+    if (gm->timestamp("stereo") != features->header.stamp) {
+        throw std::runtime_error("Stereo features are out of sync with graph manager.");
+    }
     if (!gm->stereo_calibration()) {
         const auto& left_info = features->left_info;
         const double fx = left_info.K[0];
@@ -408,17 +413,29 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
 
 void Optimisation::optimise_and_publish(const int key) {
     // Optimise graph with iSAM2
-    const ros::WallTime tic = ros::WallTime::now();
-    const gtsam::ISAM2Result isam2_result = gm->optimise(key);
-    ROS_INFO_STREAM("Optimised and calculated estimate for key = "
-                    << key << ", t = " << gm->timestamp(key) << " in " << (ros::WallTime::now() - tic).toSec()
-                    << " seconds.\n#Reeliminated = " << isam2_result.getVariablesReeliminated() << ", #Relinearized = "
-                    << isam2_result.getVariablesRelinearized() << ", #Cliques = " << isam2_result.getCliques()
-                    << ", Factors Recalculated = " << isam2_result.factorsRecalculated
-                    << (isam2_result.errorBefore && isam2_result.errorAfter
-                                       ? "\nError Before = " + std::to_string(*isam2_result.errorBefore) +
-                                                 ", Error After = " + std::to_string(*isam2_result.errorAfter)
-                                       : ""));
+    gtsam::ISAM2Result isam2_result;
+    try {
+        const ros::WallTime tic = ros::WallTime::now();
+        isam2_result = gm->optimise(key);
+        ROS_INFO_STREAM("Optimised and calculated estimate for key = "
+                        << key << ", t = " << gm->timestamp(key) << " in " << (ros::WallTime::now() - tic).toSec()
+                        << " seconds.\n#Reeliminated = " << isam2_result.getVariablesReeliminated()
+                        << ", #Relinearized = " << isam2_result.getVariablesRelinearized() << ", #Cliques = "
+                        << isam2_result.getCliques() << ", Factors Recalculated = " << isam2_result.factorsRecalculated
+                        << (isam2_result.errorBefore && isam2_result.errorAfter
+                                           ? "\nError Before = " + std::to_string(*isam2_result.errorBefore) +
+                                                     ", Error After = " + std::to_string(*isam2_result.errorAfter)
+                                           : ""));
+    } catch (const gtsam::IndeterminantLinearSystemException& ex) {
+        precrash_operations(ex);
+        if (nh.param<bool>("debug/optimisation/on_crash/print", true)) {
+            print_information_at_key(ex.nearbyVariable());
+        }
+        throw ex;
+    } catch (const std::exception& ex) {
+        precrash_operations(ex);
+        throw ex;
+    }
 
     // Publish optimised pose
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
@@ -462,6 +479,48 @@ void Optimisation::optimise_and_publish(const int key) {
         pcl_conversions::toPCL(optimised_odometry_msg->header, stereo_points->header);
         to_pcl(gm->stereo_landmarks(), *stereo_points);
         stereo_points_publisher.publish(stereo_points);
+    }
+}
+
+void Optimisation::precrash_operations(const std::exception& ex) {
+    ROS_ERROR_STREAM("Optimisation failed with exception: " << ex.what());
+    if (nh.param<bool>("debug/optimisation/on_crash/save", false)) {
+        gm->save("serpent");
+    }
+    if (nh.param<bool>("debug/optimisation/on_crash/print", true) &&
+            nh.param<bool>("debug/optimisation/on_crash/print_options/verbose", false)) {
+        const double min_error = nh.param<double>("debug/optimisation/on_crash/print_options/min_error", 0.0);
+        ROS_INFO_STREAM("Printing all factors with error >= " << min_error);
+        gm->print_errors(min_error);
+    }
+}
+
+void Optimisation::print_information_at_key(const gtsam::Key key) {
+    const gtsam::Symbol symbol{key};
+    const gtsam::Value& value = gm->value(key);
+    // Marginal covariance may not be available
+    std::optional<Eigen::MatrixXd> covariance;
+    try {
+        covariance = gm->covariance(key);
+    } catch (const std::exception& ex) {
+    }
+    std::stringstream ss;
+    ss << "Information for: " << symbol << "\nMarginal Covariance:";
+    if (covariance) {
+        ss << "\n" << covariance.value();
+    } else {
+        ss << " n/a";
+    }
+    ss << "\nValue:";
+    ROS_INFO_STREAM(ss.str());
+    value.print();
+    const gtsam::NonlinearFactorGraph connected_factors = gm->factors_for_key(key);
+    ROS_INFO_STREAM("Connected factors:\n");
+    int factor_counter{0};
+    const gtsam::Values& values = gm->values();
+    for (const auto& factor : connected_factors) {
+        factor->print("Factor " + std::to_string(factor_counter++) + ":");
+        std::cerr << "error: " << factor->error(values) << "\n\n";
     }
 }
 

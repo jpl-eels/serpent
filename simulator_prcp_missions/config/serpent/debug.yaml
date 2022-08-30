@@ -13,3 +13,9 @@ debug:
 
   optimisation:
     publish_stereo_points: true
+    on_crash:
+      save: true
+      print: true
+      print_options:
+        verbose: false
+        min_error: 10.0
