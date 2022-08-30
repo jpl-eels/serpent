@@ -132,9 +132,9 @@ mapping:
 # Stereo Factors
 stereo_factors:
   noise:
-    left_x: 20.0
-    right_x: 20.0
-    y: 40.0
+    left_x: 5.0
+    right_x: 5.0
+    y: 10.0
   robust:
     enabled: true
     type: "huber" # Options: cauchy, dcs, fair, geman_mcclure, huber, l2_with_dead_zone, null (no config), tukey, welsch
