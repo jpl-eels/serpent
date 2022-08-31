@@ -78,6 +78,9 @@ private:
     image_transport::Publisher new_matches_publisher;
     image_transport::Publisher tracked_matches_publisher;
 
+    // Stereo baseline
+    float baseline;
+
     //// Debug
     bool print_stats;
     bool publish_stats;
@@ -85,7 +88,6 @@ private:
     bool publish_points;
     cv::DrawMatchesFlags keypoint_draw_flags;
     cv::DrawMatchesFlags match_draw_flags;
-    float baseline;
 
     // Tracker
     std::unique_ptr<StereoFeatureTracker> tracker;

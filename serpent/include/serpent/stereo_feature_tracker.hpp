@@ -79,9 +79,9 @@ public:
     };
 
     explicit StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector, const cv::Ptr<cv::SparseOpticalFlow> sof,
-            const cv::Ptr<serpent::StereoMatchFilter> stereo_filter, cv::Ptr<StereoKeyPointMatcher> stereo_matcher,
+            const cv::Ptr<StereoMatchFilter> stereo_filter, cv::Ptr<StereoKeyPointMatcher> stereo_matcher,
             const float new_feature_dist_threshold, const double stereo_match_cost_threshold,
-            const cv::Rect2i& roi = cv::Rect2i{});
+            const cv::Ptr<StereoDistanceFilter> stereo_distance_filter = nullptr, const cv::Rect2i& roi = cv::Rect2i{});
 
     /**
      * @brief Return the last frame number processed. If no frames have been processed, returns -1.
@@ -100,6 +100,8 @@ public:
     LRKeyPointMatches process(const cv::Mat& left_image, const cv::Mat& right_image,
             std::optional<std::reference_wrapper<Statistics>> stats = std::nullopt,
             std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images = std::nullopt);
+    
+    void set_stereo_distance_filter(const cv::Ptr<StereoDistanceFilter> stereo_distance_filter);
 
 private:
     /**
@@ -175,6 +177,7 @@ private:
     cv::Ptr<cv::Feature2D> detector;
     cv::Ptr<cv::SparseOpticalFlow> sof;
     cv::Ptr<StereoMatchFilter> stereo_filter;
+    cv::Ptr<StereoDistanceFilter> stereo_distance_filter;
     cv::Ptr<StereoKeyPointMatcher> stereo_matcher;
 
     //// Configuration

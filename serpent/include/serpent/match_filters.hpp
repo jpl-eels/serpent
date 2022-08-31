@@ -70,6 +70,34 @@ protected:
     std::vector<std::size_t> indices_;
 };
 
+class StereoDistanceFilter {
+public:
+    StereoDistanceFilter(const float fx, const float baseline,
+            const float max_distance = std::numeric_limits<float>::max(), const float min_distance = 0.0);
+
+    static cv::Ptr<StereoDistanceFilter> create(const float fx, const float baseline,
+            const float max_distance = std::numeric_limits<float>::max(), const float min_distance = 0.0);
+
+    std::vector<cv::DMatch> filter(const std::vector<cv::KeyPoint>& kp_query, const std::vector<cv::KeyPoint>& kp_train,
+            const std::vector<cv::DMatch>& matches);
+
+    const std::vector<std::size_t>& indices() const;
+
+    void set_baseline(const float baseline);
+
+    void set_fx(const float fx);
+
+protected:
+    float fx;
+    float baseline;
+    float fx_b;
+    float max_distance;
+    float min_distance;
+
+    // State of last filter estimate
+    std::vector<std::size_t> indices_;
+};
+
 }
 
 #endif

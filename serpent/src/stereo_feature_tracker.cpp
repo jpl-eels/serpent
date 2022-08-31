@@ -33,10 +33,12 @@ std::string StereoFeatureTracker::Statistics::to_string() const {
 StereoFeatureTracker::StereoFeatureTracker(const cv::Ptr<cv::Feature2D> detector,
         const cv::Ptr<cv::SparseOpticalFlow> sof, const cv::Ptr<StereoMatchFilter> stereo_filter,
         const cv::Ptr<StereoKeyPointMatcher> stereo_matcher, const float new_feature_dist_threshold,
-        const double stereo_match_cost_threshold, const cv::Rect2i& roi)
+        const double stereo_match_cost_threshold, const cv::Ptr<StereoDistanceFilter> stereo_distance_filter,
+        const cv::Rect2i& roi)
     : detector(detector),
       sof(sof),
       stereo_filter(stereo_filter),
+      stereo_distance_filter(stereo_distance_filter),
       stereo_matcher(stereo_matcher),
       new_feature_sqr_dist_threshold(std::pow(new_feature_dist_threshold, 2.0)),
       stereo_match_cost_threshold(stereo_match_cost_threshold),
@@ -127,7 +129,14 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     previous_track_data.matches = stereo_filter->filter(new_track_hypotheses.keypoints[0],
             new_track_hypotheses.keypoints[1], new_track_hypotheses.matches);
     previous_track_data.match_ids = extract_match_ids(new_track_hypotheses.match_ids, stereo_filter->indices());
-    ROS_DEBUG_STREAM("Filtered matches by stereo geometry");
+    ROS_DEBUG_STREAM("Filtered tracked matches by stereo geometry");
+    if (stereo_distance_filter) {
+        previous_track_data.matches = stereo_distance_filter->filter(new_track_hypotheses.keypoints[0],
+                new_track_hypotheses.keypoints[1], previous_track_data.matches);
+        previous_track_data.match_ids =
+                extract_match_ids(previous_track_data.match_ids, stereo_distance_filter->indices());
+        ROS_DEBUG_STREAM("Filtered tracked matches by stereo distance");
+    }
     if (stats) {
         stats->get().tracked_match_count = previous_track_data.matches.size();
         if (previous_track_data.match_ids.size() > 0) {
@@ -161,8 +170,20 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     ROS_DEBUG_STREAM("Extracted keypoints in right image using stereo matcher");
 
     // Create the new stereo matches, filtering out high cost and invalid matches
-    const LRKeyPointMatches new_filtered_keypoint_matches =
+    LRKeyPointMatches new_filtered_keypoint_matches =
             create_filtered_new_matches(new_keypoints, right_keypoint_indices, stereo_match_costs);
+
+    // Filter new stereo matches by distance
+    if (stereo_distance_filter) {
+        new_filtered_keypoint_matches.matches =
+                stereo_distance_filter->filter(new_filtered_keypoint_matches.keypoints[0],
+                        new_filtered_keypoint_matches.keypoints[1], new_filtered_keypoint_matches.matches);
+        new_filtered_keypoint_matches.match_ids =
+                extract_match_ids(new_filtered_keypoint_matches.match_ids, stereo_distance_filter->indices());
+        new_filtered_keypoint_matches.keypoints = extract_matched_keypoints(new_filtered_keypoint_matches.keypoints,
+                new_filtered_keypoint_matches.matches);
+        ROS_DEBUG_STREAM("Filtered new matches by stereo distance");
+    }
     if (stats) {
         stats->get().new_match_count = new_filtered_keypoint_matches.size();
     }
@@ -191,6 +212,10 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Return results
     return previous_track_data;
+}
+
+void StereoFeatureTracker::set_stereo_distance_filter(const cv::Ptr<StereoDistanceFilter> stereo_distance_filter_) {
+    stereo_distance_filter = stereo_distance_filter_;
 }
 
 void StereoFeatureTracker::append_keypoint_matches(const LRKeyPointMatches& new_keypoint_matches,
