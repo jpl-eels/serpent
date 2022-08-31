@@ -127,13 +127,14 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
                             body_to_stereo_left_cam);
                     ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ - 1 << ") and S(" << id << ")");
 
-                    // Compute landmark position in world frame
-                    const gtsam::Point3 landmark = camera.backproject(feature);
-                    // Add to values
-                    values_.insert(S(id), landmark);
                     // Save id
                     ids.emplace_back(id);
                 }
+
+                // Compute landmark position in world frame
+                const gtsam::Point3 landmark = camera.backproject(feature);
+                // Update values
+                set(S(id), landmark);
 
                 // Add current state factor if feature is in i-1
                 factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(feature,
