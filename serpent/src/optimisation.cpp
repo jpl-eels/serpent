@@ -442,10 +442,17 @@ void Optimisation::optimise_and_publish(const int key) {
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
     optimised_odometry_msg->header.frame_id = "map";
     optimised_odometry_msg->child_frame_id = body_frames.body_frame();
-    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, gm->pose(key).translation());
-    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, gm->pose(key).rotation().toQuaternion());
-    eigen_ros::to_ros(optimised_odometry_msg->pose.covariance,
-            eigen_ext::reorder_covariance(gm->pose_covariance(key), 3));
+    auto pose = gm->pose(key);
+    ROS_INFO_STREAM("Pose:\n" << pose.matrix());
+    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, pose.translation());
+    eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, pose.rotation().toQuaternion());
+    if (!stereo_factors_enabled) {
+        auto pose_covariance = gm->pose_covariance(key);
+        eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
+        ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << pose_covariance);
+    } else {
+        ROS_WARN_ONCE("Pose covariance computation skipped when stereo factors ENABLED - cannot run in real time");
+    }
     eigen_ros::to_ros(optimised_odometry_msg->twist.twist.linear, gm->velocity(key));
     ROS_WARN_ONCE("TODO: add angular velocity from IMU odometry to optimised odometry");
     const Eigen::Matrix3d optimised_vel_covariance =
@@ -453,8 +460,6 @@ void Optimisation::optimise_and_publish(const int key) {
     ROS_WARN_ONCE("TODO: add linear velocity covariance (optimised_vel_covariance) to optimised odometry");
     ROS_WARN_ONCE("TODO: add angular velocity covariance from IMU odometry to optimised odometry");
     optimised_odometry_publisher.publish(optimised_odometry_msg);
-    ROS_INFO_STREAM("Pose:\n" << gm->pose(key).matrix());
-    ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << gm->pose_covariance(key));
     if (imu_factors_enabled) {
         ROS_INFO_STREAM("Velocity: " << to_flat_string(gm->velocity(key)));
         ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);

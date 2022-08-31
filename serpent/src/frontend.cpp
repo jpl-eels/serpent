@@ -112,7 +112,9 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
 
         // Calculate current state from previous state
         const gtsam::NavState state = preintegrated_imu->predict(world_state, imu_biases);
-        /* TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        /*
+        // TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        // NOTE: optimised odometry covariance is disabled for stereo factors
         const gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
         const Eigen::Matrix<double, 6, 6> pose_covariance = state_covariance.block<6, 6>(0, 0);
         const Eigen::Matrix3d linear_velocity_covariance = state_covariance.block<3, 3>(6, 6);
@@ -121,8 +123,8 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
                 linear_velocity_covariance;
         */
         ROS_WARN_ONCE(
-                "TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even"
-                " possible? A rotation may be a good approximation.");
+                "TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even possible? A "
+                "rotation may be a good approximation.");
         const Eigen::Vector3d angular_velocity =
                 body_frames.body_to_frame("imu").rotation() * (imu.angular_velocity + imu_biases.gyroscope());
 
