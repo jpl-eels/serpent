@@ -41,7 +41,7 @@ Visualization Manager:
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
-      Name: Ground Plane
+      Name: Map Plane
       Normal Cell Count: 0
       Offset:
         X: 0
@@ -49,8 +49,26 @@ Visualization Manager:
         Z: 0
       Plane: XY
       Plane Cell Count: 20
-      Reference Frame: map
+      Reference Frame: <Fixed Frame>
       Value: true
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: false
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Robocentric Plane
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 30
+      Reference Frame: head_base
+      Value: false
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
@@ -174,7 +192,7 @@ Visualization Manager:
           Use rainbow: true
           Value: false
         - Class: rviz/Camera
-          Enabled: false
+          Enabled: true
           Image Rendering: background and overlay
           Image Topic: /camera_front/left/image_raw
           Name: Left Camera
@@ -182,31 +200,29 @@ Visualization Manager:
           Queue Size: 2
           Transport Hint: raw
           Unreliable: false
-          Value: false
+          Value: true
           Visibility:
             Frontend:
-              Deskewed Pointcloud: true
-              Filtered Pointcloud: true
-              Formatted Pointcloud: true
-              Left Camera: true
-              Normal Pointcloud: true
-              Right Camera: true
+              "": true
               Value: true
-            Ground Plane: true
             Input:
               Altimeter: true
               Imu: true
               Lidar: true
               Right Camera: true
               Value: true
+            Map Plane: true
             Optimisation:
-              "": true
+              Optimised Odometry: true
+              Path Changes: true
+              Stereo Landmarks: true
               Value: true
             Output:
               Global Map: true
               Global Path: true
               IMU-Rate Odometry: true
               Value: true
+            Robocentric Plane: true
             S2M Registration:
               Local Map (S2M reference): true
               S2M Transformed: true
@@ -218,13 +234,26 @@ Visualization Manager:
               S2S Transformed: true
               Value: true
             Stereo Introspection:
-              "": true
+              Left Camera:
+                Left Extracted Keypoints: true
+                Left SOF Matches: true
+                Value: true
+              Matches:
+                New Matches: true
+                Stereo Filtered Matches: true
+                Tracked Matches: true
+                Value: true
+              Right Camera:
+                Right Extracted Keypoints: true
+                Right SOF Matches: true
+                Value: true
+              Track Points: true
               Value: true
             TF: true
             Value: false
           Zoom Factor: 1
         - Class: rviz/Camera
-          Enabled: false
+          Enabled: true
           Image Rendering: background and overlay
           Image Topic: /camera_front/right/image_raw
           Name: Right Camera
@@ -232,31 +261,29 @@ Visualization Manager:
           Queue Size: 2
           Transport Hint: raw
           Unreliable: false
-          Value: false
+          Value: true
           Visibility:
             Frontend:
-              Deskewed Pointcloud: true
-              Filtered Pointcloud: true
-              Formatted Pointcloud: true
-              Left Camera: true
-              Normal Pointcloud: true
-              Right Camera: true
+              "": true
               Value: true
-            Ground Plane: true
             Input:
               Altimeter: true
               Imu: true
               Left Camera: true
               Lidar: true
               Value: true
+            Map Plane: true
             Optimisation:
-              "": true
+              Optimised Odometry: true
+              Path Changes: true
+              Stereo Landmarks: true
               Value: true
             Output:
               Global Map: true
               Global Path: true
               IMU-Rate Odometry: true
               Value: true
+            Robocentric Plane: true
             S2M Registration:
               Local Map (S2M reference): true
               S2M Transformed: true
@@ -268,7 +295,20 @@ Visualization Manager:
               S2S Transformed: true
               Value: true
             Stereo Introspection:
-              "": true
+              Left Camera:
+                Left Extracted Keypoints: true
+                Left SOF Matches: true
+                Value: true
+              Matches:
+                New Matches: true
+                Stereo Filtered Matches: true
+                Tracked Matches: true
+                Value: true
+              Right Camera:
+                Right Extracted Keypoints: true
+                Right SOF Matches: true
+                Value: true
+              Track Points: true
               Value: true
             TF: true
             Value: false
@@ -390,7 +430,7 @@ Visualization Manager:
           Use rainbow: true
           Value: false
         - Class: rviz/Camera
-          Enabled: true
+          Enabled: false
           Image Rendering: background and overlay
           Image Topic: /serpent/stereo/left/image
           Name: Left Camera
@@ -398,7 +438,7 @@ Visualization Manager:
           Queue Size: 2
           Transport Hint: raw
           Unreliable: false
-          Value: true
+          Value: false
           Visibility:
             Frontend:
               Deskewed Pointcloud: true
@@ -407,7 +447,6 @@ Visualization Manager:
               Normal Pointcloud: true
               Right Camera: true
               Value: false
-            Ground Plane: false
             Input:
               Altimeter: true
               Imu: true
@@ -415,6 +454,7 @@ Visualization Manager:
               Lidar: true
               Right Camera: true
               Value: false
+            Map Plane: false
             Optimisation:
               Optimised Odometry: true
               Path Changes: true
@@ -425,6 +465,7 @@ Visualization Manager:
               Global Path: true
               IMU-Rate Odometry: true
               Value: false
+            Robocentric Plane: true
             S2M Registration:
               Local Map (S2M reference): true
               S2M Transformed: true
@@ -455,7 +496,7 @@ Visualization Manager:
             Value: true
           Zoom Factor: 1
         - Class: rviz/Camera
-          Enabled: true
+          Enabled: false
           Image Rendering: background and overlay
           Image Topic: /serpent/stereo/right/image
           Name: Right Camera
@@ -463,7 +504,7 @@ Visualization Manager:
           Queue Size: 2
           Transport Hint: raw
           Unreliable: false
-          Value: true
+          Value: false
           Visibility:
             Frontend:
               Deskewed Pointcloud: true
@@ -472,7 +513,6 @@ Visualization Manager:
               Left Camera: true
               Normal Pointcloud: true
               Value: false
-            Ground Plane: false
             Input:
               Altimeter: true
               Imu: true
@@ -480,6 +520,7 @@ Visualization Manager:
               Lidar: true
               Right Camera: true
               Value: false
+            Map Plane: false
             Optimisation:
               Optimised Odometry: true
               Path Changes: true
@@ -490,6 +531,7 @@ Visualization Manager:
               Global Path: true
               IMU-Rate Odometry: true
               Value: false
+            Robocentric Plane: true
             S2M Registration:
               Local Map (S2M reference): true
               S2M Transformed: true
@@ -1035,7 +1077,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 12.417344093322754
+      Distance: 10.026117324829102
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1043,24 +1085,24 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.2071391344070435
-        Y: 0.21821311116218567
-        Z: 0.5679013729095459
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.534797191619873
+      Pitch: 0.5747970938682556
       Target Frame: <Fixed Frame>
-      Yaw: 0.49594396352767944
+      Yaw: 3.9559643268585205
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
   Height: 1338
   Hide Left Dock: false
-  Hide Right Dock: true
+  Hide Right Dock: false
   Left Camera:
     collapsed: false
   Left Extracted Keypoints:
@@ -1069,7 +1111,7 @@ Window Geometry:
     collapsed: false
   New Matches:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000002000000032cfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000041600000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000007c0000032c000000c900fffffffb0000000e004d006100740063006800650073000000033c000000510000000000000000fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000481fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000481000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000096400000039fc0100000002fb0000000800540069006d0065010000000000000964000003bc00fffffffb0000000a00560069006500770073030000004e00000080000002e10000019700000003000009640000016ffc0100000006fc000000000000023b000000dd00fffffffa000000000200000005fb00000016004c006500660074002000430061006d0065007200610100000000ffffffff0000001600fffffffb00000016004c006500660074002000430061006d0065007200610000000000ffffffff0000001600fffffffb00000016004c006500660074002000430061006d00650072006100000003930000016f0000000000000000fb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730100000000ffffffff0000001600fffffffb00000020004c00650066007400200053004f00460020004d0061007400630068006500730100000000ffffffff0000001600fffffffc000002410000047c000000d700fffffffa000000000200000005fb0000001e0054007200610063006b006500640020004d0061007400630068006500730100000000ffffffff0000001600fffffffb0000002c0043006f006e00730069007300740065006e00740020004e006500770020004d0061007400630068006500730000000000ffffffff0000000000000000fb0000002e00530074006500720065006f002000460069006c007400650072006500640020004d0061007400630068006500730100000000ffffffff0000001600fffffffb0000003200440069007300740061006e00630065002000460069006c007400650072006500640020004d0061007400630068006500730000000000ffffffff0000000000000000fb00000016004e006500770020004d00610074006300680065007301000003930000016f0000001600fffffffc000006c3000002a1000000e600fffffffa000000000200000005fb0000001800520069006700680074002000430061006d0065007200610100000000ffffffff0000001600fffffffb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000001600fffffffb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000000000000000fb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e0074007301000003930000016f0000001600fffffffb000000220052006900670068007400200053004f00460020004d0061007400630068006500730100000000ffffffff0000001600fffffffb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000000002400000000000000000fb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000000006c90000000000000000fb0000000800540069006d006501000000000000045000000000000000000000075e0000032c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000002000000032cfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000041600000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000007c0000032c000000c900fffffffb0000000e004d006100740063006800650073000000033c000000510000000000000000fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000032cfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000007c0000032c000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000096400000039fc0100000002fb0000000800540069006d0065010000000000000964000003bc00fffffffb0000000a00560069006500770073030000004e00000080000002e10000019700000003000009640000016ffc0100000006fc000000000000023b000000dd00fffffffa000000000200000005fb00000016004c006500660074002000430061006d0065007200610100000000ffffffff0000001600fffffffb00000016004c006500660074002000430061006d0065007200610000000000ffffffff0000001600fffffffb00000016004c006500660074002000430061006d00650072006100000003930000016f0000000000000000fb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730100000000ffffffff0000001600fffffffb00000020004c00650066007400200053004f00460020004d0061007400630068006500730100000000ffffffff0000001600fffffffc000002410000047c000000d700fffffffa000000000200000005fb0000001e0054007200610063006b006500640020004d0061007400630068006500730100000000ffffffff0000001600fffffffb0000002c0043006f006e00730069007300740065006e00740020004e006500770020004d0061007400630068006500730000000000ffffffff0000000000000000fb0000002e00530074006500720065006f002000460069006c007400650072006500640020004d0061007400630068006500730100000000ffffffff0000001600fffffffb0000003200440069007300740061006e00630065002000460069006c007400650072006500640020004d0061007400630068006500730000000000ffffffff0000000000000000fb00000016004e006500770020004d00610074006300680065007301000003930000016f0000001600fffffffc000006c3000002a1000000e600fffffffa000000000200000005fb0000001800520069006700680074002000430061006d0065007200610100000000ffffffff0000001600fffffffb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000001600fffffffb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000000000000000fb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e0074007301000003930000016f0000001600fffffffb000000220052006900670068007400200053004f00460020004d0061007400630068006500730100000000ffffffff0000001600fffffffb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000000002400000000000000000fb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000000006c90000000000000000fb0000000800540069006d00650100000000000004500000000000000000000006490000032c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Right Camera:
     collapsed: false
   Right Extracted Keypoints:
@@ -1087,7 +1129,7 @@ Window Geometry:
   Tracked Matches:
     collapsed: false
   Views:
-    collapsed: true
+    collapsed: false
   Width: 2404
   X: 0
   Y: 21

@@ -197,7 +197,7 @@ stereo_factors:
     vertical_pixel_threshold: 1.0
   stereo_distance_filter:
     enabled: true
-    max_distance: 30
+    max_distance: 15.0
     min_distance: 1.0
   sparse_optical_flow:
     type: "PyrLK" # Options: PyrLK (Pyramid Lucas-Kanade), TODO: RLOF

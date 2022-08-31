@@ -18,7 +18,7 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
-    <arg name="rqt_stereo"                      default="true"/>
+    <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
