@@ -490,7 +490,9 @@ void Optimisation::optimise_and_publish(const int key) {
 void Optimisation::precrash_operations(const std::exception& ex) {
     ROS_ERROR_STREAM("Optimisation failed with exception: " << ex.what());
     if (nh.param<bool>("debug/optimisation/on_crash/save", false)) {
-        gm->save("serpent");
+        const std::string file_prefix{"serpent_crash"};
+        gm->save(file_prefix);
+        ROS_INFO_STREAM("Saved graph data with file prefix \'" << file_prefix << "\' to ~/.ros/");
     }
     if (nh.param<bool>("debug/optimisation/on_crash/print", true) &&
             nh.param<bool>("debug/optimisation/on_crash/print_options/verbose", false)) {

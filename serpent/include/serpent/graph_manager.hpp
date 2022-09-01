@@ -59,7 +59,6 @@ private:
  */
 class GraphManager {
 public:
-
     void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
     void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise);
@@ -74,11 +73,11 @@ public:
     /**
      * @brief Create the stereo factors and values for a specified key. Requires that:
      *  - the pose has been set for the specified key
-     * 
+     *
      * Throws std::runtime_error otherwise.
-     * 
-     * @param key 
-     * @param features 
+     *
+     * @param key
+     * @param features
      */
     void create_stereo_factors_and_values(const int key, const std::map<int, gtsam::StereoPoint2>& features);
 
@@ -88,7 +87,7 @@ public:
      * The key of a unary factors (e.g. priors) is equal to the key of the state.
      *
      * The key of a binary factors (e.g. between factors) is equal to the key of the second state.
-     * 
+     *
      * The key of landmark factors is the key at which they were added.
      *
      * @param first
@@ -99,20 +98,20 @@ public:
 
     /**
      * @brief Potentially slow function to search through all factors and find those that contain the gtsam key.
-     * 
+     *
      * This is a debugging function, see factors() for standard use.
-     * 
-     * @param key 
-     * @return gtsam::NonlinearFactorGraph 
+     *
+     * @param key
+     * @return gtsam::NonlinearFactorGraph
      */
     gtsam::NonlinearFactorGraph factors_for_key(const gtsam::Key key);
 
     /**
      * @brief Returns true if the pose has been set for the specified key.
-     * 
-     * @param key 
-     * @return true 
-     * @return false 
+     *
+     * @param key
+     * @return true
+     * @return false
      */
     bool has_pose(const int key) const;
 
@@ -138,11 +137,11 @@ public:
      * @return int
      */
     int key(const std::string& name, const int offset = 0) const;
-    
+
     /**
      * @brief Return the smallest key value of the registered named keys.
-     * 
-     * @return int 
+     *
+     * @return int
      */
     int minimum_key() const;
 
@@ -156,7 +155,8 @@ public:
 
     void print_errors(const double min_error) const;
 
-    void save(const std::string& file_prefix) const;
+    void save(const std::string& file_prefix,
+            const gtsam::GraphvizFormatting& formatting = gtsam::GraphvizFormatting{}) const;
 
     /**
      * @brief Convenience function that returns the state associated with a particular key value.
@@ -219,9 +219,9 @@ public:
 
     /**
      * @brief Get the stereo landmarks for a particular key. A key of -1 returns the stereo landmarks for all keys.
-     * 
-     * @param key 
-     * @return std::map<int, gtsam::Point3> 
+     *
+     * @param key
+     * @return std::map<int, gtsam::Point3>
      */
     std::map<int, gtsam::Point3> stereo_landmarks(const int key = -1) const;
 
@@ -247,7 +247,7 @@ public:
      * @return const ros::Time&
      */
     const ros::Time& timestamp(const std::string& key, const int offset = 0) const;
-    
+
     /**
      * @brief Update values within the GraphManager. Any values present within the state manager not present in
      * values will remain in the state manager and not be affected. Will throw an error if there are any new values.
@@ -267,16 +267,16 @@ public:
 
     /**
      * @brief Return a reference to all values
-     * 
-     * @return const gtsam::Values& 
+     *
+     * @return const gtsam::Values&
      */
     const gtsam::Values& values() const;
 
     /**
      * @brief Get a value for a known gtsam key.
-     * 
-     * @param key 
-     * @return gtsam::Value 
+     *
+     * @param key
+     * @return gtsam::Value
      */
     const gtsam::Value& value(const gtsam::Key key) const;
 
@@ -318,7 +318,7 @@ protected:
 
     /**
      * @brief Factors (key -> graph of factors)
-     * 
+     *
      * Contains:
      * - robot state to robot state factors
      * - prior factors

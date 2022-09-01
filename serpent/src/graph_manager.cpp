@@ -232,8 +232,12 @@ void GraphManager::print_errors(const double min_error) const {
             [min_error](const gtsam::Factor*, double error, size_t) { return error >= min_error; });
 }
 
-void GraphManager::save(const std::string& file_prefix) const {
-    ROS_WARN_STREAM("Save not implemented");
+void GraphManager::save(const std::string& file_prefix, const gtsam::GraphvizFormatting& formatting) const {
+    const gtsam::NonlinearFactorGraph all_factors_ = all_factors();
+    // Saving graph to file was only introduced in GTSAM 4.1.1 so we need to set up the file.
+    std::ofstream of{file_prefix + ".gv"};
+    all_factors_.saveGraph(of, values(), formatting);
+    of.close();
 }
 
 RobotState GraphManager::state(const int key_) const {
