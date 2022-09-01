@@ -169,20 +169,25 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
             images[0], images[1], new_keypoints[1], stereo_match_costs);
     ROS_DEBUG_STREAM("Extracted keypoints in right image using stereo matcher");
 
-    // Create the new stereo matches, filtering out high cost and invalid matches
+    // Create the new stereo matches, filtering out high cost and invalid matches (note don't generate match ids yet,
+    // as we may filter the results)
     LRKeyPointMatches new_filtered_keypoint_matches =
-            create_filtered_new_matches(new_keypoints, right_keypoint_indices, stereo_match_costs);
+            create_filtered_new_matches(new_keypoints, right_keypoint_indices, stereo_match_costs, false);
+    ROS_DEBUG_STREAM("Created " << new_filtered_keypoint_matches.size() << " filtered new matches");
 
     // Filter new stereo matches by distance
     if (stereo_distance_filter) {
         new_filtered_keypoint_matches.matches =
                 stereo_distance_filter->filter(new_filtered_keypoint_matches.keypoints[0],
                         new_filtered_keypoint_matches.keypoints[1], new_filtered_keypoint_matches.matches);
-        new_filtered_keypoint_matches.match_ids =
-                extract_match_ids(new_filtered_keypoint_matches.match_ids, stereo_distance_filter->indices());
         new_filtered_keypoint_matches.keypoints = extract_matched_keypoints(new_filtered_keypoint_matches.keypoints,
                 new_filtered_keypoint_matches.matches);
-        ROS_DEBUG_STREAM("Filtered new matches by stereo distance");
+        ROS_DEBUG_STREAM("Filtered " << new_filtered_keypoint_matches.size() << " by stereo distance from new matches");
+    }
+
+    // Create new match ids
+    for (std::size_t i = 0; i < new_filtered_keypoint_matches.size(); ++i) {
+        new_filtered_keypoint_matches.match_ids.emplace_back(next_match_id++);
     }
     if (stats) {
         stats->get().new_match_count = new_filtered_keypoint_matches.size();
@@ -232,13 +237,15 @@ void StereoFeatureTracker::append_keypoint_matches(const LRKeyPointMatches& new_
 
 StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::create_filtered_new_matches(
         const LRKeyPoints& new_keypoints, const std::vector<int>& right_indices,
-        const std::vector<double>& stereo_match_costs) {
+        const std::vector<double>& stereo_match_costs, const bool create_match_ids) {
     LRKeyPointMatches new_filtered_keypoint_matches;
     for (std::size_t i = 0; i < new_keypoints[0].size(); ++i) {
         if (stereo_match_costs[i] < stereo_match_cost_threshold && right_indices[i] >= 0) {
             new_filtered_keypoint_matches.matches.emplace_back(new_filtered_keypoint_matches.keypoints[0].size(),
                     new_filtered_keypoint_matches.keypoints[1].size(), stereo_match_costs[i]);
-            new_filtered_keypoint_matches.match_ids.emplace_back(next_match_id++);
+            if (create_match_ids) {
+                new_filtered_keypoint_matches.match_ids.emplace_back(next_match_id++);
+            }
             new_filtered_keypoint_matches.keypoints[0].push_back(new_keypoints[0][i]);
             new_filtered_keypoint_matches.keypoints[1].push_back(new_keypoints[1][right_indices[i]]);
         }

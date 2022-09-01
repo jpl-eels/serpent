@@ -100,7 +100,7 @@ public:
     LRKeyPointMatches process(const cv::Mat& left_image, const cv::Mat& right_image,
             std::optional<std::reference_wrapper<Statistics>> stats = std::nullopt,
             std::optional<std::reference_wrapper<IntermediateImages>> intermediate_images = std::nullopt);
-    
+
     void set_stereo_distance_filter(const cv::Ptr<StereoDistanceFilter> stereo_distance_filter);
 
 private:
@@ -121,7 +121,8 @@ private:
      * @return LRKeyPointMatches
      */
     LRKeyPointMatches create_filtered_new_matches(const LRKeyPoints& new_keypoints,
-            const std::vector<int>& right_indices, const std::vector<double>& stereo_match_costs);
+            const std::vector<int>& right_indices, const std::vector<double>& stereo_match_costs,
+            const bool create_match_ids);
 
     /**
      * @brief Extract keypoints from an image using the detector.
