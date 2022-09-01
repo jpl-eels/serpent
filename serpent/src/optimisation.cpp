@@ -143,7 +143,7 @@ Optimisation::Optimisation()
         gm->set_named_key("stereo", -1);
 
         // Stereo reference frame
-        const std::string stereo_left_cam_frame = nh.param<std::string>("stereo_factors/left_cam_frame_id", "stereo");
+        const std::string stereo_left_cam_frame = nh.param<std::string>("stereo_factors/left_cam_frame", "stereo");
         gm->set_body_to_stereo_left_cam_pose(
                 eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame(stereo_left_cam_frame)));
 
@@ -328,8 +328,8 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     // Publish imu estimated transform
     auto imu_transform = boost::make_shared<geometry_msgs::TransformStamped>();
     imu_transform->header.stamp = gm->timestamp("imu");  // Timestamp must be the child frame's for synchronisation
-    imu_transform->header.frame_id = "lidar_i-1";        // i-1
-    imu_transform->child_frame_id = "lidar";             // i
+    imu_transform->header.frame_id = body_frames.frame_id("lidar") + "_i-1";  // i-1
+    imu_transform->child_frame_id = body_frames.frame_id("lidar");            // i
     eigen_ros::to_ros(imu_transform->transform, s2s_pose_lidar);
     imu_transform_publisher.publish(imu_transform);
 
@@ -441,7 +441,7 @@ void Optimisation::optimise_and_publish(const int key) {
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
     optimised_odometry_msg->header.frame_id = "map";
-    optimised_odometry_msg->child_frame_id = body_frames.body_frame();
+    optimised_odometry_msg->child_frame_id = body_frames.body_frame_id();
     auto pose = gm->pose(key);
     ROS_INFO_STREAM("Pose:\n" << pose.matrix());
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, pose.translation());
@@ -473,7 +473,7 @@ void Optimisation::optimise_and_publish(const int key) {
     imu_biases_publisher.publish(imu_bias_msg);
 
     // Publish optimised path and changed path
-    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key, body_frames.body_frame()));
+    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key, body_frames.body_frame_id()));
     auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path, isam2_result));
     path_publisher.publish(global_path);
     path_changes_publisher.publish(global_path_changes);

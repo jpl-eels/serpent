@@ -132,7 +132,7 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
         odometry->header.frame_id = "map";
-        odometry->child_frame_id = body_frames.body_frame();
+        odometry->child_frame_id = body_frames.body_frame_id();
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
         // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
@@ -157,7 +157,7 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     geometry_msgs::TransformStamped tf;
     tf.header.stamp = optimised_odometry_msg->header.stamp;
     tf.header.frame_id = "map";
-    tf.child_frame_id = body_frames.body_frame();
+    tf.child_frame_id = body_frames.body_frame_id();
     tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
     tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
     tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
@@ -273,7 +273,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, imu.angular_velocity, linear_twist_covariance,
                 imu.angular_velocity_covariance};
-        const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame()};
+        const eigen_ros::Odometry odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame_id()};
 
         // Publish initial state
         auto odometry_msg = boost::make_shared<nav_msgs::Odometry>();

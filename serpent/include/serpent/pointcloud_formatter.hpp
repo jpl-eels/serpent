@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
+#include <eigen_ros/body_frames.hpp>
+
 #include "serpent/sensor_point_types.hpp"
 
 namespace serpent {
@@ -26,6 +28,9 @@ private:
     // Time field enabled
     bool time_field_filter_enabled;
     float max_time_threshold;
+
+    // Body frames
+    const eigen_ros::BodyFrames body_frames;
 };
 
 }

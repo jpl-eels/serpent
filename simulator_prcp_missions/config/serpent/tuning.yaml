@@ -162,7 +162,7 @@ stereo_factors:
     welsch:
       c: 2.9846
       reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
-  left_cam_frame_id: "camera_front_left"
+  left_cam_frame: "camera_front_left"
   new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
