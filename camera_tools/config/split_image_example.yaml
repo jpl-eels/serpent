@@ -3,9 +3,9 @@
 # - rotate_acw: <0, 90, 180, 270>
 # - flip: "horiz", "vert", "both"
 images:
-  - topic: "/camera1/image_raw"
+  - topic: "/$(arg robot_namespace)/camera1/image_raw"
     frame_id: "camera1"
-    info_topic: "/camera1/camera_info"
+    info_topic: "/$(arg robot_namespace)/camera1/camera_info"
     region:
       u: 0
       v: 0
@@ -26,9 +26,9 @@ images:
       fy: 1.0
       cx: 400
       cy: 300
-  - topic: "/camera2/image_raw"
+  - topic: "/$(arg robot_namespace)/camera2/image_raw"
     frame_id: "camera2"
-    info_topic: "/camera2/camera_info"
+    info_topic: "/$(arg robot_namespace)/camera2/camera_info"
     region:
       u: 800
       v: 0
