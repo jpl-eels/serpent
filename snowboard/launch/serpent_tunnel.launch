@@ -9,7 +9,7 @@
         <arg name="mission"         value="tunnel"/>
 
         <!-- Playback -->
-        <arg name="rosbag_mission"  value="fixed_imu_prepared_2022-07-19-22-03-40"/>
+        <arg name="rosbag"          value="fixed_imu_prepared_2022-07-19-22-03-40.bag"/>
         <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/tunnel"/>
         <arg name="rate"            value="$(arg rate)"/>
         <arg name="start"           value="$(arg start)"/>

@@ -28,7 +28,7 @@
     <!-- Rosbag Playback Arguments-->
     <arg name="play_rosbag"                     default="false"/>
     <arg name="use_sim_time"                    default="$(arg play_rosbag)"/>
-    <arg name="rosbag_mission"                  default=""/>
+    <arg name="rosbag"                          default=""/>
     <arg name="rosbag_data_dir"                 default="$(env HOME)/data/"/>
     <arg name="rosbag_rate"                     default="1"/>
     <arg name="rosbag_start"                    default="0"/>
@@ -82,7 +82,7 @@
 
     <!-- Rosbag -->
     <include if="$(arg play_rosbag)" file="$(find serpent)/launch/rosbag.launch">
-        <arg name="mission"  value="$(arg rosbag_mission)"/>
+        <arg name="rosbag"   value="$(arg rosbag)"/>
         <arg name="data_dir" value="$(arg rosbag_data_dir)"/>
         <arg name="rate"     value="$(arg rosbag_rate)"/>
         <arg name="start"    value="$(arg rosbag_start)"/>

@@ -8,7 +8,7 @@
         <arg name="mission"         value="mammoth_outdoor"/>
 
         <!-- Playback -->
-        <arg name="rosbag_mission"  value="replaced_timestamps_2022-03-21-21-49-07"/>
+        <arg name="rosbag"          value="replaced_timestamps_2022-03-21-21-49-07.bag"/>
         <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/2022-03-21_image_imu_dataset"/>
         <arg name="rate"            value="$(arg rate)"/>
         <arg name="start"           value="$(arg start)"/>
