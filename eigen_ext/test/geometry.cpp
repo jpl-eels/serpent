@@ -126,13 +126,25 @@ TEST(transform_adjoint, rotation_only) {
 
 TEST(transform_adjoint, translation_only) {
     const Eigen::Isometry3d transform{Eigen::Translation<double, 3>{1.0, 2.0, 3.0}};
-    Eigen::Matrix<double, 6, 6> transform_adjoint = eigen_ext::transform_adjoint(transform);
+    const Eigen::Matrix<double, 6, 6> transform_adjoint = eigen_ext::transform_adjoint(transform);
     check_transform_adjoint_blocks(transform_adjoint, transform);
 }
 
 TEST(transform_adjoint, transform) {
     const Eigen::Isometry3d transform = eigen_ext::to_transform(Eigen::Translation<double, 3>{1.0, 2.0, 3.0},
             Eigen::Quaterniond(0.17, 0.68, 0.55, 0.14).normalized());
-    Eigen::Matrix<double, 6, 6> transform_adjoint = eigen_ext::transform_adjoint(transform);
+    const Eigen::Matrix<double, 6, 6> transform_adjoint = eigen_ext::transform_adjoint(transform);
     check_transform_adjoint_blocks(transform_adjoint, transform);
+}
+
+TEST(change_relative_transform_frame, check_against_alternate_method) {
+    const Eigen::Quaterniond q = Eigen::Quaterniond{0.7, 0.123, -0.2, -0.62}.normalized();
+    const Eigen::Translation3d t{5.6, 9.2, -5.5};
+    const Eigen::Isometry3d T_rel = eigen_ext::to_transform(t, q);
+    const Eigen::Quaterniond q_r = Eigen::Quaterniond{0.1, 0.55, 0.8, -0.622}.normalized();
+    const Eigen::Translation3d t_r{-15.1, 0.55, 2.8};
+    const Eigen::Isometry3d T_rigid = eigen_ext::to_transform(t_r, q_r);
+    const Eigen::Isometry3d T_method = eigen_ext::change_relative_transform_frame(T_rel, T_rigid);
+    const Eigen::Isometry3d T_alt = (T_rigid * (T_rigid * T_rel).inverse()).inverse();
+    EXPECT_TRUE(T_method.isApprox(T_alt));
 }
