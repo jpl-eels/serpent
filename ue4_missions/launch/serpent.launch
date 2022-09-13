@@ -1,7 +1,7 @@
 <launch>
     <!-- Playback -->
     <arg name="mission"         default="icy_surface"/>
-    <arg name="rosbag_mission"  default="replaced_gt_replaced_topic_names_replaced_frame_ids_ue4_icy_surface_0"/>
+    <arg name="rosbag"          default="replaced_gt_replaced_topic_names_replaced_frame_ids_ue4_icy_surface_0.bag"/>
     <arg name="data_dir"        default="$(env HOME)/data/ue4_pedro"/>
     <arg name="rate"            default="1"/>
     <arg name="start"           default="0"/>
@@ -45,7 +45,7 @@
         <arg name="rviz"                            value="false"/>
         <arg name="rqt"                             value="true"/>
         <arg name="play_rosbag"                     value="true"/>
-        <arg name="rosbag_mission"                  value="$(arg rosbag_mission)"/>
+        <arg name="rosbag"                          value="$(arg rosbag)"/>
         <arg name="rosbag_data_dir"                 value="$(arg data_dir)"/>
         <arg name="rosbag_rate"                     value="$(arg rate)"/>
         <arg name="rosbag_start"                    value="$(arg start)"/>

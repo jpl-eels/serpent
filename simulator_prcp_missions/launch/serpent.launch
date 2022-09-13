@@ -1,6 +1,6 @@
 <launch>
     <!-- Playback -->
-    <arg name="mission"  default="surface_traverse_1"/>
+    <arg name="mission"  default="surface_ellipse_2"/>
     <arg name="data_dir" default="$(env HOME)/data/simulator_prcp_gazebo"/>
     <arg name="rate"     default="1"/>
 
@@ -28,7 +28,7 @@
         <arg name="rviz"                    value="false"/>
         <arg name="rqt"                     value="true"/>
         <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag_mission"          value="$(arg mission)"/>
+        <arg name="rosbag"                  value="$(arg mission).bag"/>
         <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
         <arg name="rosbag_rate"             value="$(arg rate)"/>
         <arg name="use_gdb"                 value="$(arg use_gdb)"/>

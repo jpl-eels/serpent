@@ -1,14 +1,15 @@
 <launch>
     <!-- Arguments -->
-    <arg name="image_topic" default="/image"/>
-    <arg name="config_file" default="$(find camera_tools)/config/split_image_example.yaml"/>
-    <arg name="node_name"   default="split_image"/>
+    <arg name="robot_namespace" default=""/>
+    <arg name="image_topic"     default="/image"/>
+    <arg name="config_file"     default="$(find camera_tools)/config/split_image_example.yaml"/>
+    <arg name="node_name"       default="split_image"/>
 
     <node pkg="camera_tools" type="split_image" name="$(arg node_name)" output="screen">
         <!-- Topics -->
         <remap from="~input/image" to="$(arg image_topic)"/>
 
         <!-- Configuration -->
-        <rosparam command="load" file="$(arg config_file)"/>
+        <rosparam command="load" file="$(arg config_file)" subst_value="true"/>
     </node>
 </launch>

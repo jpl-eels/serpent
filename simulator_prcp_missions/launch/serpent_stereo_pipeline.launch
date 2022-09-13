@@ -21,7 +21,7 @@
         <arg name="use_gdb"                 value="false"/>
 
         <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag_mission"          value="$(arg mission)"/>
+        <arg name="rosbag"                  value="$(arg mission).bag"/>
         <arg name="rosbag_data_dir"         value="$(env HOME)/data/simulator_prcp_gazebo"/>
         <arg name="rosbag_rate"             value="1"/>
         <arg name="rosbag_start"            value="0"/>

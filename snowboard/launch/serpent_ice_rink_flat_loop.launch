@@ -7,7 +7,7 @@
         <arg name="mission"         value="ice_rink"/>
 
         <!-- Playback -->
-        <arg name="rosbag_mission"  value="replaced_timestamps_imu_prepared_2022-07-13-21-57-40"/>
+        <arg name="rosbag"          value="replaced_timestamps_imu_prepared_2022-07-13-21-57-40.bag"/>
         <arg name="data_dir"        value="$(env HOME)/data/jpl_snowboard/ice_rink_data"/>
         <arg name="rate"            value="$(arg rate)"/>
         <arg name="start"           value="$(arg start)"/>

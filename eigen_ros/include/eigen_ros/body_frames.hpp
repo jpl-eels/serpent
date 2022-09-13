@@ -4,7 +4,10 @@
 #include <ros/ros.h>
 
 #include <Eigen/Geometry>
+#include <map>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace eigen_ros {
 
@@ -34,21 +37,29 @@ class BodyFrames {
 public:
     /**
      * @brief BodyFrames reads from the ros-parameter server, looking for reference frames listed under body_frames in
-     * the following format:
+     * the following format (<> indicates replacement by the user, [] indicates optional):
      *
      *  body_frames:
-     *      body_frame_name:
-     *          my_named_frame:
-     *              translation:
-     *                  x: <double>
-     *                  y: <double>
-     *                  z: <double>
-     *              rotation:
-     *                  w: <double>
-     *                  x: <double>
-     *                  y: <double>
-     *                  z: <double>
-     *          ...
+     *      <body_frame_name>:
+     *          [frame_id]: <frame_id:string>
+     *          [frames]:
+     *              <named_frame>:
+     *                  [frame_id]: <frame_id:string>
+     *                  [translation]:
+     *                      x: <x:double>
+     *                      y: <y:double>
+     *                      z: <z:double>
+     *                  [rotation]:
+     *                      w: <w:double>
+     *                      x: <x:double>
+     *                      y: <y:double>
+     *                      z: <z:double>
+     *                  [frames]:
+     *                      <nested_frame>:
+     *                          ...
+     *              ...
+     *
+     * The frame_id defaults to <named_frame> if not set.
      */
     explicit BodyFrames();
 
@@ -60,12 +71,28 @@ public:
     std::string body_frame() const;
 
     /**
+     * @brief Get frame_id for body frame
+     *
+     * @return std::string
+     */
+    std::string body_frame_id() const;
+
+    /**
      * @brief Look up the transform from the body frame to the named frame, T_B^F.
      *
      * @param frame
      * @return Eigen::Isometry3d
      */
     Eigen::Isometry3d body_to_frame(const std::string& frame) const;
+
+    /**
+     * @brief Get the frame id associated with a frame. If no frame_id field was specified in the config, then the
+     * name is the same.
+     *
+     * @param frame
+     * @return std::string
+     */
+    std::string frame_id(const std::string& frame) const;
 
     /**
      * @brief Look up the transform from the named frame to the body frame, T_F^B. This is equivalent to the inverse of
@@ -102,11 +129,14 @@ private:
 
     std::string body_frame_;
 
+    // Frame ids
+    std::unordered_map<std::string, std::string> frame_ids;
+
     // Body-to-frame transforms
-    std::map<std::string, Eigen::Isometry3d> body_to_frame_map;
+    std::unordered_map<std::string, Eigen::Isometry3d> body_to_frame_map;
 
     // Frame-to-body transforms (inverse)
-    std::map<std::string, Eigen::Isometry3d> frame_to_body_map;
+    std::unordered_map<std::string, Eigen::Isometry3d> frame_to_body_map;
 };
 
 }

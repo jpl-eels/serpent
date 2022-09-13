@@ -51,7 +51,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr Mapping::extract_past_frames(const std::s
     }
     auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
     pointcloud->header.stamp = pcl_conversions::toPCL(body_frame.timestamp);
-    pointcloud->header.frame_id = "lidar";
+    pointcloud->header.frame_id = body_frames.frame_id("lidar");
     // T_{L_{i-1}}^W = (T_W^{L_{i-1}})^-1
     Eigen::Isometry3d body_frame_inv = to_transform(body_frame.data).inverse();
     for (std::size_t i = 0; i < n; ++i) {

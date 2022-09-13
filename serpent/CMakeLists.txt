@@ -37,8 +37,8 @@ add_message_files(
     FILES
         ImuArray.msg
         ImuBiases.msg
-        StereoLandmark.msg
-        StereoLandmarks.msg
+        StereoFeature.msg
+        StereoFeatures.msg
         StereoTrackerStatistics.msg
 )
 

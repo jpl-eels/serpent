@@ -29,7 +29,7 @@
         <arg name="use_gdb"                 value="false"/>
 
         <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag_mission"          value="replaced_timestamps_2022-03-21-21-49-07"/>
+        <arg name="rosbag"                  value="replaced_timestamps_2022-03-21-21-49-07.bag"/>
         <arg name="rosbag_data_dir"         value="$(env HOME)/data/jpl_snowboard/2022-03-21_image_imu_dataset"/>
         <arg name="rosbag_rate"             value="1"/>
         <arg name="rosbag_start"            value="0"/>

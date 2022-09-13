@@ -4,15 +4,14 @@ project(pointcloud_tools)
 # Load catkin and all dependencies required for this package
 find_package(catkin REQUIRED COMPONENTS
     message_generation
-    open3d_conversions
     pcl_conversions
+    pcl_ros
     roscpp
     sensor_msgs
 
     eigen_ext
 )
 find_package(PCL REQUIRED)
-find_package(Open3D REQUIRED)
 
 add_service_files(
     DIRECTORY srv
@@ -32,21 +31,19 @@ catkin_package(
         include
     CATKIN_DEPENDS
         message_runtime
-        open3d_conversions
         pcl_conversions
+        pcl_ros
         roscpp
         sensor_msgs
 
         eigen_ext
     LIBRARIES ${LIBRARY_NAME}
     DEPENDS
-        Open3D
         PCL
 )
 
 set(SYSTEM_INCLUDE_DIRS
     ${catkin_INCLUDE_DIRS}
-    ${Open3D_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
@@ -56,7 +53,6 @@ set(INCLUDE_DIRS
 
 set(LIBRARIES
     ${catkin_LIBRARIES}
-    ${Open3D_LIBRARIES}
     ${PCL_LIBRARIES}
 )
 
@@ -105,28 +101,6 @@ target_include_directories(pointcloud_file_converter PUBLIC
 )
 
 target_link_libraries(pointcloud_file_converter
-    ${LIBRARIES}
-)
-
-# Range filter
-add_executable(pointcloud_range_filter
-    src/pointcloud_range_filter_main.cpp
-    src/pointcloud_range_filter.cpp
-)
-
-add_dependencies(pointcloud_range_filter
-    ${catkin_EXPORTED_TARGETS}
-)
-
-target_include_directories(pointcloud_range_filter PUBLIC SYSTEM
-    ${SYSTEM_INCLUDE_DIRS}
-)
-
-target_include_directories(pointcloud_range_filter PUBLIC
-    ${INCLUDE_DIRS}
-)
-
-target_link_libraries(pointcloud_range_filter
     ${LIBRARIES}
 )
 

@@ -8,11 +8,11 @@ prior_noise:
 imu_noise:
   integration: 1.0e-4
   integration_bias: 3.0e-3
-  accelerometer_bias: 4.33e-03
-  gyroscope_bias: 2.66e-05
+  accelerometer_bias: 5.0e-06
+  gyroscope_bias: 2.4e-07
   overwrite: true # These imu noise values will only be used if overwrite set to true
-  accelerometer: 1.86e-03
-  gyroscope: 1.87e-04
+  accelerometer: 4.0e-04
+  gyroscope: 2.424e-05
 
 # Deskew configuration
 deskew:
@@ -32,15 +32,15 @@ isam2:
   relinearize_threshold: 0.1
   relinearize_skip: 10
   enable_relinearization: true
-  evaluate_nonlinear_error: false
+  evaluate_nonlinear_error: true
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
 # Optimisation
 optimisation:
   factors:
-    imu: true
-    registration: true
+    imu: false
+    registration: false
     stereo: true
 
 # Registration
@@ -135,7 +135,34 @@ stereo_factors:
     left_x: 5.0
     right_x: 5.0
     y: 10.0
-  left_cam_frame_id: "camera_front_left"
+  robust:
+    enabled: true
+    type: "huber" # Options: cauchy, dcs, fair, geman_mcclure, huber, l2_with_dead_zone, null (no config), tukey, welsch
+    cauchy:
+      k: 0.1
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    dcs:
+      c: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    fair:
+      c: 1.3998
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    geman_mcclure:
+      c: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    huber:
+      k: 1.345
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    l2_with_dead_zone:
+      k: 1.0
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    tukey:
+      c: 4.6851
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+    welsch:
+      c: 2.9846
+      reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
+  left_cam_frame: "camera_front_left"
   new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
@@ -168,6 +195,10 @@ stereo_factors:
       sigma: 1.6
   stereo_match_filter:
     vertical_pixel_threshold: 1.0
+  stereo_distance_filter:
+    enabled: true
+    max_distance: 15.0
+    min_distance: 1.0
   sparse_optical_flow:
     type: "PyrLK" # Options: PyrLK (Pyramid Lucas-Kanade), TODO: RLOF
     pyrlk:

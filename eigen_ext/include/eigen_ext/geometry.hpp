@@ -12,6 +12,9 @@ namespace eigen_ext {
  * @brief Given a relative transform between any two timestamps in the reference frame of A, and a rigid body transform
  * from some other fixed frame B on the body to A, this function computes the relative transform in the reference frame
  * of B.
+ *      T_{B1}^{B2} = T_{B1}^{A1} T_{A1}^{A2} T_{A2}^{B2} =  T_B^A T_{A1}^{A2} T_A^B 
+ * 
+ * Previously:
  *      T_{B1}^{B2} = (T_{B2}^{A2} (T_{B1}^{A1} T_{A1}^{A2})^-1 )^-1 = (T_B^A (T_B^A T_{A1}^{A2})^-1 )^-1
  *
  * @tparam Scalar
@@ -23,6 +26,12 @@ template<typename Scalar>
 Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
         const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
         const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A);
+
+template<typename Scalar>
+Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_A_B);
 
 /**
  * @brief Given a transform T_a^b (i.e. b in the reference frame of a) and the twist in reference frame of b, compute
@@ -127,7 +136,16 @@ template<typename Scalar>
 Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
         const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
         const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A) {
-    return (rigid_transform_B_A * (rigid_transform_B_A * relative_transform_A).inverse()).inverse();
+    // return (rigid_transform_B_A * (rigid_transform_B_A * relative_transform_A).inverse()).inverse();
+    return change_relative_transform_frame(relative_transform_A, rigid_transform_B_A, rigid_transform_B_A.inverse());
+}
+
+template<typename Scalar>
+Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& relative_transform_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_B_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& rigid_transform_A_B) {
+    return rigid_transform_B_A * relative_transform_A * rigid_transform_A_B;
 }
 
 template<typename Scalar, int Dim>

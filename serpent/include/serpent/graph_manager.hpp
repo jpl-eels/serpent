@@ -59,8 +59,6 @@ private:
  */
 class GraphManager {
 public:
-    void add_stereo_landmark_measurements(const int key, const std::map<int, gtsam::StereoPoint2>& landmarks);
-
     void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
     void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise);
@@ -73,11 +71,24 @@ public:
     void create_prior_velocity_factor(const int key, const gtsam::Velocity3& velocity, gtsam::SharedNoiseModel noise);
 
     /**
+     * @brief Create the stereo factors and values for a specified key. Requires that:
+     *  - the pose has been set for the specified key
+     *
+     * Throws std::runtime_error otherwise.
+     *
+     * @param key
+     * @param features
+     */
+    void create_stereo_factors_and_values(const int key, const std::map<int, gtsam::StereoPoint2>& features);
+
+    /**
      * @brief Get all factors between two key bounds inclusive.
      *
      * The key of a unary factors (e.g. priors) is equal to the key of the state.
      *
      * The key of a binary factors (e.g. between factors) is equal to the key of the second state.
+     *
+     * The key of landmark factors is the key at which they were added.
      *
      * @param first
      * @param last
@@ -85,9 +96,32 @@ public:
      */
     gtsam::NonlinearFactorGraph factors(const int first, const int last) const;
 
+    /**
+     * @brief Potentially slow function to search through all factors and find those that contain the gtsam key.
+     *
+     * This is a debugging function, see factors() for standard use.
+     *
+     * @param key
+     * @return gtsam::NonlinearFactorGraph
+     */
+    gtsam::NonlinearFactorGraph factors_for_key(const gtsam::Key key);
+
+    /**
+     * @brief Returns true if the pose has been set for the specified key.
+     *
+     * @param key
+     * @return true
+     * @return false
+     */
+    bool has_pose(const int key) const;
+
+    bool has_pose(const std::string& name, const int offset = 0) const;
+
+    bool has_stereo_landmark(const int id) const;
+
     gtsam::imuBias::ConstantBias imu_bias(const int key) const;
 
-    gtsam::imuBias::ConstantBias imu_bias(const std::string name, const int offset = 0) const;
+    gtsam::imuBias::ConstantBias imu_bias(const std::string& name, const int offset = 0) const;
 
     /**
      * @brief Increment a named key.
@@ -104,6 +138,13 @@ public:
      */
     int key(const std::string& name, const int offset = 0) const;
 
+    /**
+     * @brief Return the smallest key value of the registered named keys.
+     *
+     * @return int
+     */
+    int minimum_key() const;
+
     gtsam::NavState navstate(const int key) const;
 
     gtsam::NavState navstate(const std::string name, const int offset = 0) const;
@@ -111,6 +152,11 @@ public:
     gtsam::Pose3 pose(const int key) const;
 
     gtsam::Pose3 pose(const std::string name, const int offset = 0) const;
+
+    void print_errors(const double min_error) const;
+
+    void save(const std::string& file_prefix,
+            const gtsam::GraphvizFormatting& formatting = gtsam::GraphvizFormatting{}) const;
 
     /**
      * @brief Convenience function that returns the state associated with a particular key value.
@@ -157,7 +203,7 @@ public:
 
     void set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration);
 
-    void set_stereo_measurement_covariance(gtsam::SharedNoiseModel covariance);
+    void set_stereo_noise_model(gtsam::SharedNoiseModel noise_model);
 
     void set_timestamp(const int key, const ros::Time& timestamp);
 
@@ -169,12 +215,22 @@ public:
 
     gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
 
+    gtsam::Point3 stereo_landmark(const int id) const;
+
+    /**
+     * @brief Get the stereo landmarks for a particular key. A key of -1 returns the stereo landmarks for all keys.
+     *
+     * @param key
+     * @return std::map<int, gtsam::Point3>
+     */
+    std::map<int, gtsam::Point3> stereo_landmarks(const int key = -1) const;
+
     const ros::Duration time_between(const int key1, const int key2) const;
 
     const ros::Duration time_between(const std::string& key1_name, const std::string& key2_name,
             const int key1_offset = 0, const int key2_offset = 0) const;
 
-    const std::vector<ros::Time>& timestamps() const;
+    const std::map<int, ros::Time>& timestamps() const;
 
     /**
      * @brief Get the timestamp associated with a particular key value.
@@ -209,6 +265,21 @@ public:
      */
     gtsam::Values values(const int first, const int last) const;
 
+    /**
+     * @brief Return a reference to all values
+     *
+     * @return const gtsam::Values&
+     */
+    const gtsam::Values& values() const;
+
+    /**
+     * @brief Get a value for a known gtsam key.
+     *
+     * @param key
+     * @return gtsam::Value
+     */
+    const gtsam::Value& value(const gtsam::Key key) const;
+
     gtsam::Velocity3 velocity(const int key) const;
 
     gtsam::Velocity3 velocity(const std::string name, const int offset = 0) const;
@@ -216,14 +287,16 @@ public:
 protected:
     void add_factor(const int key, const boost::shared_ptr<gtsam::NonlinearFactor>& factor);
 
+    gtsam::NonlinearFactorGraph all_factors() const;
+
     template<typename ValueType>
     void set(const gtsam::Key key, const ValueType& value);
 
     // Registered keys
     std::map<std::string, int> keys;
 
-    // All Timestamps (index = key)
-    std::vector<ros::Time> timestamps_;
+    // All Timestamps (key -> time)
+    std::map<int, ros::Time> timestamps_;
 
     // Stereo Calibration
     gtsam::Cal3_S2Stereo::shared_ptr K;
@@ -231,17 +304,28 @@ protected:
     // Body to Stereo Left Cam Pose
     boost::optional<gtsam::Pose3> body_to_stereo_left_cam;
 
-    // Stereo Measurement Covariance
-    gtsam::SharedNoiseModel stereo_measurement_covariance;
+    // Stereo Measurement Noise Model
+    gtsam::SharedNoiseModel stereo_noise_model;
 
-    // Stereo Landmarks [key = key, value = map[key = landmark id, value = landmark]]
-    std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_landmarks;
+    // Stereo Features [key = key, value = map[key = id, value = feature]]
+    std::map<int, std::map<int, gtsam::StereoPoint2>> stereo_features;
+
+    // Stereo Landmark Ids added to values [key = key when added, value = ids]
+    std::map<int, std::vector<int>> stereo_landmark_ids;
 
     // Values
     gtsam::Values values_;
 
-    // Factors (index = key)
-    std::vector<gtsam::NonlinearFactorGraph> factors_;
+    /**
+     * @brief Factors (key -> graph of factors)
+     *
+     * Contains:
+     * - robot state to robot state factors
+     * - prior factors
+     * - stereo factors (created at that key, which may include factors connecting a landmark with a previous robot
+     *      state)
+     */
+    std::map<int, gtsam::NonlinearFactorGraph> factors_;
 };
 
 class ISAM2GraphManager : public GraphManager {
@@ -263,11 +347,13 @@ public:
      */
     int opt_key();
 
-    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key);
+    Eigen::MatrixXd covariance(const gtsam::Key key) const;
 
-    Eigen::Matrix<double, 6, 6> pose_covariance(const int key);
+    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
 
-    Eigen::Matrix3d velocity_covariance(const int key);
+    Eigen::Matrix<double, 6, 6> pose_covariance(const int key) const;
+
+    Eigen::Matrix3d velocity_covariance(const int key) const;
 
 private:
     // Optimiser

@@ -43,18 +43,30 @@ BodyFrames::BodyFrames()
     }
     XmlRpc::XmlRpcValue::const_iterator body_frame_it = body_frames.begin();
     body_frame_ = body_frame_it->first;
+    frame_ids.emplace(body_frame_,
+            body_frame_it->second.hasMember("frame_id") ? std::string(body_frame_it->second["frame_id"]) : body_frame_);
     if (body_frame_it->second.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
         throw std::runtime_error("body_frame was not a struct");
     }
-    process_frames(body_frame_it->second, Eigen::Isometry3d::Identity());
+    if (body_frame_it->second.hasMember("frames")) {
+        process_frames(body_frame_it->second["frames"], Eigen::Isometry3d::Identity());
+    }
 }
 
 std::string BodyFrames::body_frame() const {
     return body_frame_;
 }
 
+std::string BodyFrames::body_frame_id() const {
+    return frame_id(body_frame());
+}
+
 Eigen::Isometry3d BodyFrames::body_to_frame(const std::string& frame) const {
     return body_to_frame_map.at(frame);
+}
+
+std::string BodyFrames::frame_id(const std::string& frame) const {
+    return frame_ids.at(frame);
 }
 
 Eigen::Isometry3d BodyFrames::frame_to_body(const std::string& frame) const {
@@ -76,6 +88,7 @@ std::vector<std::string> BodyFrames::frames() const {
 void BodyFrames::process_frames(const XmlRpc::XmlRpcValue& frames, const Eigen::Isometry3d& prepend_transform) {
     for (XmlRpc::XmlRpcValue::const_iterator it = frames.begin(); it != frames.end(); ++it) {
         const std::string frame = it->first;
+        frame_ids.emplace(frame, it->second.hasMember("frame_id") ? std::string(it->second["frame_id"]) : frame);
         const Eigen::Isometry3d transform = prepend_transform * transform_from_node(it->second);
         if (!body_to_frame_map.emplace(frame, transform).second) {
             throw std::runtime_error("failed to add body-to-frame transform for frame \'" + frame + "\'");

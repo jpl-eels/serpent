@@ -11,8 +11,8 @@ BodyFramesTf::BodyFramesTf() {
     for (const std::string& frame : body_frames.frames()) {
         geometry_msgs::TransformStamped transform;
         transform.header.stamp = ros::Time(0);
-        transform.header.frame_id = body_frames.body_frame();
-        transform.child_frame_id = frame;
+        transform.header.frame_id = body_frames.body_frame_id();
+        transform.child_frame_id = body_frames.frame_id(frame);
         eigen_ros::to_ros(transform.transform, body_frames.body_to_frame(frame));
         transforms.push_back(transform);
     }

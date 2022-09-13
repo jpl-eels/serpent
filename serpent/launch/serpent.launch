@@ -18,19 +18,17 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
-    <arg name="rqt_stereo"                      default="true"/>
+    <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
     <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
-    <!-- <env name="ROSCONSOLE_FORMAT"
-            value="[${severity}] [${time}] [${node}] [${file}/${function}:${line}]: ${message}"/> -->
 
     <!-- Rosbag Playback Arguments-->
     <arg name="play_rosbag"                     default="false"/>
     <arg name="use_sim_time"                    default="$(arg play_rosbag)"/>
-    <arg name="rosbag_mission"                  default=""/>
+    <arg name="rosbag"                          default=""/>
     <arg name="rosbag_data_dir"                 default="$(env HOME)/data/"/>
     <arg name="rosbag_rate"                     default="1"/>
     <arg name="rosbag_start"                    default="0"/>
@@ -84,7 +82,7 @@
 
     <!-- Rosbag -->
     <include if="$(arg play_rosbag)" file="$(find serpent)/launch/rosbag.launch">
-        <arg name="mission"  value="$(arg rosbag_mission)"/>
+        <arg name="rosbag"   value="$(arg rosbag)"/>
         <arg name="data_dir" value="$(arg rosbag_data_dir)"/>
         <arg name="rate"     value="$(arg rosbag_rate)"/>
         <arg name="start"    value="$(arg rosbag_start)"/>

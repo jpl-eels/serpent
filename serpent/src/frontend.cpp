@@ -112,7 +112,9 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
 
         // Calculate current state from previous state
         const gtsam::NavState state = preintegrated_imu->predict(world_state, imu_biases);
-        /* TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        /*
+        // TODO: Combine optimised odometry covariances (in world_odometry) with state_covariance from pre-integration
+        // NOTE: optimised odometry covariance is disabled for stereo factors
         const gtsam::Matrix15 state_covariance = preintegrated_imu->preintMeasCov(); // rot, pos, vel, accel, gyro
         const Eigen::Matrix<double, 6, 6> pose_covariance = state_covariance.block<6, 6>(0, 0);
         const Eigen::Matrix3d linear_velocity_covariance = state_covariance.block<3, 3>(6, 6);
@@ -120,8 +122,9 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         twist_covariance << imu.angular_velocity_covariance, Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
                 linear_velocity_covariance;
         */
-        ROS_WARN_ONCE("TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even"
-                      " possible? A rotation may be a good approximation.");
+        ROS_WARN_ONCE(
+                "TODO FIX: angular velocity must be converted from IMU frame to body frame - is this even possible? A "
+                "rotation may be a good approximation.");
         const Eigen::Vector3d angular_velocity =
                 body_frames.body_to_frame("imu").rotation() * (imu.angular_velocity + imu_biases.gyroscope());
 
@@ -129,7 +132,7 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
         odometry->header.frame_id = "map";
-        odometry->child_frame_id = body_frames.body_frame();
+        odometry->child_frame_id = body_frames.body_frame_id();
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
         // eigen_ros::to_ros(odometry->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
@@ -154,7 +157,7 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     geometry_msgs::TransformStamped tf;
     tf.header.stamp = optimised_odometry_msg->header.stamp;
     tf.header.frame_id = "map";
-    tf.child_frame_id = body_frames.body_frame();
+    tf.child_frame_id = body_frames.body_frame_id();
     tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
     tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
     tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
@@ -276,7 +279,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, pc_start_imu.angular_velocity, linear_twist_covariance,
                 pc_start_imu.angular_velocity_covariance};
-        world_odometry = eigen_ros::Odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame()};
+        world_odometry = eigen_ros::Odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame_id()};
 
         // Set world state so first deskew is valid (TODO: clean up code duplication)
         world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
@@ -346,7 +349,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
         // Transform skew_transform from body frame to lidar frame
         skew_transform = eigen_ext::change_relative_transform_frame(skew_transform, body_frames.body_to_frame("lidar"));
-        
+
         // Deskew configuration
         skew_transform = eigen_ext::to_transform(
                 (deskew_translation ? skew_transform.translation() : Eigen::Vector3d{0.0, 0.0, 0.0}),

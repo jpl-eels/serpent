@@ -2,10 +2,10 @@
 #define SERPENT_OPTIMISATION_HPP
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <ros/ros.h>
 
 #include <eigen_ros/body_frames.hpp>
@@ -13,12 +13,18 @@
 #include <mutex>
 
 #include "serpent/ImuArray.h"
-#include "serpent/StereoLandmarks.h"
+#include "serpent/StereoFeatures.h"
 #include "serpent/graph_manager.hpp"
 
 namespace serpent {
 
-void from_ros(const std::vector<serpent::StereoLandmark>& msgs, std::map<int, gtsam::StereoPoint2>& landmarks);
+void from_ros(const std::vector<serpent::StereoFeature>& msgs, std::map<int, gtsam::StereoPoint2>& features);
+
+void to_pcl(const std::map<int, gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud);
+
+void to_pcl(const std::vector<gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud);
+
+gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std::string& reweight_scheme);
 
 class Optimisation {
 public:
@@ -35,9 +41,9 @@ private:
     /**
      * @brief Add stereo data to graph manager.
      *
-     * @param landmarks
+     * @param features
      */
-    void add_stereo_factors(const serpent::StereoLandmarks::ConstPtr& landmarks);
+    void add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features);
 
     /**
      * @brief Integrate IMU measurements between current and next graph node, add preintegrated IMU factor to the graph
@@ -63,6 +69,17 @@ private:
     void optimise_and_publish(const int key);
 
     /**
+     * @brief Perform a number of operations when a crash is detected, potentially including:
+     *  - printing information about factors
+     *  - saving graph data to file
+     * 
+     * @param ex 
+     */
+    void precrash_operations(const std::exception& ex);
+
+    void print_information_at_key(const gtsam::Key key);
+
+    /**
      * @brief Add transform factor between current and next graph node to graph, optimise, and publish results.
      *
      * Only called if stereo factors disabled and registration factors enabled.
@@ -72,24 +89,13 @@ private:
     void registration_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
 
     /**
-     * @brief Combines registration_callback and stereo_landmarks_callback together.
-     *
-     * Called if both registration and stereo factors enabled.
-     *
-     * @param registration
-     * @param landmarks
-     */
-    void registration_stereo_landmarks_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& registration,
-            const serpent::StereoLandmarks::ConstPtr& landmarks);
-
-    /**
-     * @brief Add landmarks and generic stereo factors to graph, optimise, and publish results.
+     * @brief Add features and generic stereo factors to graph, optimise, and publish results.
      *
      * Only called if stereo factors enabled and registration factors disabled.
      *
-     * @param landmarks
+     * @param features
      */
-    void stereo_landmarks_callback(const serpent::StereoLandmarks::ConstPtr& landmarks);
+    void stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features);
 
     /**
      * @brief Update velocity values according to linear twist approximation between poses. Useful when IMU isn't
@@ -106,13 +112,11 @@ private:
     ros::Publisher optimised_odometry_publisher;
     ros::Publisher path_publisher;
     ros::Publisher path_changes_publisher;
+    ros::Publisher stereo_points_publisher;
     ros::Subscriber imu_s2s_subscriber;
     ros::Subscriber initial_odometry_subscriber;
     ros::Subscriber registration_subscriber;
-    ros::Subscriber stereo_landmarks_subscriber;
-    message_filters::Subscriber<geometry_msgs::PoseWithCovarianceStamped> registration_filter_subscriber;
-    message_filters::Subscriber<serpent::StereoLandmarks> stereo_landmarks_filter_subscriber;
-    message_filters::TimeSynchronizer<geometry_msgs::PoseWithCovarianceStamped, serpent::StereoLandmarks> opt_sync;
+    ros::Subscriber stereo_features_subscriber;
 
     //// Thread Management
     mutable std::mutex graph_mutex;
@@ -130,6 +134,9 @@ private:
 
     // Graph manager (tracks states, keys, factors, optimisation)
     std::unique_ptr<ISAM2GraphManager> gm;
+
+    //// Debugging
+    bool publish_stereo_points;
 };
 
 nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix);

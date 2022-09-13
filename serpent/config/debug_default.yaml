@@ -10,3 +10,12 @@ debug:
     publish_points: false
     rich_keypoints: false
     rich_matches: false
+
+  optimisation:
+    publish_stereo_points: false
+    on_crash:
+      save: false
+      print: true
+      print_options:
+        verbose: false
+        min_error: 0.0
