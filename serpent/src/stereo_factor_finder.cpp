@@ -124,7 +124,7 @@ void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string(
 
 pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline) {
-    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     pcl::PointXYZ pcl_point;
     pcl_point.x = point[0];
     pcl_point.y = point[1];
@@ -134,7 +134,7 @@ pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, c
 
 geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline) {
-    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     geometry_msgs::Point ros_point;
     ros_point.x = point[0];
     ros_point.y = point[1];
