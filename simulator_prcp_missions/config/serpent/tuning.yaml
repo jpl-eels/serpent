@@ -14,8 +14,8 @@ imu_noise:
   accelerometer: 4.0e-04
   gyroscope: 2.424e-05
 
-# Deskew configuration
-deskew:
+# Motion Distortion Correction
+mdc:
   translation: false
   rotation: false
 

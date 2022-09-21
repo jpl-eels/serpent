@@ -39,9 +39,9 @@ Frontend::Frontend()
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
             &Frontend::pointcloud_callback, this);
 
-    // Deskew
-    nh.param<bool>("deskew/translation", deskew_translation, false);
-    nh.param<bool>("deskew/rotation", deskew_rotation, false);
+    // Motion distortion correction
+    nh.param<bool>("mdc/translation", deskew_translation, false);
+    nh.param<bool>("mdc/rotation", deskew_rotation, false);
 
     // Stereo data
     nh.param<bool>("optimisation/factors/stereo", stereo_enabled, true);
@@ -98,7 +98,7 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         imu.angular_velocity_covariance = overwrite_gyroscope_covariance;
     }
 
-    // Save transformed IMU message to buffer for deskewing
+    // Save transformed IMU message to buffer for mdc
     std::lock_guard<std::mutex> guard(optimised_odometry_mutex);
     imu_mutex.lock();
     double dt = (imu.timestamp - last_preint_imu_timestamp).toSec();  // invalid but not used on 1st iteration
@@ -292,9 +292,9 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_INFO_STREAM("Sent initial odometry message");
         previous_pointcloud_start = pointcloud_start;
 
-        // Deskew transform
+        // Skew transform
         skew_transform = Eigen::Isometry3d::Identity();
-        ROS_WARN_ONCE("DESIGN DECISION: Deskew transform from initialisation procedure is missing. Using identity.");
+        ROS_WARN_ONCE("DESIGN DECISION: Skew transform from initialisation procedure is missing. Using identity.");
     }
 
     // Compute scan end time
