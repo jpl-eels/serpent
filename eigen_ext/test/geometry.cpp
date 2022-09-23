@@ -54,6 +54,20 @@ TEST(relative_transform, linear_rates_1) {
     EXPECT_TRUE(linear_velocity_out.isApprox(linear_velocity));
 }
 
+TEST(relative_transform, linear_rates_2) {
+    const Eigen::Vector3d start_position{0.5, -5.0, 0.0};
+    const Eigen::Isometry3d start_pose = eigen_ext::to_transform(Eigen::Translation<double, 3>{start_position},
+            Eigen::Quaterniond::Identity());
+    const Eigen::Vector3d end_position{2.0, 3.0, 4.0};
+    const Eigen::Isometry3d end_pose = eigen_ext::to_transform(Eigen::Translation<double, 3>{2.0, 3.0, 4.0},
+            Eigen::Quaterniond::Identity());
+    const double dt{5.0};
+    const Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(start_pose, end_pose, dt);
+    Eigen::Matrix<double, 6, 1> rates_reference;
+    rates_reference << Eigen::Vector3d::Zero(), (end_position - start_position) / dt;
+    EXPECT_TRUE(rates.isApprox(rates_reference));
+}
+
 TEST(relative_transform, transform_0) {
     const Eigen::Isometry3d I = Eigen::Isometry3d::Identity();
     const Eigen::Isometry3d pose =
