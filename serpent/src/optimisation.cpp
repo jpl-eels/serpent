@@ -396,6 +396,10 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
 }
 
 void Optimisation::optimise_and_publish(const int key) {
+    publish(key, optimise(key));
+}
+
+gtsam::ISAM2Result Optimisation::optimise(const int key) {
     // Optimise graph with iSAM2
     gtsam::ISAM2Result isam2_result;
     try {
@@ -420,7 +424,10 @@ void Optimisation::optimise_and_publish(const int key) {
         precrash_operations(ex);
         throw ex;
     }
+    return isam2_result;
+}
 
+void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result) {
     // Publish optimised pose
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
@@ -522,13 +529,18 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
     add_registration_factor(msg);
 
     // Optimise and publish
-    if (gm->minimum_key() == gm->key("reg")) {
-        optimise_and_publish(gm->key("reg"));
+    const int key = gm->key("reg");
+    if (gm->minimum_key() == key) {
+        // Optimise
+        const auto optimisation_result = optimise(key);
 
         // Update values that weren't optimised
         if (!imu_factors_enabled) {
             update_velocity_from_transforms("reg");
         }
+
+        // Publish
+        publish(key, optimisation_result);
     }
 }
 

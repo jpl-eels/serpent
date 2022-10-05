@@ -61,19 +61,34 @@ private:
     void initial_odometry_callback(const nav_msgs::Odometry::ConstPtr& msg);
 
     /**
-     * @brief Run optimisation and publish the ROS output (optimised odometry, IMU bias, global path and global path
-     * changes)
+     * @brief Wrapper function for optimise() and publish().
      *
      * @param key max key for optimisation
      */
     void optimise_and_publish(const int key);
 
     /**
+     * @brief Optimise the graph.
+     *
+     * @param key max key for optimisation
+     * @return gtsam::ISAM2Result
+     */
+    gtsam::ISAM2Result optimise(const int key);
+
+    /**
+     * @brief Publish the results (optimised odometry, IMU bias, global path and global path changes)
+     *
+     * @param key max key for optimisation
+     * @param isam2_result
+     */
+    void publish(const int key, const gtsam::ISAM2Result& isam2_result);
+
+    /**
      * @brief Perform a number of operations when a crash is detected, potentially including:
      *  - printing information about factors
      *  - saving graph data to file
-     * 
-     * @param ex 
+     *
+     * @param ex
      */
     void precrash_operations(const std::exception& ex);
 
