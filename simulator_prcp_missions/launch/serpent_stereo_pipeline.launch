@@ -22,7 +22,7 @@
 
         <arg name="play_rosbag"             value="true"/>
         <arg name="rosbag"                  value="$(arg mission).bag"/>
-        <arg name="rosbag_data_dir"         value="$(env HOME)/data/simulator_prcp_gazebo"/>
+        <arg name="rosbag_data_dir"         value="$(env HOME)/data/jpl/datasets/simulator_prcp_gazebo"/>
         <arg name="rosbag_rate"             value="1"/>
         <arg name="rosbag_start"            value="0"/>
         <arg name="rosbag_duration"         value=""/>
