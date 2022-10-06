@@ -567,13 +567,16 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
 }
 
 void Optimisation::update_velocity_from_transforms(const std::string& named_key) {
-    // Set velocity based on transforms
+    // Compute translation between poses in world frame
+    const Eigen::Isometry3d previous_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key, -1));
+    const Eigen::Isometry3d current_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key));
+    const Eigen::Vector3d translation = current_pose.translation() - previous_pose.translation();
+
+    // Comptue time between poses
     const double dt = gm->time_between(named_key, named_key, -1).toSec();
-    Eigen::Matrix<double, 6, 1> rates =
-            eigen_ext::linear_rates(eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key, -1)),
-                    eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key)), dt);
-    ROS_INFO_STREAM("Estimated twist [ang, lin] from transforms as:\n" << to_flat_string(rates));
-    const Eigen::Vector3d linear_velocity = rates.block<3, 1>(3, 0);
+
+    // Compute and set linear velocity
+    const Eigen::Vector3d linear_velocity = Eigen::Vector3d{translation.x(), translation.y(), translation.z()} / dt;
     gm->set_velocity(named_key, linear_velocity);
 }
 

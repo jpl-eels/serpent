@@ -113,8 +113,8 @@ private:
     void stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features);
 
     /**
-     * @brief Update velocity values according to linear twist approximation between poses. Useful when IMU isn't
-     * optimised.
+     * @brief Update velocity values according to change between consecutive poses (velocity is in the world frame).
+     * Useful when velocity isn't part of optimised state, e.g. when IMU isn't optimised.
      *
      * @param named_key
      */
