@@ -80,6 +80,8 @@ Eigen::Matrix<Scalar, (Dim - 1) * 3, (Dim - 1) * 3> compose_transform_covariance
 
 /**
  * @brief Estimate the constant angular and linear velocities required to transform from pose_1 to pose_2 in time dt.
+ * This will relative to pose_1. For example if pose_1 and pose_2 are body frame poses with respect to the world frame,
+ * then this function produces the body frame rates, not the world frame rates.
  *
  * @tparam Scalar
  * @param pose_1
