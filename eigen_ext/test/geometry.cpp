@@ -162,3 +162,15 @@ TEST(change_relative_transform_frame, check_against_alternate_method) {
     const Eigen::Isometry3d T_alt = (T_rigid * (T_rigid * T_rel).inverse()).inverse();
     EXPECT_TRUE(T_method.isApprox(T_alt));
 }
+
+TEST(change_covariance_frame, identity) {
+    Eigen::Matrix<double, 6, 6> covariance;
+    covariance << 0.01, 0.02, 0.03, 0.04, 0.05, 0.06,
+                  0.02, 0.02, 0.07, 0.08, 0.09, 0.10,
+                  0.03, 0.07, 0.03, 0.11, 0.12, 0.13,
+                  0.04, 0.08, 0.11, 0.04, 0.14, 0.15,
+                  0.05, 0.09, 0.12, 0.14, 0.05, 0.16,
+                  0.06, 0.10, 0.13, 0.15, 0.16, 0.06;
+    const Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
+    EXPECT_TRUE(covariance.isApprox(eigen_ext::change_covariance_frame(covariance, transform)));
+}
