@@ -101,6 +101,8 @@ private:
     bool s2s_jacobian_augmentation;
     // Scan-to-Map Jacobian Augmentation
     bool s2m_jacobian_augmentation;
+    // Body-to-lidar adjoint transform (rotation then translation order)
+    Eigen::Matrix<double, 6, 6> body_lidar_transform_adjoint;
 };
 
 template<typename PointSource, typename PointTarget>

@@ -46,6 +46,9 @@ Registration::Registration()
     nh.param<bool>("s2s/base_noise/jacobian_augmentation", s2s_jacobian_augmentation, false);
     nh.param<bool>("s2m/base_noise/jacobian_augmentation", s2m_jacobian_augmentation, false);
 
+    // Compute body-lidar transform adjoint for covariance transformation
+    body_lidar_transform_adjoint = eigen_ext::transform_adjoint(body_frames.body_to_frame("lidar"));
+
     // Debugging
     nh.param<bool>("debug/registration/publish_clouds", publish_registration_clouds, false);
     if (publish_registration_clouds) {
@@ -74,7 +77,8 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     const Eigen::Isometry3d transform_lidar{transform};
     const Eigen::Isometry3d transform_body =
             eigen_ext::change_relative_transform_frame(transform_lidar, body_frames.body_to_frame("lidar"));
-    ROS_WARN_ONCE("TODO: Covariance of transform needs to be transformed");
+    const Eigen::Matrix<double, 6, 6> covariance_body = eigen_ext::change_covariance_frame(covariance,
+            body_lidar_transform_adjoint);
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
