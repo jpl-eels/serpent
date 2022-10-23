@@ -31,6 +31,11 @@ private:
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
+
+    // First pointcloud filter
+    bool first_pointcloud_removal_enabled;
+    bool first_pointcloud_removed;
+    
 };
 
 }

@@ -1,3 +1,12 @@
+# Remove first pointcloud
+first_pointcloud_removal:
+  enabled: false
+
+# Filter to remove points with a time field value above a threshold
+time_field_filter:
+  enabled: false
+  max: 0.1          # seconds
+
 # Remove points within body region
 body_filter:
   enabled: false
