@@ -57,6 +57,8 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
                 "angular_velocity"], ""), filetype);
             saveas(fig_trajectory, join([plot_opts.save_dir, ...
                 "trajectory"], ""), filetype);
+            saveas(fig_trajectory_orientation, join([plot_opts.save_dir, ...
+                "trajectory orientation"], ""), filetype);
             saveas(fig_trajectory_velocity, join([plot_opts.save_dir, ...
                 "trajectory velocity"], ""), filetype);
             fprintf("Finished saving figures as .%s\n", filetype);
@@ -66,6 +68,9 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
             close(fig_orientation);
             close(fig_lin_vel);
             close(fig_ang_vel);
+            close(fig_trajectory);
+            close(fig_trajectory_orientation);
+            close(fig_trajectory_velocity);
         end
     end
 

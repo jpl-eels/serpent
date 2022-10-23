@@ -28,6 +28,6 @@ plot_opts.save = true;
 plot_opts.save_dir = join([data_base_dir, "analysis/", data_source, ...
     data_name, "/", analysis_name, "/"], "");
 
-data = data_from_rosbags(config);
+data = odom_data_from_rosbags(config);
 
 [pose_data, twist_data] = plot_and_save(data, plot_opts);

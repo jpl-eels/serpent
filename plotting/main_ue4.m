@@ -23,6 +23,6 @@ plot_opts.save = true;
 plot_opts.save_dir = join([config.gt.data_dir, "matlab_analysis/", ...
     replace(config.gt.filename, ".bag", "/"), "serpent_imu_replot/"], "");
 
-data = data_from_rosbags(config);
+data = odom_data_from_rosbags(config);
 
 [pose_data, twist_data] = plot_and_save(data, plot_opts);
