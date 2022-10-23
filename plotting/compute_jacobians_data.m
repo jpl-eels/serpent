@@ -14,6 +14,7 @@ function jacobians = compute_jacobians_data(jacobian_data)
         for j = 1:length(jacobian_data.jacobians{i})
             entry.jacobians(j, :) = jacobian_data.jacobians{i}{j}.Data;
         end
+        entry.abs_jacobians = abs(entry.jacobians);
         entry.squared_jacobians = entry.jacobians.^2;
         jacobians.entries{i} = entry;
     end
