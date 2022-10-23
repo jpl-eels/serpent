@@ -186,7 +186,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
-    ROS_INFO_STREAM("Received pointcloud " << msg->header.seq << " with timestamp " << pointcloud_start);
+    ROS_INFO_STREAM("Received pointcloud " << msg->header.seq << " (" << pct::size_points(*msg)
+                                           << " pts) with timestamp " << pointcloud_start);
     if (pct::empty(*msg)) {
         throw std::runtime_error("Handling of empty pointclouds not yet supported");
     }
