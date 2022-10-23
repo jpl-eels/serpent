@@ -9,6 +9,7 @@
 #include "eigen_ros/geometry_msgs.hpp"
 #include "eigen_ros/nav_msgs.hpp"
 #include "eigen_ros/sensor_msgs.hpp"
+#include "eigen_ros/std_msgs.hpp"
 
 namespace eigen_ros {
 
