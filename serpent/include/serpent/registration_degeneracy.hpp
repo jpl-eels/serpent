@@ -26,14 +26,6 @@ template<typename PointIn, typename PointOut>
 Eigen::Matrix<float, 6, 1> point_to_plane_jacobian(typename pcl::Registration<PointIn, PointOut>& registration,
         int& count);
 
-template<typename PointIn, typename PointOut>
-Eigen::Matrix<float, 6, 6> point_to_point_jacobian_matrix(typename pcl::Registration<PointIn, PointOut>& registration,
-        int& count);
-
-template<typename PointIn, typename PointOut>
-Eigen::Matrix<float, 6, 6> point_to_plane_jacobian_matrix(typename pcl::Registration<PointIn, PointOut>& registration,
-        int& count);
-
 /* Implementation */
 
 template<typename Scalar>
@@ -593,22 +585,6 @@ Eigen::Matrix<float, 6, 1> point_to_plane_jacobian(typename pcl::Registration<Po
         }
     }
     return jacobian;
-}
-
-template<typename PointIn, typename PointOut>
-Eigen::Matrix<float, 6, 6> point_to_point_jacobian_matrix(typename pcl::Registration<PointIn, PointOut>& registration,
-        int& count) {
-    const Eigen::Matrix<float, 6, 1> jacobian = point_to_point_jacobian(registration, count);
-    const Eigen::Matrix<float, 6, 6> jacobian_matrix{Eigen::DiagonalMatrix<float, 6>(jacobian)};
-    return jacobian_matrix;
-}
-
-template<typename PointIn, typename PointOut>
-Eigen::Matrix<float, 6, 6> point_to_plane_jacobian_matrix(typename pcl::Registration<PointIn, PointOut>& registration,
-        int& count) {
-    const Eigen::Matrix<float, 6, 1> jacobian = point_to_plane_jacobian(registration, count);
-    const Eigen::Matrix<float, 6, 6> jacobian_matrix{Eigen::DiagonalMatrix<float, 6>(jacobian)};
-    return jacobian_matrix;
 }
 
 }

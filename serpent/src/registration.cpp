@@ -69,6 +69,11 @@ Registration::Registration()
                     nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2m_transformed_pointcloud_alt", 1);
         }
     }
+    nh.param<bool>("debug/registration/publish_jacobian", publish_registration_jacobian, false);
+    if (publish_registration_jacobian) {
+        debug_registration_jacobian_publisher =
+                nh.advertise<std_msgs::Float64MultiArray>("debug/registration_jacobian", 1);
+    }
 }
 
 void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
@@ -77,8 +82,8 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     const Eigen::Isometry3d transform_lidar{transform};
     const Eigen::Isometry3d transform_body =
             eigen_ext::change_relative_transform_frame(transform_lidar, body_frames.body_to_frame("lidar"));
-    const Eigen::Matrix<double, 6, 6> covariance_body = eigen_ext::change_covariance_frame(covariance,
-            body_lidar_transform_adjoint);
+    const Eigen::Matrix<double, 6, 6> covariance_body =
+            eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint);
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();

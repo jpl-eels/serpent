@@ -48,8 +48,8 @@ std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
 bool protected_sleep(std::mutex& mutex, const double sleep_period, const bool already_locked, const bool leave_locked,
         const std::function<bool()>& condition);
 
-template<int Size>
-std::string to_flat_string(const typename Eigen::Matrix<double, Size, 1>& vector) {
+template<typename Scalar, int Size>
+std::string to_flat_string(const typename Eigen::Matrix<Scalar, Size, 1>& vector) {
     std::stringstream ss;
     for (std::size_t i = 0; i < vector.rows(); ++i) {
         ss << (i > 0 ? " " : "") << vector[i];

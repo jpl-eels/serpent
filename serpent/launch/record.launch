@@ -4,7 +4,7 @@
     <arg name="exclude_timestamp"   default="false"/>
     <arg name="save_in_ros_folder"  default="false"/>
     <arg name="topics" default="/serpent/optimisation/odometry /serpent/optimisation/imu_biases 
-            /serpent/stereo/statistics"/>
+            /serpent/stereo/statistics /serpent/registration/transform /serpent/debug/registration_jacobian"/>
 
     <!-- Intermediate processing -->
     <arg     if="$(arg save_in_ros_folder)" name="full_bag_name" value="$(arg bag_name)"/>
