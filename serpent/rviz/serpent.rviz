@@ -69,38 +69,10 @@ Visualization Manager:
       Reference Frame: head_base
       Value: false
     - Class: rviz/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        eels1/front_stereo_left_cam:
-          Value: true
-        eels1/front_stereo_right_cam:
-          Value: true
-        eels1/left_stereo_left_cam:
-          Value: true
-        eels1/left_stereo_right_cam:
-          Value: true
-        eels1/right_stereo_left_cam:
-          Value: true
-        eels1/right_stereo_right_cam:
-          Value: true
-        eels1/up_stereo_left_cam:
-          Value: true
-        eels1/up_stereo_right_cam:
-          Value: true
-        head:
-          Value: true
-        imu_link:
-          Value: true
-        map:
-          Value: true
-        os_imu:
-          Value: true
-        os_lidar:
-          Value: true
-        os_sensor:
-          Value: true
       Marker Alpha: 0.5
       Marker Scale: 1
       Name: TF
@@ -108,33 +80,9 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        map:
-          head:
-            eels1/front_stereo_left_cam:
-              {}
-            eels1/front_stereo_right_cam:
-              {}
-            eels1/left_stereo_left_cam:
-              {}
-            eels1/left_stereo_right_cam:
-              {}
-            eels1/right_stereo_left_cam:
-              {}
-            eels1/right_stereo_right_cam:
-              {}
-            eels1/up_stereo_left_cam:
-              {}
-            eels1/up_stereo_right_cam:
-              {}
-            imu_link:
-              {}
-            os_sensor:
-              os_imu:
-                {}
-              os_lidar:
-                {}
+        {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -1055,7 +1003,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -1070,7 +1018,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
       Enabled: true
       Name: Output
   Enabled: true
@@ -1101,7 +1049,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 21.221403121948242
+      Distance: 19.637208938598633
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1117,9 +1065,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.34979715943336487
+      Pitch: 0.4547959268093109
       Target Frame: head
-      Yaw: 0.4777803421020508
+      Yaw: 1.0727792978286743
     Saved: ~
 Window Geometry:
   Displays:
