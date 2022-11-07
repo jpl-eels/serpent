@@ -208,11 +208,37 @@ Optimisation::Optimisation()
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     gm->increment("reg");
-    // Extract registration information
-    const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
+    // Extract registration information (note that eigen_ros reorders covariance from ROS to eigen_ros/GTSAM convention)
+    eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
     const gtsam::Pose3 registration_pose_gtsam =
             gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation), registration_pose.data.position);
+
+    // If the matrix has +/- inf/nan values, we need to set the matrix to finite values. Noting that a constant matrix
+    // (all constant values) is not invertible, we choose the following procedure. If the diagonal element is not
+    // finite, set it to a positive replacement value and then set all the non-finite covariance terms in the same row
+    // and column to 0.0. Finally replace all other non-diagonal non-finite terms with 0.0
+    ROS_INFO_STREAM("Covariance before replacement:\n" << registration_pose.data.covariance);
+    const double inf_replacement{100.0};
+    for (int i = 0; i < 6; ++i) {
+        if (!std::isfinite(registration_pose.data.covariance(i, i))) {
+            registration_pose.data.covariance.row(i) = Eigen::Matrix<double, 1, 6>::Zero();
+            registration_pose.data.covariance.col(i) = Eigen::Matrix<double, 6, 1>::Zero();
+            registration_pose.data.covariance(i, i) = inf_replacement;
+        }
+    }
+    registration_pose.data.covariance = registration_pose.data.covariance.array()
+                                                .unaryExpr([](double v) { return std::isfinite(v) ? v : 0.0; })
+                                                .matrix();
+    ROS_INFO_STREAM("Covariance after replacement:\n" << registration_pose.data.covariance);
+
+    // Check if positive semi-definite
+    Eigen::LLT<Eigen::MatrixXd> llt{registration_pose.data.covariance}; // compute the Cholesky decomposition
+    if(llt.info() == Eigen::NumericalIssue) {
+        throw std::runtime_error("Possibly non semi-positive definite matrix!");
+    } 
+
     auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
+    ROS_INFO_STREAM("Registration covariance:\n" << registration_covariance->covariance());
     ROS_INFO_STREAM("Registration covariance sigmas: " << to_flat_string(registration_covariance->sigmas()));
     if (registration_covariance->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Registration noise sigmas contained a zero.");
@@ -517,7 +543,7 @@ void Optimisation::print_information_at_key(const gtsam::Key key) {
     int factor_counter{0};
     const gtsam::Values& values = gm->values();
     for (const auto& factor : connected_factors) {
-        factor->print("Factor " + std::to_string(factor_counter++) + ":");
+        factor->print("Factor " + std::to_string(factor_counter++) + ": ");
         std::cerr << "error: " << factor->error(values) << "\n\n";
     }
 }

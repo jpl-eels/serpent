@@ -27,6 +27,7 @@ Registration::Registration()
 
     // Configuration
     nh.param<bool>("s2m/enabled", s2m_enabled, true);
+    const std::string scan_label = s2m_enabled ? "s2m" : "s2s";
 
     // Create registration methods
     s2s = registration_method<pcl::PointNormal, pcl::PointNormal>(nh, "s2s/");
@@ -34,17 +35,53 @@ Registration::Registration()
         s2m = registration_method<pcl::PointNormal, pcl::PointNormal>(nh, "s2m/");
     }
 
-    // Create registration base covariances
-    s2s_covariance_base << Eigen::Matrix3d::Identity() *
-                                   std::pow(nh.param<double>("s2s/base_noise/rotation", 0.00174533), 2.0),
-            Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2s/base_noise/translation", 1.0e-3), 2.0);
-    s2m_covariance_base << Eigen::Matrix3d::Identity() *
-                                   std::pow(nh.param<double>("s2m/base_noise/rotation", 0.00174533), 2.0),
-            Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(),
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("s2m/base_noise/translation", 1.0e-3), 2.0);
-    nh.param<bool>("s2s/base_noise/jacobian_augmentation", s2s_jacobian_augmentation, false);
-    nh.param<bool>("s2m/base_noise/jacobian_augmentation", s2m_jacobian_augmentation, false);
+    // Covariance estimation configuration
+    const double rotation_noise = nh.param<double>(scan_label + "/covariance/constant/rotation", 0.00174533);
+    const double translation_noise = nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-3);
+    const CovarianceEstimationMethod cov_method =
+            to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CONSTANT"));
+    // Create covariance estimator
+    switch (cov_method) {
+        case CONSTANT:
+            covariance_estimator = std::make_unique<ConstantCovariance<pcl::PointNormal, pcl::PointNormal, float>>(
+                    rotation_noise, translation_noise);
+            break;
+        case POINT_TO_POINT_LINEARISED:
+            covariance_estimator =
+                    std::make_unique<PointToPointIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
+            break;
+        case POINT_TO_POINT_NONLINEAR:
+            covariance_estimator =
+                    std::make_unique<PointToPointIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
+            break;
+        case POINT_TO_PLANE_LINEARISED:
+            covariance_estimator =
+                    std::make_unique<PointToPlaneIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
+            break;
+        case POINT_TO_PLANE_NONLINEAR:
+            covariance_estimator =
+                    std::make_unique<PointToPlaneIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
+            break;
+        default:
+            throw std::runtime_error("CovarianceEstimationMethod not handled. Cannot create covariance estimator");
+    }
+
+    // Point covariance method
+    const std::string point_covariance_method =
+            nh.param<std::string>(scan_label + "/covariance/point_covariance/method", "VOXEL_SIZE");
+    float point_noise;
+    if (point_covariance_method == "CONSTANT") {
+        nh.param<float>(scan_label + "/covariance/point_covariance/constant", point_noise, 0.01f);
+    } else if (point_covariance_method == "VOXEL_SIZE") {
+        if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {
+            throw std::runtime_error("point_covariance/method \"" + point_covariance_method +
+                                     "\" selected but voxel_grid_filter/enabled was false");
+        }
+        nh.param<float>("voxel_grid_filter/leaf_size", point_noise, 0.1f);
+    } else {
+        throw std::runtime_error("Unrecognised point_covariance/method \"" + point_covariance_method + "\"");
+    }
+    point_variance = std::pow(point_noise, 2.f);
 
     // Compute body-lidar transform adjoint for covariance transformation
     body_lidar_transform_adjoint = eigen_ext::transform_adjoint(body_frames.body_to_frame("lidar"));
@@ -69,11 +106,6 @@ Registration::Registration()
                     nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2m_transformed_pointcloud_alt", 1);
         }
     }
-    nh.param<bool>("debug/registration/publish_jacobian", publish_registration_jacobian, false);
-    if (publish_registration_jacobian) {
-        debug_registration_jacobian_publisher =
-                nh.advertise<std_msgs::Float64MultiArray>("debug/registration_jacobian", 1);
-    }
 }
 
 void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
@@ -82,15 +114,18 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     const Eigen::Isometry3d transform_lidar{transform};
     const Eigen::Isometry3d transform_body =
             eigen_ext::change_relative_transform_frame(transform_lidar, body_frames.body_to_frame("lidar"));
-    const Eigen::Matrix<double, 6, 6> covariance_body =
-            eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint);
+    // Convert covariance to body frame, except in special case where covariance is infinite, in which case changing the
+    // frame may result in NaN values.
+    const Eigen::Matrix<double, 6, 6> covariance_body = covariance.allFinite() ?
+            eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint) : covariance;
+    ROS_INFO_STREAM("Reg Covariance (body frame):\n" << covariance_body);
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
     transform_msg->header.stamp = timestamp;                       // Timestamp is at t_i
     transform_msg->header.frame_id = body_frames.body_frame_id();  // TF: body at t_i-1 -> body at t_i
     eigen_ros::to_ros(transform_msg->pose.pose, transform_body);
-    eigen_ros::to_ros(transform_msg->pose.covariance, eigen_ext::reorder_covariance(covariance, 3));
+    eigen_ros::to_ros(transform_msg->pose.covariance, eigen_ext::reorder_covariance(covariance_body, 3));
     refined_transform_publisher.publish(transform_msg);
 }
 
@@ -163,8 +198,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             s2s_registrations.emplace_back(s2s_transform);
         } else {
             // Publish the refined transform
-            publish_refined_transform(s2s_transform,
-                    covariance_from_registration(*s2s, s2s_covariance_base, s2s_jacobian_augmentation),
+            publish_refined_transform(s2s_transform, covariance_from_registration(*s2s),
                     pcl_conversions::fromPCL(current_pointcloud->header.stamp));
         }
     }
@@ -218,9 +252,24 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     }
 
     // Publish the refined transform
-    publish_refined_transform(s2m_transform,
-            covariance_from_registration(*s2m, s2m_covariance_base, s2m_jacobian_augmentation),
+    publish_refined_transform(s2m_transform, covariance_from_registration(*s2m),
             pcl_conversions::fromPCL(pointcloud->header.stamp));
+}
+
+Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_method(
+        const std::string& string) const {
+    if (string == "CONSTANT") {
+        return CovarianceEstimationMethod::CONSTANT;
+    } else if (string == "POINT_TO_POINT_LINEARISED") {
+        return CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED;
+    } else if (string == "POINT_TO_POINT_NONLINEAR") {
+        return CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR;
+    } else if (string == "POINT_TO_PLANE_LINEARISED") {
+        return CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED;
+    } else if (string == "POINT_TO_PLANE_NONLINEAR") {
+        return CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR;
+    }
+    throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationMethod");
 }
 
 }

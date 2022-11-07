@@ -1,4 +1,4 @@
-#include "serpent/registration_degeneracy.hpp"
+#include "serpent/DEPRECATED_registration_degeneracy.hpp"
 
 #include <gtest/gtest.h>
 
