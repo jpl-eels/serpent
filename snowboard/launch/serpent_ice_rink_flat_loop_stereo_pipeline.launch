@@ -12,6 +12,7 @@
 
     <!-- Launch Serpent Stereo Pipeline -->
     <include file="$(find serpent)/launch/serpent_stereo_pipeline.launch">
+        <arg name="pointcloud_topic"               value="/os_cloud_node/points"/>
         <arg name="stereo_left_cam_image_topic"     value="/$(arg stereo_camera)/left/rect/image"/>
         <arg name="stereo_left_cam_info_topic"      value="/$(arg stereo_camera)/left/rect/camera_info"/>
         <arg name="stereo_right_cam_image_topic"    value="/$(arg stereo_camera)/right/rect/image"/>

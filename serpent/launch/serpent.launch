@@ -18,6 +18,7 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
+    <arg name="rviz_stereo"                     default="false"/>
     <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
@@ -95,6 +96,16 @@
     <!-- RQT -->
     <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
             args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
+
+    <!-- RViz Stereo -->
+    <node if="$(arg rviz_stereo)" pkg="rviz" type="rviz" name="serpent_rviz_stereo"
+            args="-d $(find serpent)/rviz/stereo.rviz">
+        <remap from="/lidar_remap/points"         to="$(arg pointcloud_topic)"/>
+        <remap from="/left_remap/image_rect"      to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="/left_remap/camera_info"     to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="/right_remap/image_rect"     to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="/right_remap/camera_info"    to="$(arg stereo_right_cam_info_topic)"/>
+    </node>
 
     <!-- RQT Stereo -->
     <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"

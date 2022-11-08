@@ -1,5 +1,6 @@
 <launch>
     <!-- Launch Arguments -->
+    <arg name="pointcloud_topic"                default="/pointcloud"/>
     <arg name="stereo_left_cam_image_topic"     default="/stereo/left/image"/>
     <arg name="stereo_right_cam_image_topic"    default="/stereo/right/image"/>
     <arg name="stereo_left_cam_info_topic"      default="/stereo/left/camera_info"/>
@@ -15,6 +16,7 @@
 
     <!-- Visualisation Arguments -->
     <arg name="rqt_stereo"                      default="true"/>
+    <arg name="rviz_stereo"                     default="true"/>
 
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
@@ -82,6 +84,16 @@
         <arg name="start"    value="$(arg rosbag_start)"/>
         <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
+
+    <!-- RViz Stereo -->
+    <node if="$(arg rviz_stereo)" pkg="rviz" type="rviz" name="serpent_rviz_stereo"
+            args="-d $(find serpent)/rviz/stereo.rviz">
+        <remap from="/lidar_remap/points"         to="$(arg pointcloud_topic)"/>
+        <remap from="/left_remap/image_rect"      to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="/left_remap/camera_info"     to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="/right_remap/image_rect"     to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="/right_remap/camera_info"    to="$(arg stereo_right_cam_info_topic)"/>
+    </node>
 
     <!-- RQT Stereo -->
     <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
