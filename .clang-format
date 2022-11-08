@@ -20,3 +20,4 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowAllArgumentsOnNextLine: false
+AlwaysBreakBeforeMultilineStrings: false

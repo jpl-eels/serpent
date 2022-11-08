@@ -5,6 +5,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/PreintegrationParams.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 #include <ros/time.h>
 #include <sensor_msgs/Imu.h>
 
@@ -28,6 +29,9 @@ bool check_valid(const gtsam::PreintegrationParams& params);
 
 void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& messages);
 
+void integrate_imu(gtsam::PreintegratedCombinedMeasurements& preint, const std::deque<eigen_ros::Imu>& buffer,
+        const ros::Time& start, const ros::Time& end);
+
 std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
         const std::deque<eigen_ros::Imu>& messages);
 
@@ -44,8 +48,8 @@ std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
 bool protected_sleep(std::mutex& mutex, const double sleep_period, const bool already_locked, const bool leave_locked,
         const std::function<bool()>& condition);
 
-template<int Size>
-std::string to_flat_string(const typename Eigen::Matrix<double, Size, 1>& vector) {
+template<typename Scalar, int Size>
+std::string to_flat_string(const typename Eigen::Matrix<Scalar, Size, 1>& vector) {
     std::stringstream ss;
     for (std::size_t i = 0; i < vector.rows(); ++i) {
         ss << (i > 0 ? " " : "") << vector[i];

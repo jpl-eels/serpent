@@ -8,7 +8,8 @@
 namespace serpent {
 
 PointcloudFormatter::PointcloudFormatter()
-    : nh("~") {
+    : nh("~"),
+      first_pointcloud_removed(false) {
     // Publishers
     pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1);
 
@@ -22,9 +23,16 @@ PointcloudFormatter::PointcloudFormatter()
     if (time_field_filter_enabled) {
         max_time_threshold = nh.param<float>("time_field_filter/max", 0.1);
     }
+    first_pointcloud_removal_enabled = nh.param<bool>("first_pointcloud_removal/enabled", false);
 }
 
 void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+    // First pointcloud filtering
+    if (first_pointcloud_removal_enabled && !first_pointcloud_removed) {
+        first_pointcloud_removed = true;
+        return;
+    }
+
     // Convert pointcloud from ROS
     auto pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
     pcl_conversions::toPCL(*msg, *pointcloud);
@@ -49,9 +57,8 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
     if (time_field_filter_enabled) {
         // Ensure time field is present
         if (!pct::has_field(*pointcloud, "t")) {
-            throw std::runtime_error(
-                    "Point cloud must t field with time field filter enabled. Disable filter or add t"
-                    "field to input point cloud.");
+            throw std::runtime_error("Point cloud must t field with time field filter enabled. Disable filter or add t"
+                                     "field to input point cloud.");
         }
 
         // Ensure time field "t" is present and is float32

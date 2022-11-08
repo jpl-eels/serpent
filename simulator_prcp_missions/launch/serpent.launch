@@ -1,7 +1,7 @@
 <launch>
     <!-- Playback -->
     <arg name="mission"  default="surface_ellipse_2"/>
-    <arg name="data_dir" default="$(env HOME)/data/simulator_prcp_gazebo"/>
+    <arg name="data_dir" default="$(env HOME)/data/jpl/datasets/simulator_prcp_gazebo"/>
     <arg name="rate"     default="1"/>
 
     <!-- SERPENT -->

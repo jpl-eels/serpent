@@ -2,7 +2,6 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
         plot_opts)
     % Computation
     names_with_gt = ["Reference", twist_data.names];
-    gt_format = 'k--';
     gt_angular_velocities = twist_data.gt.angular_velocities;
     gt_angular_speeds = twist_data.gt.angular_speeds;
     if plot_opts.angle == "deg"
@@ -19,7 +18,7 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     title("Linear Velocity");
     subplot(r,c,1);
     plot(twist_data.gt.timestamps, ...
-        twist_data.gt.linear_velocities(:, 1), gt_format);
+        twist_data.gt.linear_velocities(:, 1), plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel("v_x (m/s)");
     grid on;
@@ -33,7 +32,7 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     grid on;
     subplot(r,c,4);
     plot(twist_data.gt.timestamps, ...
-        twist_data.gt.linear_velocities(:, 2), gt_format);
+        twist_data.gt.linear_velocities(:, 2), plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel("v_y (m/s)");
     grid on;
@@ -47,7 +46,7 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     grid on;
     subplot(r,c,7);
     plot(twist_data.gt.timestamps, ...
-        twist_data.gt.linear_velocities(:, 3), gt_format);
+        twist_data.gt.linear_velocities(:, 3), plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel("v_z (m/s)");
     grid on;
@@ -61,7 +60,7 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     grid on;
     subplot(r,c,10);
     plot(twist_data.gt.timestamps, ...
-        twist_data.gt.linear_speeds, gt_format);
+        twist_data.gt.linear_speeds, plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel("Speed (m/s)");
     grid on;
@@ -82,7 +81,8 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     c = 3;
     title("Orientation");
     subplot(r,c,1);
-    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 1), gt_format);
+    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 1), ...
+        plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel(join(["\omega_x (", plot_opts.angle, "/s)"]));
     grid on;
@@ -95,7 +95,8 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     ylabel(join(["RE \omega_x (", plot_opts.angle, "/s)"]));
     grid on;
     subplot(r,c,4);
-    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 2), gt_format);
+    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 2), ...
+        plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel(join(["\omega_y (", plot_opts.angle, "/s)"]));
     grid on;
@@ -108,7 +109,8 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     ylabel(join(["RE \omega_y (", plot_opts.angle, "/s)"]));
     grid on;
     subplot(r,c,7);
-    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 3), gt_format);
+    plot(twist_data.gt.timestamps, gt_angular_velocities(:, 3), ...
+        plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel(join(["\omega_z (", plot_opts.angle, "/s)"]));
     grid on;
@@ -121,7 +123,8 @@ function [fig_lin_vel, fig_ang_vel] = plot_twist(twist_data, ...
     ylabel(join(["RE \omega_z (", plot_opts.angle, "/s)"]));
     grid on;
     subplot(r,c,10);
-    plot(twist_data.gt.timestamps, gt_angular_speeds, gt_format);
+    plot(twist_data.gt.timestamps, gt_angular_speeds, ...
+        plot_opts.gt_linespec);
     xlabel("t (s)");
     ylabel(join(["Angular Speed (", plot_opts.angle, "/s)"]));
     grid on;

@@ -9,11 +9,39 @@
 namespace eigen_ext {
 
 /**
+ * @brief Change the reference frame of a transform covariance matrix from frame A to frame B:
+ *      Cov_B = Adj_{T_B^A} Cov_A (Adj_{T_B^A})^T
+ *
+ * @tparam Scalar
+ * @param covariance_A
+ * @param transform_adjoint_B_A
+ * @return Eigen::Matrix<Scalar, 6, 6>
+ */
+template<typename Scalar>
+Eigen::Matrix<Scalar, 6, 6> change_covariance_frame(const typename Eigen::Matrix<Scalar, 6, 6>& covariance_A,
+        const typename Eigen::Matrix<Scalar, 6, 6>& transform_adjoint_B_A);
+
+/**
+ * @brief Wrapper function to change the reference frame of a transform covariance matrix from frame A to frame B.
+ *
+ * Note: the function computes the adjoint of the transform, so the other function overload should be preferred if
+ * using this function multiple times with the same transform.
+ *
+ * @tparam Scalar
+ * @param covariance_A
+ * @param transform_B_A
+ * @return Eigen::Matrix<Scalar, 6, 6>
+ */
+template<typename Scalar>
+Eigen::Matrix<Scalar, 6, 6> change_covariance_frame(const typename Eigen::Matrix<Scalar, 6, 6>& covariance_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& transform_B_A);
+
+/**
  * @brief Given a relative transform between any two timestamps in the reference frame of A, and a rigid body transform
  * from some other fixed frame B on the body to A, this function computes the relative transform in the reference frame
  * of B.
- *      T_{B1}^{B2} = T_{B1}^{A1} T_{A1}^{A2} T_{A2}^{B2} =  T_B^A T_{A1}^{A2} T_A^B 
- * 
+ *      T_{B1}^{B2} = T_{B1}^{A1} T_{A1}^{A2} T_{A2}^{B2} =  T_B^A T_{A1}^{A2} T_A^B
+ *
  * Previously:
  *      T_{B1}^{B2} = (T_{B2}^{A2} (T_{B1}^{A1} T_{A1}^{A2})^-1 )^-1 = (T_B^A (T_B^A T_{A1}^{A2})^-1 )^-1
  *
@@ -80,6 +108,8 @@ Eigen::Matrix<Scalar, (Dim - 1) * 3, (Dim - 1) * 3> compose_transform_covariance
 
 /**
  * @brief Estimate the constant angular and linear velocities required to transform from pose_1 to pose_2 in time dt.
+ * This will relative to pose_1. For example if pose_1 and pose_2 are body frame poses with respect to the world frame,
+ * then this function produces the body frame rates, not the world frame rates.
  *
  * @tparam Scalar
  * @param pose_1
@@ -131,6 +161,18 @@ template<typename Scalar>
 Eigen::Matrix<Scalar, 6, 6> transform_adjoint(const Eigen::Transform<Scalar, 3, Eigen::Isometry>& transform);
 
 /* Implementation */
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 6, 6> change_covariance_frame(const typename Eigen::Matrix<Scalar, 6, 6>& covariance_A,
+        const typename Eigen::Matrix<Scalar, 6, 6>& transform_adjoint_B_A) {
+    return transform_adjoint_B_A * covariance_A * transform_adjoint_B_A.transpose();
+}
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 6, 6> change_covariance_frame(const typename Eigen::Matrix<Scalar, 6, 6>& covariance_A,
+        const typename Eigen::Transform<Scalar, 3, Eigen::Isometry>& transform_B_A) {
+    return change_covariance_frame(covariance_A, transform_adjoint(transform_B_A));
+}
 
 template<typename Scalar>
 Eigen::Transform<Scalar, 3, Eigen::Isometry> change_relative_transform_frame(

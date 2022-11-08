@@ -1,4 +1,4 @@
-function data = data_from_rosbags(config)
+function data = odom_data_from_rosbags(config)
     data = struct;
     data.gt = struct;
     data.gt.accelerometer_bias = config.gt.accelerometer_bias;

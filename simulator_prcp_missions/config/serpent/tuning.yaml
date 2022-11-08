@@ -14,8 +14,8 @@ imu_noise:
   accelerometer: 4.0e-04
   gyroscope: 2.424e-05
 
-# Deskew configuration
-deskew:
+# Motion Distortion Correction
+mdc:
   translation: false
   rotation: false
 
@@ -32,7 +32,7 @@ isam2:
   relinearize_threshold: 0.1
   relinearize_skip: 10
   enable_relinearization: true
-  evaluate_nonlinear_error: true
+  evaluate_nonlinear_error: false
   factorization: "CHOLESKY" # Options: CHOLESKY, QR
   cache_linearized_factors: true
 
@@ -40,15 +40,15 @@ isam2:
 optimisation:
   factors:
     imu: false
-    registration: false
-    stereo: true
+    registration: true
+    stereo: false
 
 # Registration
 s2s:
   base_noise:
     rotation: 0.0174533 # 1 deg
     translation: 1.0e-2  # 10 mm
-    jacobian_augmentation: true
+    jacobian_augmentation: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 20
@@ -87,7 +87,7 @@ s2m:
   base_noise:
     rotation: 0.00174533 # 0.1 deg
     translation: 1.0e-3  # 1 mm
-    jacobian_augmentation: true
+    jacobian_augmentation: false
   enabled: false
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:

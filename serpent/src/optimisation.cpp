@@ -127,9 +127,8 @@ Optimisation::Optimisation()
     isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
     isam2_params.setCacheLinearizedFactors(nh.param<bool>("isam2/cache_linearized_factors", true));
     if (isam2_params.isEvaluateNonlinearError()) {
-        ROS_WARN(
-                "Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error = "
-                "true). This incurs a computational cost, so should only be used while debugging.");
+        ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error = "
+                 "true). This incurs a computational cost, so should only be used while debugging.");
     }
     isam2_params.print();
 
@@ -276,22 +275,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     gtsam::PreintegratedCombinedMeasurements preintegrated_imu{preintegration_params, gm->imu_bias("imu")};
 
     // Preintegrate IMU measurements over sweep
-    ros::Time last_preint_imu_timestamp = msg->start_timestamp;
-    for (std::size_t i = 0; i < imu_s2s.size(); ++i) {
-        const auto& imu = imu_s2s[i];
-        if (imu.timestamp < last_preint_imu_timestamp || imu.timestamp > msg->end_timestamp) {
-            throw std::runtime_error("IMU timestamp " + std::to_string(imu.timestamp.toSec()) +
-                                     " was outside of expected range [" +
-                                     std::to_string(last_preint_imu_timestamp.toSec()) + " - " +
-                                     std::to_string(msg->end_timestamp.toSec()) + "]");
-        }
-        const double dt =
-                ((i == imu_s2s.size() - 1 ? msg->end_timestamp : imu.timestamp) - last_preint_imu_timestamp).toSec();
-        if (dt > 0.0) {
-            preintegrated_imu.integrateMeasurement(imu.linear_acceleration, imu.angular_velocity, dt);
-        }
-        last_preint_imu_timestamp = imu.timestamp;
-    }
+    integrate_imu(preintegrated_imu, imu_s2s, msg->start_timestamp, msg->end_timestamp);
     ROS_INFO_STREAM("Preintegrated " << imu_s2s.size() << " IMU messages between t = " << msg->start_timestamp
                                      << " and t = " << msg->end_timestamp);
     if (preintegrated_imu.preintMeasCov().hasNaN()) {
@@ -412,6 +396,10 @@ void Optimisation::initial_odometry_callback(const nav_msgs::Odometry::ConstPtr&
 }
 
 void Optimisation::optimise_and_publish(const int key) {
+    publish(key, optimise(key));
+}
+
+gtsam::ISAM2Result Optimisation::optimise(const int key) {
     // Optimise graph with iSAM2
     gtsam::ISAM2Result isam2_result;
     try {
@@ -436,7 +424,10 @@ void Optimisation::optimise_and_publish(const int key) {
         precrash_operations(ex);
         throw ex;
     }
+    return isam2_result;
+}
 
+void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result) {
     // Publish optimised pose
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
@@ -538,13 +529,18 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
     add_registration_factor(msg);
 
     // Optimise and publish
-    if (gm->minimum_key() == gm->key("reg")) {
-        optimise_and_publish(gm->key("reg"));
+    const int key = gm->key("reg");
+    if (gm->minimum_key() == key) {
+        // Optimise
+        const auto optimisation_result = optimise(key);
 
         // Update values that weren't optimised
         if (!imu_factors_enabled) {
             update_velocity_from_transforms("reg");
         }
+
+        // Publish
+        publish(key, optimisation_result);
     }
 }
 
@@ -571,13 +567,16 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
 }
 
 void Optimisation::update_velocity_from_transforms(const std::string& named_key) {
-    // Set velocity based on transforms
+    // Compute translation between poses in world frame
+    const Eigen::Isometry3d previous_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key, -1));
+    const Eigen::Isometry3d current_pose = eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key));
+    const Eigen::Vector3d translation = current_pose.translation() - previous_pose.translation();
+
+    // Comptue time between poses
     const double dt = gm->time_between(named_key, named_key, -1).toSec();
-    Eigen::Matrix<double, 6, 1> rates =
-            eigen_ext::linear_rates(eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key, -1)),
-                    eigen_gtsam::to_eigen<Eigen::Isometry3d>(gm->pose(named_key)), dt);
-    ROS_INFO_STREAM("Estimated twist [ang, lin] from transforms as:\n" << to_flat_string(rates));
-    const Eigen::Vector3d linear_velocity = rates.block<3, 1>(3, 0);
+
+    // Compute and set linear velocity
+    const Eigen::Vector3d linear_velocity = Eigen::Vector3d{translation.x(), translation.y(), translation.z()} / dt;
     gm->set_velocity(named_key, linear_velocity);
 }
 

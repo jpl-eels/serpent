@@ -33,12 +33,17 @@ Follow the ROS build instructions at https://github.com/SMRT-AIST/fast_gicp
 
 ### GTSAM
 
-Tested with 4.0.3
+Tested with 4.0.3, the latest stable release of GTSAM 4.
 
-Ubuntu 20.04:
+Ubuntu 20.04 (instructions at https://gtsam.org/get_started/):
 ```bash
+sudo add-apt-repository ppa:borglab/gtsam-release-4.0
 sudo apt install libgtsam-dev
 ```
+
+(`add-apt-repository` is installable with `sudo apt-get install software-properties-common` if not already installed)
+
+**WARNING:** Installing GTSAM from source (on default branch at time of writing) causes SERPENT to crash on an 
 
 ### OpenCV
 

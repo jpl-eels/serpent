@@ -43,10 +43,9 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name
     ns_to_s(pointcloud, get_field(pointcloud, time_field_name));
 }
 
-void deskew(const Eigen::Isometry3d& transform, const double dt, const pcl::PCLPointCloud2& src,
-        pcl::PCLPointCloud2& dest) {
+void deskew(const Eigen::Isometry3d& skew, const double dt, const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest) {
     // Perform a point cloud copy if there is no transform
-    if (transform.isApprox(Eigen::Isometry3d::Identity())) {
+    if (skew.isApprox(Eigen::Isometry3d::Identity())) {
         dest = src;
     } else {
         // Error handling
@@ -55,9 +54,9 @@ void deskew(const Eigen::Isometry3d& transform, const double dt, const pcl::PCLP
         }
 
         // Setup
-        const Eigen::Isometry3d deskew_transform = transform.inverse();
-        const Eigen::Vector3d deskew_translation = deskew_transform.translation();
-        const Eigen::Quaterniond deskew_quaternion = Eigen::Quaterniond(deskew_transform.rotation());
+        const Eigen::Isometry3d deskew = skew.inverse();
+        const Eigen::Vector3d deskew_translation = deskew.translation();
+        const Eigen::Quaterniond deskew_quaternion = Eigen::Quaterniond(deskew.rotation());
         dest.header = src.header;
         dest.height = src.height;
         dest.width = src.width;
