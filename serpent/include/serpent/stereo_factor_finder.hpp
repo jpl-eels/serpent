@@ -64,9 +64,6 @@ private:
     image_transport::Publisher new_matches_publisher;
     image_transport::Publisher tracked_matches_publisher;
 
-    // Stereo baseline
-    float baseline;
-
     //// Debug
     bool print_stats;
     bool publish_stats;

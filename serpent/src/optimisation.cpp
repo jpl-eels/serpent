@@ -239,15 +239,20 @@ void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& f
     }
     if (!gm->stereo_calibration()) {
         const auto& left_info = features->left_info;
+        const auto& right_info = features->right_info;
         const double fx = left_info.K[0];
         const double skew = left_info.K[1];
         const double cx = left_info.K[2];
         const double fy = left_info.K[4];
         const double cy = left_info.K[5];
-        const double baseline = nh.param<double>("stereo/baseline", 0.1);
+        const double baseline = -right_info.P[3] / right_info.P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         auto K = boost::make_shared<gtsam::Cal3_S2Stereo>(fx, fy, skew, cx, cy, baseline);
         gm->set_stereo_calibration(K);
-        ROS_INFO_STREAM("Set stereo calibration matrix:\n" << K->matrix());
+        ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->matrix());
     }
     std::map<int, gtsam::StereoPoint2> stereo_features;
     from_ros(features->features, stereo_features);

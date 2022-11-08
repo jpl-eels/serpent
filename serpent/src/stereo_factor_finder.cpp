@@ -209,9 +209,6 @@ StereoFactorFinder::StereoFactorFinder()
         stereo_points_publisher = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("stereo/track_points", 1);
     }
 
-    // Stereo baseline
-    nh.param<float>("stereo/baseline", baseline, 0.1);
-
     // Components of tracker
     cv::Ptr<cv::Feature2D> detector;
     cv::Ptr<cv::SparseOpticalFlow> sparse_optical_flow;
@@ -326,6 +323,14 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
 
     // Stereo distance filter needs to be created on the first image
     if (tracker->frame_number() == -1 && nh.param<bool>("stereo_factors/stereo_distance_filter/enabled", false)) {
+        if (left_info->K[0] != right_info->K[0]) {
+            throw std::runtime_error("Left and right camera info focal lengths do not match.");
+        }
+        const double baseline = -right_info->P[3] / right_info->P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         auto stereo_distance_filter = StereoDistanceFilter::create(left_info->K[0], baseline,
                 nh.param<float>("stereo_factors/stereo_distance_filter/max_distance",
                         std::numeric_limits<float>::max()),
@@ -375,8 +380,12 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
         publish_image(tracked_matches_publisher, intermediate_images.tracked_matches, header);
     }
     if (publish_points) {
-        Eigen::Matrix3f intrinsic;
-        eigen_ros::from_ros(left_info->K, intrinsic);
+        const Eigen::Matrix3f intrinsic = eigen_ros::from_ros<Eigen::Matrix3f>(left_info->K);
+        const double baseline = -right_info->P[3] / right_info->P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         ROS_WARN_ONCE("Assumption: left_info and right_info are identical. Valid?");
         auto stereo_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
         pcl_conversions::toPCL(header, stereo_pointcloud->header);

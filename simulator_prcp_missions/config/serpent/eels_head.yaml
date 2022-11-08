@@ -57,7 +57,3 @@ body_frames:
           camera_front_right:
             translation:
               x: 0.1
-
-# Stereo Camera
-stereo:
-  baseline: 0.1
