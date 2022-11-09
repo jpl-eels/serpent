@@ -211,7 +211,7 @@ stereo_factors:
       flags: 0
       min_eig_threshold: 1.0e-4
   stereo_keypoint_matcher:
-    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, INCC
+    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, NNCC
     window_size:
       width: 3
       height: 3

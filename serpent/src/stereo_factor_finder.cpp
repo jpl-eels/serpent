@@ -269,14 +269,24 @@ StereoFactorFinder::StereoFactorFinder()
             nh.param<int>("stereo_factors/stereo_keypoint_matcher/window_size/height", 3)};
     const std::string stereo_matcher_cost_function_str =
             nh.param<std::string>("stereo_factors/stereo_keypoint_matcher/cost_function", "SAD");
-    StereoKeyPointMatcher::MatchingCostFunction stereo_matcher_cost_function;
     if (stereo_matcher_cost_function_str == "SAD") {
-        stereo_matcher_cost_function = &sum_of_absolute_differences;
+        stereo_matcher = SADStereoKeyPointMatcher::create(stereo_matcher_window,
+                nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+    } else if (stereo_matcher_cost_function_str == "SSD") {
+        stereo_matcher = SSDStereoKeyPointMatcher::create(stereo_matcher_window,
+                nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+    } else if (stereo_matcher_cost_function_str == "ZMSAD") {
+        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(stereo_matcher_window,
+                nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+    } else if (stereo_matcher_cost_function_str == "LSSAD") {
+        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(stereo_matcher_window,
+                nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+    } else if (stereo_matcher_cost_function_str == "NNCC") {
+        stereo_matcher = NCCStereoKeyPointMatcher::create(stereo_matcher_window,
+                nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
     } else {
         throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
     }
-    stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window,
-            nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
     const double stereo_match_cost_threshold =
             nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold", 1.0);
 

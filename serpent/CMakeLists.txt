@@ -89,10 +89,12 @@ set(NODE_SRC_FILES
     src/registration_methods.cpp
     src/registration.cpp
     src/sensor_point_types.cpp
+    src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp
     src/stereo_feature_tracker.cpp
     src/stereo_keypoint_matcher.cpp
     src/utilities.cpp
+    src/window_functions.cpp
 )
 
 set(NODE_SYSTEM_INCLUDE_DIRS
@@ -146,10 +148,12 @@ set_target_properties(${NODE}
 # Stereo pipeline
 add_executable(stereo_pipeline_node
     src/match_filters.cpp
+    src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp
     src/stereo_feature_tracker.cpp
     src/stereo_keypoint_matcher.cpp
     src/stereo_pipeline_node.cpp
+    src/window_functions.cpp
 )
 
 add_dependencies(stereo_pipeline_node
