@@ -13,6 +13,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <Eigen/Geometry>
 #include <deque>
@@ -29,10 +30,7 @@ namespace serpent {
 struct StereoData {
     StereoData(const sensor_msgs::ImageConstPtr left_image, const sensor_msgs::ImageConstPtr right_image,
             const sensor_msgs::CameraInfoConstPtr left_info, const sensor_msgs::CameraInfoConstPtr right_info)
-        : left_image(left_image),
-          right_image(right_image),
-          left_info(left_info),
-          right_info(right_info) {}
+        : left_image(left_image), right_image(right_image), left_info(left_info), right_info(right_info) {}
 
     sensor_msgs::ImageConstPtr left_image;
     sensor_msgs::ImageConstPtr right_image;
@@ -101,12 +99,21 @@ private:
     ros::Publisher imu_s2s_publisher;
     ros::Publisher initial_odometry_publisher;
     ros::Publisher odometry_publisher;
+    ros::Publisher pose_publisher;
     ros::Subscriber imu_subscriber;
     ros::Subscriber pointcloud_subscriber;
     message_filters::Subscriber<serpent::ImuBiases> imu_biases_subscriber;
     message_filters::Subscriber<nav_msgs::Odometry> optimised_odometry_subscriber;
     message_filters::TimeSynchronizer<serpent::ImuBiases, nav_msgs::Odometry> optimised_odometry_sync;
     tf2_ros::TransformBroadcaster tf_broadcaster;
+
+    std::string sensor_frame_id;
+    std::string base_link_frame_id;
+    tf2_ros::Buffer tf_buffer;
+    tf2_ros::TransformListener tf_listener;
+    geometry_msgs::TransformStamped T_base_link2sensor;
+    geometry_msgs::TransformStamped T_base_link2sensor_inv;
+
     //// Stereo data comms
     image_transport::ImageTransport it;
     image_transport::Publisher left_image_publisher;

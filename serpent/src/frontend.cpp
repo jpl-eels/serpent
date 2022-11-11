@@ -1,8 +1,10 @@
 #include "serpent/frontend.hpp"
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl_ros/point_cloud.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
@@ -23,12 +25,15 @@ Frontend::Frontend()
       stereo_sync(10),
       last_preint_imu_timestamp(0.0),
       initialised(false),
-      publish_next_stereo(false) {
+      publish_next_stereo(false),
+      tf_buffer(),
+      tf_listener(tf_buffer) {
     // Publishers
     deskewed_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("frontend/deskewed_pointcloud", 1);
     imu_s2s_publisher = nh.advertise<serpent::ImuArray>("frontend/imu_s2s", 1);
     initial_odometry_publisher = nh.advertise<nav_msgs::Odometry>("frontend/initial_odometry", 1);
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("output/odometry", 1);
+    pose_publisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("output/pose", 1);
 
     // Subscribers
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 1000, &Frontend::imu_callback, this);
@@ -36,8 +41,11 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
-            &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(
+            "formatter/formatted_pointcloud", 100, &Frontend::pointcloud_callback, this);
+
+    nh.param<std::string>("base_link_frame_id", base_link_frame_id, "base_link");
+    nh.param<std::string>("sensor_frame_id", sensor_frame_id, "sensor");
 
     // Motion distortion correction
     nh.param<bool>("mdc/translation", deskew_translation, false);
@@ -57,8 +65,8 @@ Frontend::Frontend()
         right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
         left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
         right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
-        stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber,
-                right_info_subcriber);
+        stereo_sync.connectInput(
+                left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
         stereo_sync.registerCallback(boost::bind(&Frontend::stereo_callback, this, _1, _2, _3, _4));
     }
 
@@ -82,8 +90,8 @@ Frontend::Frontend()
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
         ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
         ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
-        update_preintegration_params(*preintegration_params, overwrite_accelerometer_covariance,
-                overwrite_gyroscope_covariance);
+        update_preintegration_params(
+                *preintegration_params, overwrite_accelerometer_covariance, overwrite_gyroscope_covariance);
     }
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
@@ -141,6 +149,11 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
+
+        auto pose = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+        pose->header = odometry->header;
+        pose->pose = odometry->pose;
+        pose_publisher.publish(pose);
     }
 }
 
@@ -150,19 +163,39 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 
     // Save optimised odometry
     world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
-    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
-            world_odometry.twist.linear);
+    world_state = gtsam::NavState(
+            gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position, world_odometry.twist.linear);
 
     // Publish map to body TF at t_i-1
-    geometry_msgs::TransformStamped tf;
-    tf.header.stamp = optimised_odometry_msg->header.stamp;
-    tf.header.frame_id = "map";
-    tf.child_frame_id = body_frames.body_frame_id();
-    tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
-    tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
-    tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
-    tf.transform.rotation = optimised_odometry_msg->pose.pose.orientation;
-    tf_broadcaster.sendTransform(tf);
+    geometry_msgs::PoseStamped pose_sensor;
+    pose_sensor.header = optimised_odometry_msg->header;
+    pose_sensor.pose = optimised_odometry_msg->pose.pose;
+    // baselink->head transform
+    auto obtained_transform = false;
+    while (obtained_transform == false && ros::ok()) {
+        ROS_INFO("Looking up transfrm from %s->%s", base_link_frame_id.c_str(), sensor_frame_id.c_str());
+        try {
+            T_base_link2sensor = tf_buffer.lookupTransform(
+                    base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp);
+            obtained_transform = true;
+        } catch (tf2::TransformException& ex) {
+            ROS_WARN("%s", ex.what());
+            ros::Duration(1.0).sleep();
+            continue;
+        }
+    }
+    tf2::Transform T_base_link2sensor_tf2;
+    tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
+    tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
+    tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y, pose_sensor.pose.orientation.z,
+            pose_sensor.pose.orientation.w);
+    tf2::Transform tf2_pose_sensor(R, T);
+    tf2::Transform pose_base_link = tf2_pose_sensor * T_base_link2sensor_tf2.inverse();
+    tf2::Stamped<tf2::Transform> tf(pose_base_link, optimised_odometry_msg->header.stamp, "map");
+    auto tf_msg = tf2::toMsg(tf);
+    tf_msg.header.frame_id = "map";
+    tf_msg.child_frame_id = base_link_frame_id;
+    tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
 
     // Save biases
     from_ros(*imu_biases_msg, imu_biases);
@@ -187,7 +220,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
     ROS_INFO_STREAM("Received pointcloud seq=" << msg->header.seq << " (" << pct::size_points(*msg)
-                                           << " pts) with timestamp " << pointcloud_start);
+                                               << " pts) with timestamp " << pointcloud_start);
     if (pct::empty(*msg)) {
         throw std::runtime_error("Handling of empty pointclouds not yet supported");
     }
