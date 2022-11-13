@@ -256,7 +256,9 @@ CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar>::estima
     }
     d2F_dzdx.conservativeResize(Eigen::NoChange, 6 * correspondence_count_);
     const Eigen::Matrix<double, 6, 6> d2F_dx2_inv = d2F_dx2.inverse();
-    return d2F_dx2_inv * d2F_dzdx * point_variance * d2F_dzdx.transpose() * d2F_dx2_inv;
+    // Use brackets to ensure that the Nx6K * 6KxN multiplication occurs first.
+    // The point_variance multiplication is also moved outside the centre, since it is a scalar product in this case.
+    return point_variance * d2F_dx2_inv * (d2F_dzdx * d2F_dzdx.transpose()) * d2F_dx2_inv;
 }
 
 template<typename PointIn, typename PointOut, typename Scalar>
