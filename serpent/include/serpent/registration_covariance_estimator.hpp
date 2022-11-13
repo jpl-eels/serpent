@@ -239,8 +239,8 @@ CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar>::estima
     const auto source_cloud = registration.getInputSource();
     correspondence_count_ = 0;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
-    Eigen::Matrix<double, 6, Eigen::Dynamic> d2F_dzdx;
-    d2F_dzdx.resize(Eigen::NoChange, 6 * indices->size());
+    Eigen::Matrix<double, 6, Eigen::Dynamic> d2F_dzdx(6, 6 * indices->size());
+    double largest_coeff{0.0};
     for (std::size_t i = 0; i < indices->size(); ++i) {
         const PointIn& source_point = (*source_cloud)[i];
         const PointOut& target_point = (*target_cloud)[(*indices)[i]];
@@ -249,7 +249,7 @@ CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar>::estima
             Eigen::Matrix<double, 6, 6> d2F_dx2_i, d2F_dzdx_i;
             if (process_correspondence(source_point, target_point, tf, d2F_dx2_i, d2F_dzdx_i)) {
                 d2F_dx2 += d2F_dx2_i;
-                d2F_dzdx << d2F_dzdx_i;
+                d2F_dzdx.block(0, 6*correspondence_count_, 6, 6) = d2F_dzdx_i;
                 ++correspondence_count_;
             }
         }
@@ -294,43 +294,43 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     const double qx{q[0]};
     const double qy{q[1]};
     const double qz{q[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    // rx3ry
-    const double rx3rz = rx * rx * rx * rz;    // rx3rz
-    const double rxry3 = rx * ry * ry * ry;    // rxry3
-    const double ry3rz = ry * ry * ry * rz;    // ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
-    const double rx4 = rx * rx * rx * rx;      // rx4
-    const double ry4 = ry * ry * ry * ry;      // ry4
-    const double rz4 = rz * rz * rz * rz;      // rz4
-    const double rx2ry = rx * rx * ry;         // rx2ry
-    const double rx2rz = rx * rx * rz;         // rx2rz
-    const double rxry2 = rx * ry * ry;         // rxry2
-    const double ry2rz = ry * ry * rz;         // ry2rz
-    const double rxrz2 = rx * rz * rz;         // rxrz2
-    const double ryrz2 = ry * rz * rz;         // ryrz2
-    const double rxryrz = rx * ry * rz;        // rxryrz
-    const double rx3 = rx * rx * rx;           // rx3
-    const double ry3 = ry * ry * ry;           // ry3
-    const double rz3 = rz * rz * rz;           // rz3
-    const double rx2 = rx * rx;                // rx2
-    const double ry2 = ry * ry;                // ry2
-    const double rz2 = rz * rz;                // rz2
-    const double a = tf.a();                   // a
-    const double a2 = a * tf.a();              // a2
-    const double a3 = a2 * tf.a();             // a3
-    const double a4 = a3 * tf.a();             // a4
-    const double a5 = a4 * tf.a();             // a5
-    const double a6 = a5 * tf.a();             // a6
+    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    //rx3ry
+    const double rx3rz = rx * rx * rx * rz;    //rx3rz
+    const double rxry3 = rx * ry * ry * ry;    //rxry3
+    const double ry3rz = ry * ry * ry * rz;    //ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
+    const double rx4 = rx * rx * rx * rx;      //rx4
+    const double ry4 = ry * ry * ry * ry;      //ry4
+    const double rz4 = rz * rz * rz * rz;      //rz4
+    const double rx2ry = rx * rx * ry;         //rx2ry
+    const double rx2rz = rx * rx * rz;         //rx2rz
+    const double rxry2 = rx * ry * ry;         //rxry2
+    const double ry2rz = ry * ry * rz;         //ry2rz
+    const double rxrz2 = rx * rz * rz;         //rxrz2
+    const double ryrz2 = ry * rz * rz;         //ryrz2
+    const double rxryrz = rx * ry * rz;        //rxryrz
+    const double rx3 = rx * rx * rx;           //rx3
+    const double ry3 = ry * ry * ry;           //ry3
+    const double rz3 = rz * rz * rz;           //rz3
+    const double rx2 = rx * rx;                //rx2
+    const double ry2 = ry * ry;                //ry2
+    const double rz2 = rz * rz;                //rz2
+    const double a = tf.a();                   //a
+    const double a2 = a * tf.a();              //a2
+    const double a3 = a2 * tf.a();             //a3
+    const double a4 = a3 * tf.a();             //a4
+    const double a5 = a4 * tf.a();             //a5
+    const double a6 = a5 * tf.a();             //a6
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;  // cam1
+    const double cam1 = ca - 1;  //cam1
 
     Eigen::Matrix<double, 6, 6> d2F_dx2;
     d2F_dx2(0, 0) =
@@ -1157,29 +1157,29 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     const double qx{q[0]};
     const double qy{q[1]};
     const double qz{q[2]};
-    const double rx2ry = rx * rx * ry;   // rx2ry
-    const double rx2rz = rx * rx * rz;   // rx2rz
-    const double rxry2 = rx * ry * ry;   // rxry2
-    const double ry2rz = ry * ry * rz;   // ry2rz
-    const double rxrz2 = rx * rz * rz;   // rxrz2
-    const double ryrz2 = ry * rz * rz;   // ryrz2
-    const double rxryrz = rx * ry * rz;  // rxryrz
-    const double rx3 = rx * rx * rx;     // rx3
-    const double ry3 = ry * ry * ry;     // ry3
-    const double rz3 = rz * rz * rz;     // rz3
-    const double rx2 = rx * rx;          // rx2
-    const double ry2 = ry * ry;          // ry2
-    const double rz2 = rz * rz;          // rz2
-    const double rxry = rx * ry;         // rxry
-    const double rxrz = rx * rz;         // rxrz
-    const double ryrz = ry * rz;         // ryrz
-    const double a = tf.a();             // a
-    const double a2 = a * tf.a();        // a2
-    const double a3 = a2 * tf.a();       // a3
-    const double a4 = a3 * tf.a();       // a4
+    const double rx2ry = rx * rx * ry;   //rx2ry
+    const double rx2rz = rx * rx * rz;   //rx2rz
+    const double rxry2 = rx * ry * ry;   //rxry2
+    const double ry2rz = ry * ry * rz;   //ry2rz
+    const double rxrz2 = rx * rz * rz;   //rxrz2
+    const double ryrz2 = ry * rz * rz;   //ryrz2
+    const double rxryrz = rx * ry * rz;  //rxryrz
+    const double rx3 = rx * rx * rx;     //rx3
+    const double ry3 = ry * ry * ry;     //ry3
+    const double rz3 = rz * rz * rz;     //rz3
+    const double rx2 = rx * rx;          //rx2
+    const double ry2 = ry * ry;          //ry2
+    const double rz2 = rz * rz;          //rz2
+    const double rxry = rx * ry;         //rxry
+    const double rxrz = rx * rz;         //rxrz
+    const double ryrz = ry * rz;         //ryrz
+    const double a = tf.a();             //a
+    const double a2 = a * tf.a();        //a2
+    const double a3 = a2 * tf.a();       //a3
+    const double a4 = a3 * tf.a();       //a4
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;  // cam1
+    const double cam1 = ca - 1;  //cam1
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dzdx;
@@ -1744,52 +1744,52 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     const double nx{n[0]};
     const double ny{n[1]};
     const double nz{n[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    // rx3ry
-    const double rx3rz = rx * rx * rx * rz;    // rx3rz
-    const double rxry3 = rx * ry * ry * ry;    // rxry3
-    const double ry3rz = ry * ry * ry * rz;    // ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
-    const double rx4 = rx * rx * rx * rx;      // rx4
-    const double ry4 = ry * ry * ry * ry;      // ry4
-    const double rz4 = rz * rz * rz * rz;      // rz4
-    const double rx2ry = rx * rx * ry;         // rx2ry
-    const double rx2rz = rx * rx * rz;         // rx2rz
-    const double rxry2 = rx * ry * ry;         // rxry2
-    const double ry2rz = ry * ry * rz;         // ry2rz
-    const double rxrz2 = rx * rz * rz;         // rxrz2
-    const double ryrz2 = ry * rz * rz;         // ryrz2
-    const double rxryrz = rx * ry * rz;        // rxryrz
-    const double rx3 = rx * rx * rx;           // rx3
-    const double ry3 = ry * ry * ry;           // ry3
-    const double rz3 = rz * rz * rz;           // rz3
-    const double rx2 = rx * rx;                // rx2
-    const double ry2 = ry * ry;                // ry2
-    const double rz2 = rz * rz;                // rz2
-    const double rxry = rx * ry;               // rxry
-    const double ryrz = ry * rz;               // ryrz
-    const double rxrz = rx * rz;               // rxrz
-    const double a = tf.a();                   // a
-    const double a2 = a * tf.a();              // a2
-    const double a3 = a2 * tf.a();             // a3
-    const double a4 = a3 * tf.a();             // a4
-    const double a5 = a4 * tf.a();             // a5
-    const double a6 = a5 * tf.a();             // a6
+    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    //rx3ry
+    const double rx3rz = rx * rx * rx * rz;    //rx3rz
+    const double rxry3 = rx * ry * ry * ry;    //rxry3
+    const double ry3rz = ry * ry * ry * rz;    //ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
+    const double rx4 = rx * rx * rx * rx;      //rx4
+    const double ry4 = ry * ry * ry * ry;      //ry4
+    const double rz4 = rz * rz * rz * rz;      //rz4
+    const double rx2ry = rx * rx * ry;         //rx2ry
+    const double rx2rz = rx * rx * rz;         //rx2rz
+    const double rxry2 = rx * ry * ry;         //rxry2
+    const double ry2rz = ry * ry * rz;         //ry2rz
+    const double rxrz2 = rx * rz * rz;         //rxrz2
+    const double ryrz2 = ry * rz * rz;         //ryrz2
+    const double rxryrz = rx * ry * rz;        //rxryrz
+    const double rx3 = rx * rx * rx;           //rx3
+    const double ry3 = ry * ry * ry;           //ry3
+    const double rz3 = rz * rz * rz;           //rz3
+    const double rx2 = rx * rx;                //rx2
+    const double ry2 = ry * ry;                //ry2
+    const double rz2 = rz * rz;                //rz2
+    const double rxry = rx * ry;               //rxry
+    const double ryrz = ry * rz;               //ryrz
+    const double rxrz = rx * rz;               //rxrz
+    const double a = tf.a();                   //a
+    const double a2 = a * tf.a();              //a2
+    const double a3 = a2 * tf.a();             //a3
+    const double a4 = a3 * tf.a();             //a4
+    const double a5 = a4 * tf.a();             //a5
+    const double a6 = a5 * tf.a();             //a6
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;   // cam1
-    const double nx2 = nx * nx;   // nx2
-    const double ny2 = ny * ny;   // ny2
-    const double nz2 = nz * nz;   // nz2
-    const double nxny = nx * ny;  // nxny
-    const double nynz = ny * nz;  // nynz
-    const double nxnz = nx * nz;  // nxnz
+    const double cam1 = ca - 1;   //cam1
+    const double nx2 = nx * nx;   //nx2
+    const double ny2 = ny * ny;   //ny2
+    const double nz2 = nz * nz;   //nz2
+    const double nxny = nx * ny;  //nxny
+    const double nynz = ny * nz;  //nynz
+    const double nxnz = nx * nz;  //nxnz
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dx2;
@@ -2899,52 +2899,52 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     const double nx{n[0]};
     const double ny{n[1]};
     const double nz{n[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    // rx3ry
-    const double rx3rz = rx * rx * rx * rz;    // rx3rz
-    const double rxry3 = rx * ry * ry * ry;    // rxry3
-    const double ry3rz = ry * ry * ry * rz;    // ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
-    const double rx4 = rx * rx * rx * rx;      // rx4
-    const double ry4 = ry * ry * ry * ry;      // ry4
-    const double rz4 = rz * rz * rz * rz;      // rz4
-    const double rx2ry = rx * rx * ry;         // rx2ry
-    const double rx2rz = rx * rx * rz;         // rx2rz
-    const double rxry2 = rx * ry * ry;         // rxry2
-    const double ry2rz = ry * ry * rz;         // ry2rz
-    const double rxrz2 = rx * rz * rz;         // rxrz2
-    const double ryrz2 = ry * rz * rz;         // ryrz2
-    const double rxryrz = rx * ry * rz;        // rxryrz
-    const double rx3 = rx * rx * rx;           // rx3
-    const double ry3 = ry * ry * ry;           // ry3
-    const double rz3 = rz * rz * rz;           // rz3
-    const double rx2 = rx * rx;                // rx2
-    const double ry2 = ry * ry;                // ry2
-    const double rz2 = rz * rz;                // rz2
-    const double rxry = rx * ry;               // rxry
-    const double ryrz = ry * rz;               // ryrz
-    const double rxrz = rx * rz;               // rxrz
-    const double a = tf.a();                   // a
-    const double a2 = a * tf.a();              // a2
-    const double a3 = a2 * tf.a();             // a3
-    const double a4 = a3 * tf.a();             // a4
-    const double a5 = a4 * tf.a();             // a5
-    const double a6 = a5 * tf.a();             // a6
+    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    //rx3ry
+    const double rx3rz = rx * rx * rx * rz;    //rx3rz
+    const double rxry3 = rx * ry * ry * ry;    //rxry3
+    const double ry3rz = ry * ry * ry * rz;    //ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
+    const double rx4 = rx * rx * rx * rx;      //rx4
+    const double ry4 = ry * ry * ry * ry;      //ry4
+    const double rz4 = rz * rz * rz * rz;      //rz4
+    const double rx2ry = rx * rx * ry;         //rx2ry
+    const double rx2rz = rx * rx * rz;         //rx2rz
+    const double rxry2 = rx * ry * ry;         //rxry2
+    const double ry2rz = ry * ry * rz;         //ry2rz
+    const double rxrz2 = rx * rz * rz;         //rxrz2
+    const double ryrz2 = ry * rz * rz;         //ryrz2
+    const double rxryrz = rx * ry * rz;        //rxryrz
+    const double rx3 = rx * rx * rx;           //rx3
+    const double ry3 = ry * ry * ry;           //ry3
+    const double rz3 = rz * rz * rz;           //rz3
+    const double rx2 = rx * rx;                //rx2
+    const double ry2 = ry * ry;                //ry2
+    const double rz2 = rz * rz;                //rz2
+    const double rxry = rx * ry;               //rxry
+    const double ryrz = ry * rz;               //ryrz
+    const double rxrz = rx * rz;               //rxrz
+    const double a = tf.a();                   //a
+    const double a2 = a * tf.a();              //a2
+    const double a3 = a2 * tf.a();             //a3
+    const double a4 = a3 * tf.a();             //a4
+    const double a5 = a4 * tf.a();             //a5
+    const double a6 = a5 * tf.a();             //a6
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;   // cam1
-    const double nx2 = nx * nx;   // nx2
-    const double ny2 = ny * ny;   // ny2
-    const double nz2 = nz * nz;   // nz2
-    const double nxny = nx * ny;  // nxny
-    const double nynz = ny * nz;  // nynz
-    const double nxnz = nx * nz;  // nxnz
+    const double cam1 = ca - 1;   //cam1
+    const double nx2 = nx * nx;   //nx2
+    const double ny2 = ny * ny;   //ny2
+    const double nz2 = nz * nz;   //nz2
+    const double nxny = nx * ny;  //nxny
+    const double nynz = ny * nz;  //nynz
+    const double nxnz = nx * nz;  //nxnz
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dzdx;
