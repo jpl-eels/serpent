@@ -5,6 +5,15 @@
 
 namespace eigen_ext {
 
+/**
+ * @brief Checks matrix is square, that element ij == element ji, and that elements ii along the diagonal are positive.
+ * 
+ * @tparam Derived 
+ * @param covariance 
+ * @param precision 
+ * @return true 
+ * @return false 
+ */
 template<typename Derived>
 bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision);
 
@@ -31,6 +40,9 @@ bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typ
         return false;
     }
     for (int r = 0; r < covariance.rows() - 1; ++r) {
+        if (covariance(r, r) < static_cast<typename Derived::Scalar>(0)) {
+            return false;
+        }
         for (int c = r + 1; c < covariance.cols(); ++c) {
             if (std::abs(covariance(r, c) - covariance(c, r)) > precision) {
                 return false;
