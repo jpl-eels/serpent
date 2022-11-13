@@ -3,10 +3,13 @@
 
 #include <Eigen/Core>
 
+#include "eigen_ext/matrix.hpp"
+
 namespace eigen_ext {
 
 /**
- * @brief Checks matrix is square, that element ij == element ji, and that elements ii along the diagonal are positive.
+ * @brief Checks matrix is square, positive definite, that element ij == element ji, and that elements ii along the
+ * diagonal are positive.
  * 
  * @tparam Derived 
  * @param covariance 
@@ -15,7 +18,7 @@ namespace eigen_ext {
  * @return false 
  */
 template<typename Derived>
-bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision);
+bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision = 0);
 
 /**
  * @brief Re-order a covariance matrix by swapping the blocks according to some boundary index.
@@ -36,7 +39,7 @@ Derived reorder_covariance(const Eigen::MatrixBase<Derived>& covariance, const E
 
 template<typename Derived>
 bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision) {
-    if (covariance.rows() != covariance.cols()) {
+    if (covariance.rows() != covariance.cols() || is_positive_definite(covariance)) {
         return false;
     }
     for (int r = 0; r < covariance.rows() - 1; ++r) {
