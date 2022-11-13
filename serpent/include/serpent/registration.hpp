@@ -150,7 +150,6 @@ Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
         ROS_INFO_STREAM(corr_cov_est->correspondence_count() << "/" << registration.getIndices()->size()
                                                              << " correspondences were used in covariance estimation");
     }
-    ROS_INFO_STREAM("Reg Covariance:\n" << covariance);
     return covariance;
 }
 

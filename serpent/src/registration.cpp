@@ -118,7 +118,6 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     // frame may result in NaN values.
     const Eigen::Matrix<double, 6, 6> covariance_body = covariance.allFinite() ?
             eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint) : covariance;
-    ROS_INFO_STREAM("Reg Covariance (body frame):\n" << covariance_body);
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
