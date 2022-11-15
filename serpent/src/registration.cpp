@@ -5,6 +5,7 @@
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
 #include <eigen_ros/eigen_ros.hpp>
+#include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
 #include "serpent/registration_methods.hpp"
 #include "serpent/utilities.hpp"
@@ -38,10 +39,10 @@ Registration::Registration()
     // Covariance estimation configuration
     const double rotation_noise = nh.param<double>(scan_label + "/covariance/constant/rotation", 0.00174533);
     const double translation_noise = nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-3);
-    const CovarianceEstimationMethod cov_method =
+    covariance_estimation_method =
             to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CONSTANT"));
     // Create covariance estimator
-    switch (cov_method) {
+    switch (covariance_estimation_method) {
         case CONSTANT:
             covariance_estimator = std::make_unique<ConstantCovariance<pcl::PointNormal, pcl::PointNormal, float>>(
                     rotation_noise, translation_noise);
@@ -116,8 +117,9 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
             eigen_ext::change_relative_transform_frame(transform_lidar, body_frames.body_to_frame("lidar"));
     // Convert covariance to body frame, except in special case where covariance is infinite, in which case changing the
     // frame may result in NaN values.
-    const Eigen::Matrix<double, 6, 6> covariance_body = covariance.allFinite() ?
-            eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint) : covariance;
+    const Eigen::Matrix<double, 6, 6> covariance_body =
+            covariance.allFinite() ? eigen_ext::change_covariance_frame(covariance, body_lidar_transform_adjoint)
+                                   : covariance;
 
     // Convert to ROS
     auto transform_msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
@@ -132,9 +134,10 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         const geometry_msgs::TransformStamped::ConstPtr& transform_msg) {
     // Perform registration after first scan
     if (previous_pointcloud) {
-        // Convert the transform message
-        Eigen::Isometry3d transform = to_transform(eigen_ros::from_ros<eigen_ros::Pose>(transform_msg->transform));
-        Eigen::Matrix4f tf_mat_float = transform.matrix().cast<float>();
+        // Convert the incoming transform message, T_{L_i-1}^{L_i}
+        const Eigen::Isometry3d transform =
+                to_transform(eigen_ros::from_ros<eigen_ros::Pose>(transform_msg->transform));
+        const Eigen::Matrix4f tf_mat_float = transform.matrix().cast<float>();
         ROS_INFO_STREAM("S2S initial guess:\n" << tf_mat_float);
 
         const std::string frame_id = body_frames.frame_id("lidar");
@@ -151,8 +154,10 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             debug_previous_cloud_publisher.publish(previous_pointcloud_);
 
             // Transform current scan to previous frame and publish (must change timestamp for visualisation)
+            // By applying the T_{L_i-1}^{L_i} transform, the reference frame of the points change from {L_i} to {L_i-1}
+            // as p_{L_i-1} = T_{L_i-1}^{L_i} * p_{L_i}.
             auto imu_guess_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-            pcl::transformPointCloud(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
+            pcl::transformPointCloudWithNormals(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
             imu_guess_pointcloud->header.stamp = previous_pointcloud->header.stamp;
             imu_guess_pointcloud->header.frame_id = frame_id;
             debug_imu_guess_cloud_publisher.publish(imu_guess_pointcloud);
@@ -168,10 +173,9 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         s2s->align(*registered_pointcloud, tf_mat_float);
         registered_pointcloud->header.stamp = previous_pointcloud->header.stamp;
         registered_pointcloud->header.frame_id = frame_id;
-        const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();
+        const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();  // T_{L_i-1}^{L_i}
         const Eigen::Matrix4d s2s_transform = s2s_transform_float.cast<double>();
-        ROS_INFO_STREAM(
-                "S2S finished in " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2s));
+        ROS_INFO_STREAM("S2S took " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2s));
         if (!s2s->hasConverged()) {
             ROS_WARN("Scan to Scan did not converge");
         }
@@ -183,10 +187,21 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             if (publish_registration_clouds_alt) {
                 // Alt: transform and publish (must change timestamp for visualisation)
                 auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-                pcl::transformPointCloud(*current_pointcloud, *registered_pointcloud_alt, s2s_transform_float);
+                pcl::transformPointCloudWithNormals(*current_pointcloud, *registered_pointcloud_alt,
+                        s2s_transform_float);
                 registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
                 registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
                 debug_s2s_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);
+            }
+        }
+
+        // Check normals of target cloud if using a point-to-plane method
+        if (covariance_estimation_method == CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED ||
+                covariance_estimation_method == CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR) {
+            const int unnormalised_normals_target = pct::check_normals(*previous_pointcloud);
+            if (unnormalised_normals_target > 0) {
+                throw std::runtime_error("Found " + std::to_string(unnormalised_normals_target) +
+                                         " unnormalised normals in target cloud before covariance estimation.");
             }
         }
 
@@ -215,7 +230,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     // Pop pointcloud and s2s registration from queues
     pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud = s2m_pointclouds.front();
     s2m_pointclouds.pop_front();
-    Eigen::Isometry3d s2s_transform = s2s_registrations.front();
+    Eigen::Isometry3d s2s_transform = s2s_registrations.front();  // T_{L_i-1}^{L_i}
     s2s_registrations.pop_front();
     s2s_mutex.unlock();
 
@@ -229,9 +244,9 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
     registered_pointcloud->header.stamp = map->header.stamp;
     registered_pointcloud->header.frame_id = body_frames.frame_id("lidar");
-    const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();
+    const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();  // T_{L_i-1}^{L_i}
     const Eigen::Matrix4d s2m_transform = s2m_transform_float.cast<double>();
-    ROS_INFO_STREAM("S2M finished in " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2m));
+    ROS_INFO_STREAM("S2M took " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2m));
     if (!s2m->hasConverged()) {
         ROS_WARN("Scan to Map did not converge");
     }
@@ -243,7 +258,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         if (publish_registration_clouds_alt) {
             // Alt: transform and publish (must change timestamp for visualisation)
             auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-            pcl::transformPointCloud(*pointcloud, *registered_pointcloud_alt, s2m_transform_float);
+            pcl::transformPointCloudWithNormals(*pointcloud, *registered_pointcloud_alt, s2m_transform_float);
             registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
             registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
             debug_s2m_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);

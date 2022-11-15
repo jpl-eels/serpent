@@ -5,6 +5,7 @@
 #include <pcl/registration/registration.h>
 
 #include <Eigen/Geometry>
+#include <pointcloud_tools/registration_utilities.hpp>
 
 namespace serpent {
 
@@ -33,42 +34,52 @@ private:
     Scalar cosa_;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
+template<typename PointSource, typename PointTarget, typename Scalar = float>
 class RegistrationCovarianceEstimator {
 public:
     virtual Eigen::Matrix<double, 6, 6> estimate_covariance(
-            typename pcl::Registration<PointIn, PointOut, Scalar>& registration, const double point_variance) = 0;
+            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
+            const double point_variance) = 0;
 
 private:
     // Number of correspondences used in last covariance estimation
     int correspondence_count_;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
-class ConstantCovariance : public RegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class ConstantCovariance : public RegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
 public:
     ConstantCovariance(const Eigen::Matrix<double, 6, 6>& constant_covariance);
 
     ConstantCovariance(const double rotation_noise, const double translation_noise);
 
-    Eigen::Matrix<double, 6, 6> estimate_covariance(typename pcl::Registration<PointIn, PointOut, Scalar>& registration,
+    Eigen::Matrix<double, 6, 6> estimate_covariance(
+            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
             const double point_variance) override;
 
 protected:
     Eigen::Matrix<double, 6, 6> constant_covariance;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
+template<typename PointSource, typename PointTarget, typename Scalar = float>
 class CorrespondenceRegistrationCovarianceEstimator
-    : public RegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+    : public RegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+    static_assert(std::is_floating_point<decltype(PointSource::x)>::value, "x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointSource::y)>::value, "y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointSource::z)>::value, "z is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::x)>::value, "x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::y)>::value, "y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::z)>::value, "z is not a floating point type");
+
 public:
-    Eigen::Matrix<double, 6, 6> estimate_covariance(typename pcl::Registration<PointIn, PointOut, Scalar>& registration,
+    Eigen::Matrix<double, 6, 6> estimate_covariance(
+            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
             const double point_variance) override;
 
     int correspondence_count() const;
 
 protected:
-    virtual bool process_correspondence(const PointIn& source_point, const PointOut& target_point,
+    virtual bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const = 0;
 
@@ -77,10 +88,11 @@ private:
     int correspondence_count_;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
-class PointToPointIcpNonlinear : public CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPointIcpNonlinear
+    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
 protected:
-    bool process_correspondence(const PointIn& source_point, const PointOut& target_point,
+    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
 
@@ -92,10 +104,11 @@ public:
             const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
-class PointToPointIcpLinearised : public CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPointIcpLinearised
+    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
 protected:
-    bool process_correspondence(const PointIn& source_point, const PointOut& target_point,
+    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
 
@@ -109,10 +122,18 @@ public:
             const Eigen::Matrix<double, 3, 1>& q) const;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
-class PointToPlaneIcpNonlinear : public CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPlaneIcpNonlinear
+    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_x)>::value,
+            "normal_x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_y)>::value,
+            "normal_y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_z)>::value,
+            "normal_z is not a floating point type");
+
 protected:
-    bool process_correspondence(const PointIn& source_point, const PointOut& target_point,
+    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
 
@@ -126,10 +147,18 @@ public:
             const Eigen::Matrix<double, 3, 1>& n) const;
 };
 
-template<typename PointIn, typename PointOut, typename Scalar = float>
-class PointToPlaneIcpLinearised : public CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar> {
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPlaneIcpLinearised
+    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_x)>::value,
+            "normal_x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_y)>::value,
+            "normal_y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::normal_z)>::value,
+            "normal_z is not a floating point type");
+
 protected:
-    bool process_correspondence(const PointIn& source_point, const PointOut& target_point,
+    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
 
@@ -205,80 +234,77 @@ inline const Scalar PrecomputedTransformComponents<Scalar>::cosa() const {
     return cosa_;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-ConstantCovariance<PointIn, PointOut, Scalar>::ConstantCovariance(
+template<typename PointSource, typename PointTarget, typename Scalar>
+ConstantCovariance<PointSource, PointTarget, Scalar>::ConstantCovariance(
         const Eigen::Matrix<double, 6, 6>& constant_covariance)
     : constant_covariance(constant_covariance) {}
 
-template<typename PointIn, typename PointOut, typename Scalar>
-ConstantCovariance<PointIn, PointOut, Scalar>::ConstantCovariance(const double rotation_noise,
+template<typename PointSource, typename PointTarget, typename Scalar>
+ConstantCovariance<PointSource, PointTarget, Scalar>::ConstantCovariance(const double rotation_noise,
         const double translation_noise) {
     constant_covariance << Eigen::Matrix<double, 3, 3>::Identity() * rotation_noise * rotation_noise,
             Eigen::Matrix<double, 3, 3>::Zero(), Eigen::Matrix<double, 3, 3>::Zero(),
             Eigen::Matrix<double, 3, 3>::Identity() * translation_noise * translation_noise;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> ConstantCovariance<PointIn, PointOut, Scalar>::estimate_covariance(
-        typename pcl::Registration<PointIn, PointOut, Scalar>&, const double) {
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> ConstantCovariance<PointSource, PointTarget, Scalar>::estimate_covariance(
+        typename pcl::Registration<PointSource, PointTarget, Scalar>&, const double) {
     return constant_covariance;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
+template<typename PointSource, typename PointTarget, typename Scalar>
 typename Eigen::Matrix<double, 6, 6>
-CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar>::estimate_covariance(
-        typename pcl::Registration<PointIn, PointOut, Scalar>& registration, const double point_variance) {
+CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::estimate_covariance(
+        typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance) {
     // Setup
     PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
-    const double max_correspondence_distance_squared =
-            std::pow(registration.getMaxCorrespondenceDistance(), 2.0);
+    const auto source_cloud = registration.getInputSource();
+    const auto target_cloud = registration.getInputTarget();
+
+    // Compute correspondences
+    const auto correspondences = pct::compute_registration_correspondences(registration);
+    correspondence_count_ = correspondences->size();
 
     // Interate over correspondences to build hessian and d2F_dzdx
-    const auto indices = registration.getIndices();
-    const auto target_cloud = registration.getInputTarget();
-    const auto source_cloud = registration.getInputSource();
-    correspondence_count_ = 0;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
-    Eigen::Matrix<double, 6, Eigen::Dynamic> d2F_dzdx(6, 6 * indices->size());
-    double largest_coeff{0.0};
-    for (std::size_t i = 0; i < indices->size(); ++i) {
-        const PointIn& source_point = (*source_cloud)[i];
-        const PointOut& target_point = (*target_cloud)[(*indices)[i]];
-        const double square_euclidean_distance = pcl::squaredEuclideanDistance(source_point, target_point);
-        if (square_euclidean_distance <= max_correspondence_distance_squared) {
-            Eigen::Matrix<double, 6, 6> d2F_dx2_i, d2F_dzdx_i;
-            if (process_correspondence(source_point, target_point, tf, d2F_dx2_i, d2F_dzdx_i)) {
-                d2F_dx2 += d2F_dx2_i;
-                d2F_dzdx.block(0, 6*correspondence_count_, 6, 6) = d2F_dzdx_i;
-                ++correspondence_count_;
-            }
+    Eigen::Matrix<double, 6, Eigen::Dynamic> d2F_dzdx(6, 6 * correspondences->size());
+    for (std::size_t i = 0; i < correspondences->size(); ++i) {
+        const auto& correspondence = (*correspondences)[i];
+        const PointSource& source_point = source_cloud->at(correspondence.index_query);
+        const PointTarget& target_point = target_cloud->at(correspondence.index_match);
+        Eigen::Matrix<double, 6, 6> d2F_dx2_i, d2F_dzdx_i;
+        if (process_correspondence(source_point, target_point, tf, d2F_dx2_i, d2F_dzdx_i)) {
+            const double d2F_dx2_i_max_coeff = d2F_dx2_i.maxCoeff();
+            const double d2F_dzdx_i_max_coeff = d2F_dzdx_i.maxCoeff();
+            d2F_dx2 += d2F_dx2_i;
+            d2F_dzdx.block(0, 6 * i, 6, 6) = d2F_dzdx_i;
         }
     }
-    d2F_dzdx.conservativeResize(Eigen::NoChange, 6 * correspondence_count_);
     const Eigen::Matrix<double, 6, 6> d2F_dx2_inv = d2F_dx2.inverse();
     // Use brackets to ensure that the Nx6K * 6KxN multiplication occurs first.
     // The point_variance multiplication is also moved outside the centre, since it is a scalar product in this case.
     return point_variance * d2F_dx2_inv * (d2F_dzdx * d2F_dzdx.transpose()) * d2F_dx2_inv;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-int CorrespondenceRegistrationCovarianceEstimator<PointIn, PointOut, Scalar>::correspondence_count() const {
+template<typename PointSource, typename PointTarget, typename Scalar>
+int CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::correspondence_count() const {
     return correspondence_count_;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-bool PointToPointIcpNonlinear<PointIn, PointOut, Scalar>::process_correspondence(const PointIn& source_point,
-        const PointOut& target_point, const PrecomputedTransformComponents<double>& tf,
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPointIcpNonlinear<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
         Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Matrix<double, 3, 1> p{source_point.x, source_point.y, source_point.z};
-    const Eigen::Matrix<double, 3, 1> q{target_point.x, target_point.y, target_point.z};
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
     d2F_dx2 = compute_d2F_dx2(tf, p, q);
     d2F_dzdx = compute_d2F_dzdx(tf, p, q);
     return true;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>::compute_d2F_dx2(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
         const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
         const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
@@ -294,43 +320,43 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     const double qx{q[0]};
     const double qy{q[1]};
     const double qz{q[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    //rx3ry
-    const double rx3rz = rx * rx * rx * rz;    //rx3rz
-    const double rxry3 = rx * ry * ry * ry;    //rxry3
-    const double ry3rz = ry * ry * ry * rz;    //ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
-    const double rx4 = rx * rx * rx * rx;      //rx4
-    const double ry4 = ry * ry * ry * ry;      //ry4
-    const double rz4 = rz * rz * rz * rz;      //rz4
-    const double rx2ry = rx * rx * ry;         //rx2ry
-    const double rx2rz = rx * rx * rz;         //rx2rz
-    const double rxry2 = rx * ry * ry;         //rxry2
-    const double ry2rz = ry * ry * rz;         //ry2rz
-    const double rxrz2 = rx * rz * rz;         //rxrz2
-    const double ryrz2 = ry * rz * rz;         //ryrz2
-    const double rxryrz = rx * ry * rz;        //rxryrz
-    const double rx3 = rx * rx * rx;           //rx3
-    const double ry3 = ry * ry * ry;           //ry3
-    const double rz3 = rz * rz * rz;           //rz3
-    const double rx2 = rx * rx;                //rx2
-    const double ry2 = ry * ry;                //ry2
-    const double rz2 = rz * rz;                //rz2
-    const double a = tf.a();                   //a
-    const double a2 = a * tf.a();              //a2
-    const double a3 = a2 * tf.a();             //a3
-    const double a4 = a3 * tf.a();             //a4
-    const double a5 = a4 * tf.a();             //a5
-    const double a6 = a5 * tf.a();             //a6
+    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    // rx3ry
+    const double rx3rz = rx * rx * rx * rz;    // rx3rz
+    const double rxry3 = rx * ry * ry * ry;    // rxry3
+    const double ry3rz = ry * ry * ry * rz;    // ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
+    const double rx4 = rx * rx * rx * rx;      // rx4
+    const double ry4 = ry * ry * ry * ry;      // ry4
+    const double rz4 = rz * rz * rz * rz;      // rz4
+    const double rx2ry = rx * rx * ry;         // rx2ry
+    const double rx2rz = rx * rx * rz;         // rx2rz
+    const double rxry2 = rx * ry * ry;         // rxry2
+    const double ry2rz = ry * ry * rz;         // ry2rz
+    const double rxrz2 = rx * rz * rz;         // rxrz2
+    const double ryrz2 = ry * rz * rz;         // ryrz2
+    const double rxryrz = rx * ry * rz;        // rxryrz
+    const double rx3 = rx * rx * rx;           // rx3
+    const double ry3 = ry * ry * ry;           // ry3
+    const double rz3 = rz * rz * rz;           // rz3
+    const double rx2 = rx * rx;                // rx2
+    const double ry2 = ry * ry;                // ry2
+    const double rz2 = rz * rz;                // rz2
+    const double a = tf.a();                   // a
+    const double a2 = a * tf.a();              // a2
+    const double a3 = a2 * tf.a();             // a3
+    const double a4 = a3 * tf.a();             // a4
+    const double a5 = a4 * tf.a();             // a5
+    const double a6 = a5 * tf.a();             // a6
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;  //cam1
+    const double cam1 = ca - 1;  // cam1
 
     Eigen::Matrix<double, 6, 6> d2F_dx2;
     d2F_dx2(0, 0) =
@@ -1140,8 +1166,8 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     return d2F_dx2;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>::compute_d2F_dzdx(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
         const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
         const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
@@ -1157,29 +1183,29 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     const double qx{q[0]};
     const double qy{q[1]};
     const double qz{q[2]};
-    const double rx2ry = rx * rx * ry;   //rx2ry
-    const double rx2rz = rx * rx * rz;   //rx2rz
-    const double rxry2 = rx * ry * ry;   //rxry2
-    const double ry2rz = ry * ry * rz;   //ry2rz
-    const double rxrz2 = rx * rz * rz;   //rxrz2
-    const double ryrz2 = ry * rz * rz;   //ryrz2
-    const double rxryrz = rx * ry * rz;  //rxryrz
-    const double rx3 = rx * rx * rx;     //rx3
-    const double ry3 = ry * ry * ry;     //ry3
-    const double rz3 = rz * rz * rz;     //rz3
-    const double rx2 = rx * rx;          //rx2
-    const double ry2 = ry * ry;          //ry2
-    const double rz2 = rz * rz;          //rz2
-    const double rxry = rx * ry;         //rxry
-    const double rxrz = rx * rz;         //rxrz
-    const double ryrz = ry * rz;         //ryrz
-    const double a = tf.a();             //a
-    const double a2 = a * tf.a();        //a2
-    const double a3 = a2 * tf.a();       //a3
-    const double a4 = a3 * tf.a();       //a4
+    const double rx2ry = rx * rx * ry;   // rx2ry
+    const double rx2rz = rx * rx * rz;   // rx2rz
+    const double rxry2 = rx * ry * ry;   // rxry2
+    const double ry2rz = ry * ry * rz;   // ry2rz
+    const double rxrz2 = rx * rz * rz;   // rxrz2
+    const double ryrz2 = ry * rz * rz;   // ryrz2
+    const double rxryrz = rx * ry * rz;  // rxryrz
+    const double rx3 = rx * rx * rx;     // rx3
+    const double ry3 = ry * ry * ry;     // ry3
+    const double rz3 = rz * rz * rz;     // rz3
+    const double rx2 = rx * rx;          // rx2
+    const double ry2 = ry * ry;          // ry2
+    const double rz2 = rz * rz;          // rz2
+    const double rxry = rx * ry;         // rxry
+    const double rxrz = rx * rz;         // rxrz
+    const double ryrz = ry * rz;         // ryrz
+    const double a = tf.a();             // a
+    const double a2 = a * tf.a();        // a2
+    const double a3 = a2 * tf.a();       // a3
+    const double a4 = a3 * tf.a();       // a4
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;  //cam1
+    const double cam1 = ca - 1;  // cam1
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dzdx;
@@ -1580,19 +1606,20 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointIn, PointOut, Scalar>:
     return d2F_dzdx;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-bool PointToPointIcpLinearised<PointIn, PointOut, Scalar>::process_correspondence(const PointIn& source_point,
-        const PointOut& target_point, const PrecomputedTransformComponents<double>& tf,
-        Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Matrix<double, 3, 1> p{source_point.x, source_point.y, source_point.z};
-    const Eigen::Matrix<double, 3, 1> q{target_point.x, target_point.y, target_point.z};
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::process_correspondence(
+        const PointSource& source_point, const PointTarget& target_point,
+        const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
+        Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
     d2F_dx2 = compute_d2F_dx2(tf.r(), tf.t(), p, q);
     d2F_dzdx = compute_d2F_dzdx(tf.r(), tf.t(), p, q);
     return true;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointIn, PointOut, Scalar>::compute_d2F_dx2(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
         const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
         const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
@@ -1653,8 +1680,8 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointIn, PointOut, Scalar>
     return d2F_dx2;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointIn, PointOut, Scalar>::compute_d2F_dzdx(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
         const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
         const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
@@ -1712,20 +1739,21 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointIn, PointOut, Scalar>
     return d2F_dzdx;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-bool PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>::process_correspondence(const PointIn& source_point,
-        const PointOut& target_point, const PrecomputedTransformComponents<double>& tf,
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPlaneIcpNonlinear<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
         Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Matrix<double, 3, 1> p{source_point.x, source_point.y, source_point.z};
-    const Eigen::Matrix<double, 3, 1> q{target_point.x, target_point.y, target_point.z};
-    const Eigen::Matrix<double, 3, 1> n{target_point.normal_x, target_point.normal_y, target_point.normal_z};
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
+    const Eigen::Vector3d n =
+            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
     d2F_dx2 = compute_d2F_dx2(tf, p, q, n);
     d2F_dzdx = compute_d2F_dzdx(tf, p, q, n);
     return true;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>::compute_d2F_dx2(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
         const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
         const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const {
     // Aliases
@@ -1744,52 +1772,52 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     const double nx{n[0]};
     const double ny{n[1]};
     const double nz{n[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    //rx3ry
-    const double rx3rz = rx * rx * rx * rz;    //rx3rz
-    const double rxry3 = rx * ry * ry * ry;    //rxry3
-    const double ry3rz = ry * ry * ry * rz;    //ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
-    const double rx4 = rx * rx * rx * rx;      //rx4
-    const double ry4 = ry * ry * ry * ry;      //ry4
-    const double rz4 = rz * rz * rz * rz;      //rz4
-    const double rx2ry = rx * rx * ry;         //rx2ry
-    const double rx2rz = rx * rx * rz;         //rx2rz
-    const double rxry2 = rx * ry * ry;         //rxry2
-    const double ry2rz = ry * ry * rz;         //ry2rz
-    const double rxrz2 = rx * rz * rz;         //rxrz2
-    const double ryrz2 = ry * rz * rz;         //ryrz2
-    const double rxryrz = rx * ry * rz;        //rxryrz
-    const double rx3 = rx * rx * rx;           //rx3
-    const double ry3 = ry * ry * ry;           //ry3
-    const double rz3 = rz * rz * rz;           //rz3
-    const double rx2 = rx * rx;                //rx2
-    const double ry2 = ry * ry;                //ry2
-    const double rz2 = rz * rz;                //rz2
-    const double rxry = rx * ry;               //rxry
-    const double ryrz = ry * rz;               //ryrz
-    const double rxrz = rx * rz;               //rxrz
-    const double a = tf.a();                   //a
-    const double a2 = a * tf.a();              //a2
-    const double a3 = a2 * tf.a();             //a3
-    const double a4 = a3 * tf.a();             //a4
-    const double a5 = a4 * tf.a();             //a5
-    const double a6 = a5 * tf.a();             //a6
+    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    // rx3ry
+    const double rx3rz = rx * rx * rx * rz;    // rx3rz
+    const double rxry3 = rx * ry * ry * ry;    // rxry3
+    const double ry3rz = ry * ry * ry * rz;    // ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
+    const double rx4 = rx * rx * rx * rx;      // rx4
+    const double ry4 = ry * ry * ry * ry;      // ry4
+    const double rz4 = rz * rz * rz * rz;      // rz4
+    const double rx2ry = rx * rx * ry;         // rx2ry
+    const double rx2rz = rx * rx * rz;         // rx2rz
+    const double rxry2 = rx * ry * ry;         // rxry2
+    const double ry2rz = ry * ry * rz;         // ry2rz
+    const double rxrz2 = rx * rz * rz;         // rxrz2
+    const double ryrz2 = ry * rz * rz;         // ryrz2
+    const double rxryrz = rx * ry * rz;        // rxryrz
+    const double rx3 = rx * rx * rx;           // rx3
+    const double ry3 = ry * ry * ry;           // ry3
+    const double rz3 = rz * rz * rz;           // rz3
+    const double rx2 = rx * rx;                // rx2
+    const double ry2 = ry * ry;                // ry2
+    const double rz2 = rz * rz;                // rz2
+    const double rxry = rx * ry;               // rxry
+    const double ryrz = ry * rz;               // ryrz
+    const double rxrz = rx * rz;               // rxrz
+    const double a = tf.a();                   // a
+    const double a2 = a * tf.a();              // a2
+    const double a3 = a2 * tf.a();             // a3
+    const double a4 = a3 * tf.a();             // a4
+    const double a5 = a4 * tf.a();             // a5
+    const double a6 = a5 * tf.a();             // a6
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;   //cam1
-    const double nx2 = nx * nx;   //nx2
-    const double ny2 = ny * ny;   //ny2
-    const double nz2 = nz * nz;   //nz2
-    const double nxny = nx * ny;  //nxny
-    const double nynz = ny * nz;  //nynz
-    const double nxnz = nx * nz;  //nxnz
+    const double cam1 = ca - 1;   // cam1
+    const double nx2 = nx * nx;   // nx2
+    const double ny2 = ny * ny;   // ny2
+    const double nz2 = nz * nz;   // nz2
+    const double nxny = nx * ny;  // nxny
+    const double nynz = ny * nz;  // nynz
+    const double nxnz = nx * nz;  // nxnz
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dx2;
@@ -2879,8 +2907,8 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     return d2F_dx2;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>::compute_d2F_dzdx(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
         const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
         const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const {
     // Aliases
@@ -2899,52 +2927,50 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     const double nx{n[0]};
     const double ny{n[1]};
     const double nz{n[2]};
-    const double rx2ryrz = rx * rx * ry * rz;  //rx2ryrz
-    const double rxry2rz = rx * ry * ry * rz;  //rxry2rz
-    const double rxryrz2 = rx * ry * rz * rz;  //rxryrz2
-    const double rx2ry2 = rx * rx * ry * ry;   //rx2ry2
-    const double rx2rz2 = rx * rx * rz * rz;   //rx2rz2
-    const double ry2rz2 = ry * ry * rz * rz;   //ry2rz2
-    const double rx3ry = rx * rx * rx * ry;    //rx3ry
-    const double rx3rz = rx * rx * rx * rz;    //rx3rz
-    const double rxry3 = rx * ry * ry * ry;    //rxry3
-    const double ry3rz = ry * ry * ry * rz;    //ry3rz
-    const double rxrz3 = rx * rz * rz * rz;    //rxrz3
-    const double ryrz3 = ry * rz * rz * rz;    //ryrz3
-    const double rx4 = rx * rx * rx * rx;      //rx4
-    const double ry4 = ry * ry * ry * ry;      //ry4
-    const double rz4 = rz * rz * rz * rz;      //rz4
-    const double rx2ry = rx * rx * ry;         //rx2ry
-    const double rx2rz = rx * rx * rz;         //rx2rz
-    const double rxry2 = rx * ry * ry;         //rxry2
-    const double ry2rz = ry * ry * rz;         //ry2rz
-    const double rxrz2 = rx * rz * rz;         //rxrz2
-    const double ryrz2 = ry * rz * rz;         //ryrz2
-    const double rxryrz = rx * ry * rz;        //rxryrz
-    const double rx3 = rx * rx * rx;           //rx3
-    const double ry3 = ry * ry * ry;           //ry3
-    const double rz3 = rz * rz * rz;           //rz3
-    const double rx2 = rx * rx;                //rx2
-    const double ry2 = ry * ry;                //ry2
-    const double rz2 = rz * rz;                //rz2
-    const double rxry = rx * ry;               //rxry
-    const double ryrz = ry * rz;               //ryrz
-    const double rxrz = rx * rz;               //rxrz
-    const double a = tf.a();                   //a
-    const double a2 = a * tf.a();              //a2
-    const double a3 = a2 * tf.a();             //a3
-    const double a4 = a3 * tf.a();             //a4
-    const double a5 = a4 * tf.a();             //a5
-    const double a6 = a5 * tf.a();             //a6
+    const double rx2ryrz = rx * rx * ry * rz;  // rx2ryrz
+    const double rxry2rz = rx * ry * ry * rz;  // rxry2rz
+    const double rxryrz2 = rx * ry * rz * rz;  // rxryrz2
+    const double rx2ry2 = rx * rx * ry * ry;   // rx2ry2
+    const double rx2rz2 = rx * rx * rz * rz;   // rx2rz2
+    const double ry2rz2 = ry * ry * rz * rz;   // ry2rz2
+    const double rx3ry = rx * rx * rx * ry;    // rx3ry
+    const double rx3rz = rx * rx * rx * rz;    // rx3rz
+    const double rxry3 = rx * ry * ry * ry;    // rxry3
+    const double ry3rz = ry * ry * ry * rz;    // ry3rz
+    const double rxrz3 = rx * rz * rz * rz;    // rxrz3
+    const double ryrz3 = ry * rz * rz * rz;    // ryrz3
+    const double rx4 = rx * rx * rx * rx;      // rx4
+    const double ry4 = ry * ry * ry * ry;      // ry4
+    const double rz4 = rz * rz * rz * rz;      // rz4
+    const double rx2ry = rx * rx * ry;         // rx2ry
+    const double rx2rz = rx * rx * rz;         // rx2rz
+    const double rxry2 = rx * ry * ry;         // rxry2
+    const double ry2rz = ry * ry * rz;         // ry2rz
+    const double rxrz2 = rx * rz * rz;         // rxrz2
+    const double ryrz2 = ry * rz * rz;         // ryrz2
+    const double rxryrz = rx * ry * rz;        // rxryrz
+    const double rx3 = rx * rx * rx;           // rx3
+    const double ry3 = ry * ry * ry;           // ry3
+    const double rz3 = rz * rz * rz;           // rz3
+    const double rx2 = rx * rx;                // rx2
+    const double ry2 = ry * ry;                // ry2
+    const double rz2 = rz * rz;                // rz2
+    const double rxry = rx * ry;               // rxry
+    const double ryrz = ry * rz;               // ryrz
+    const double rxrz = rx * rz;               // rxrz
+    const double a = tf.a();                   // a
+    const double a2 = a * tf.a();              // a2
+    const double a3 = a2 * tf.a();             // a3
+    const double a4 = a3 * tf.a();             // a4
     const double ca = tf.cosa();
     const double sa = tf.sina();
-    const double cam1 = ca - 1;   //cam1
-    const double nx2 = nx * nx;   //nx2
-    const double ny2 = ny * ny;   //ny2
-    const double nz2 = nz * nz;   //nz2
-    const double nxny = nx * ny;  //nxny
-    const double nynz = ny * nz;  //nynz
-    const double nxnz = nx * nz;  //nxnz
+    const double cam1 = ca - 1;   // cam1
+    const double nx2 = nx * nx;   // nx2
+    const double ny2 = ny * ny;   // ny2
+    const double nz2 = nz * nz;   // nz2
+    const double nxny = nx * ny;  // nxny
+    const double nynz = ny * nz;  // nynz
+    const double nxnz = nx * nz;  // nxnz
 
     // Fill elements
     Eigen::Matrix<double, 6, 6> d2F_dzdx;
@@ -3473,20 +3499,22 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointIn, PointOut, Scalar>:
     return d2F_dzdx;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-bool PointToPlaneIcpLinearised<PointIn, PointOut, Scalar>::process_correspondence(const PointIn& source_point,
-        const PointOut& target_point, const PrecomputedTransformComponents<double>& tf,
-        Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Matrix<double, 3, 1> p{source_point.x, source_point.y, source_point.z};
-    const Eigen::Matrix<double, 3, 1> q{target_point.x, target_point.y, target_point.z};
-    const Eigen::Matrix<double, 3, 1> n{target_point.normal_x, target_point.normal_y, target_point.normal_z};
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::process_correspondence(
+        const PointSource& source_point, const PointTarget& target_point,
+        const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
+        Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
+    const Eigen::Vector3d n =
+            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
     d2F_dx2 = compute_d2F_dx2(tf.r(), tf.t(), p, q, n);
     d2F_dzdx = compute_d2F_dzdx(tf.r(), tf.t(), p, q, n);
     return true;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointIn, PointOut, Scalar>::compute_d2F_dx2(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
         const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
         const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
         const Eigen::Matrix<double, 3, 1>& n) const {
@@ -3551,8 +3579,8 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointIn, PointOut, Scalar>
     return d2F_dx2;
 }
 
-template<typename PointIn, typename PointOut, typename Scalar>
-Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointIn, PointOut, Scalar>::compute_d2F_dzdx(
+template<typename PointSource, typename PointTarget, typename Scalar>
+Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
         const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
         const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
         const Eigen::Matrix<double, 3, 1>& n) const {

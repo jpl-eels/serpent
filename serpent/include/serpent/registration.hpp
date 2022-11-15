@@ -102,7 +102,12 @@ private:
     mutable std::mutex s2s_mutex;
 
     //// Configuration
+    // Enable scan-to-map
     bool s2m_enabled;
+    // Covariance estimation method
+    CovarianceEstimationMethod covariance_estimation_method;
+    // Constant point variance
+    float point_variance;
 
     //// Debug Configuration
     bool publish_registration_clouds;
@@ -124,8 +129,6 @@ private:
     //// Covariance estimation
     // Covariance estimator
     std::unique_ptr<RegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>> covariance_estimator;
-    // Constant point variance
-    float point_variance;
 };
 
 template<typename PointSource, typename PointTarget, typename Scalar>
@@ -147,8 +150,7 @@ Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
             dynamic_cast<const CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>*>(
                     covariance_estimator.get());
     if (corr_cov_est != nullptr) {
-        ROS_INFO_STREAM(corr_cov_est->correspondence_count() << "/" << registration.getIndices()->size()
-                                                             << " correspondences were used in covariance estimation");
+        ROS_INFO_STREAM(corr_cov_est->correspondence_count() << " correspondences were used in covariance estimation");
     }
     return covariance;
 }
