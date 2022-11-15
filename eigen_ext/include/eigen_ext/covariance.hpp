@@ -8,8 +8,12 @@
 namespace eigen_ext {
 
 /**
- * @brief Checks matrix is square, positive definite, that element ij == element ji, and that elements ii along the
- * diagonal are positive.
+ * @brief Checks the following conditions:
+ * - matrix has all finite elements
+ * - matrix is square
+ * - positive definite
+ * - element ij == element ji
+ * - elements ii along the diagonal are >= 0
  * 
  * @tparam Derived 
  * @param covariance 
@@ -39,7 +43,7 @@ Derived reorder_covariance(const Eigen::MatrixBase<Derived>& covariance, const E
 
 template<typename Derived>
 bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision) {
-    if (covariance.rows() != covariance.cols() || is_positive_definite(covariance)) {
+    if (!covariance.allFinite() || covariance.rows() != covariance.cols() || is_positive_definite(covariance)) {
         return false;
     }
     for (int r = 0; r < covariance.rows() - 1; ++r) {
