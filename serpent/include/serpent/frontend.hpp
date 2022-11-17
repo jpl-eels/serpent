@@ -107,6 +107,7 @@ private:
     message_filters::TimeSynchronizer<serpent::ImuBiases, nav_msgs::Odometry> optimised_odometry_sync;
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
+    std::string map_frame_id;
     std::string sensor_frame_id;
     std::string base_link_frame_id;
     tf2_ros::Buffer tf_buffer;
