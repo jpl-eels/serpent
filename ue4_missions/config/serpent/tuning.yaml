@@ -46,9 +46,9 @@ optimisation:
 # Registration
 s2s:
   covariance:
-    # Options: CONSTANT (default), POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED,
+    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
     #   POINT_TO_PLANE_NONLINEAR
-    method: "CONSTANT"
+    method: "POINT_TO_PLANE_LINEARISED"
     constant:
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
@@ -91,9 +91,9 @@ s2s:
     
 s2m:
   covariance:
-    # Options: CONSTANT (default), POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED,
+    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
     #   POINT_TO_PLANE_NONLINEAR
-    method: "CONSTANT"
+    method: "POINT_TO_PLANE_LINEARISED"
     constant:
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
