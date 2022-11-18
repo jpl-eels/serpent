@@ -78,6 +78,8 @@ private:
      */
     CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string) const;
 
+    std::string to_string(const CovarianceEstimationMethod method) const;
+
     //// ROS Communication
     ros::NodeHandle nh;
     ros::Publisher refined_transform_publisher;

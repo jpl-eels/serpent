@@ -66,6 +66,7 @@ Registration::Registration()
         default:
             throw std::runtime_error("CovarianceEstimationMethod not handled. Cannot create covariance estimator");
     }
+    ROS_INFO_STREAM("Using covariance estimation method: " << to_string(covariance_estimation_method));
 
     // Point covariance method
     const std::string point_covariance_method =
@@ -284,6 +285,17 @@ Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_
         return CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR;
     }
     throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationMethod");
+}
+
+std::string Registration::to_string(const CovarianceEstimationMethod method) const {
+    switch (method) {
+        case CovarianceEstimationMethod::CONSTANT: return "CONSTANT";
+        case CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED: return "POINT_TO_POINT_LINEARISED";
+        case CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR: return "POINT_TO_POINT_NONLINEAR";
+        case CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED: return "POINT_TO_PLANE_LINEARISED";
+        case CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR: return "POINT_TO_PLANE_NONLINEAR";
+        default: throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
+    }
 }
 
 }
