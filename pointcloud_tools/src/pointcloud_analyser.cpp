@@ -4,6 +4,8 @@
 
 #include "pointcloud_tools/pclpointcloud2_utilities.hpp"
 
+namespace pct {
+
 PointcloudAnalyser::PointcloudAnalyser()
     : nh("~") {
     subscriber = nh.subscribe<sensor_msgs::PointCloud2>("input", 100, &PointcloudAnalyser::analyse, this);
@@ -16,4 +18,6 @@ void PointcloudAnalyser::analyse(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 
     // Print information about each field
     ROS_INFO_STREAM(pct::info_string(*pointcloud));
+}
+
 }
