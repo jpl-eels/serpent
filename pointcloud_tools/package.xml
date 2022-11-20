@@ -12,8 +12,10 @@
     <depend>pcl_ros</depend>
     <depend>roscpp</depend>
     <depend>sensor_msgs</depend>
+    <depend>tf2_ros</depend>
 
     <depend>eigen_ext</depend>
+    <depend>eigen_ros</depend>
 
     <depend>PCL</depend>
 
