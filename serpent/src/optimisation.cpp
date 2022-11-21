@@ -208,6 +208,12 @@ Optimisation::Optimisation()
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     gm->increment("reg");
+    if (gm->timestamp("reg") != msg->header.stamp) {
+        throw std::runtime_error("Registrations are out of sync with graph manager [Graph timestamp: " +
+                                 std::to_string(gm->timestamp("reg").toSec()) +
+                                 ", Transform timestamp:" + std::to_string(msg->header.stamp.toSec()) + "].");
+    }
+
     // Extract registration information
     const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
     const gtsam::Pose3 registration_pose_gtsam =
@@ -220,11 +226,6 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 
     // Update state
     gm->set_pose("reg", gm->pose("reg", -1) * registration_pose_gtsam);
-    if (gm->timestamp("reg") != msg->header.stamp) {
-        throw std::runtime_error("Timestamps did not match [Graph: " + std::to_string(gm->timestamp("reg").toSec()) +
-                                 ", Transform:" + std::to_string(msg->header.stamp.toSec()) +
-                                 "]. Something went wrong.");
-    }
 
     // Add the registration factor
     const int reg_key = gm->key("reg");
@@ -235,8 +236,12 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features) {
     gm->increment("stereo");
     if (gm->timestamp("stereo") != features->header.stamp) {
-        throw std::runtime_error("Stereo features are out of sync with graph manager.");
+        throw std::runtime_error("Stereo features are out of sync with graph manager [Graph timestamp: " +
+                                 std::to_string(gm->timestamp("stereo").toSec()) +
+                                 ", Features timestamp:" + std::to_string(features->header.stamp.toSec()) + "].");
     }
+
+    // Initialise stereo calibration
     if (!gm->stereo_calibration()) {
         const auto& left_info = features->left_info;
         const auto& right_info = features->right_info;
@@ -254,6 +259,8 @@ void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& f
         gm->set_stereo_calibration(K);
         ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->matrix());
     }
+
+    // Generate stereo factors and values
     std::map<int, gtsam::StereoPoint2> stereo_features;
     from_ros(features->features, stereo_features);
     gm->create_stereo_factors_and_values(gm->key("stereo"), stereo_features);
