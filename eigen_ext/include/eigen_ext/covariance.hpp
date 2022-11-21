@@ -3,10 +3,26 @@
 
 #include <Eigen/Core>
 
+#include "eigen_ext/matrix.hpp"
+
 namespace eigen_ext {
 
+/**
+ * @brief Checks the following conditions:
+ * - matrix has all finite elements
+ * - matrix is square
+ * - positive definite
+ * - element ij == element ji
+ * - elements ii along the diagonal are >= 0
+ * 
+ * @tparam Derived 
+ * @param covariance 
+ * @param precision 
+ * @return true 
+ * @return false 
+ */
 template<typename Derived>
-bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision);
+bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision = 0);
 
 /**
  * @brief Re-order a covariance matrix by swapping the blocks according to some boundary index.
@@ -27,10 +43,13 @@ Derived reorder_covariance(const Eigen::MatrixBase<Derived>& covariance, const E
 
 template<typename Derived>
 bool is_valid_covariance(const Eigen::MatrixBase<Derived>& covariance, const typename Derived::Scalar precision) {
-    if (covariance.rows() != covariance.cols()) {
+    if (!covariance.allFinite() || covariance.rows() != covariance.cols() || is_positive_definite(covariance)) {
         return false;
     }
     for (int r = 0; r < covariance.rows() - 1; ++r) {
+        if (covariance(r, r) < static_cast<typename Derived::Scalar>(0)) {
+            return false;
+        }
         for (int c = r + 1; c < covariance.cols(); ++c) {
             if (std::abs(covariance(r, c) - covariance(c, r)) > precision) {
                 return false;

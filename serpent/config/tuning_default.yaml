@@ -45,10 +45,16 @@ optimisation:
 
 # Registration
 s2s:
-  base_noise:
-    rotation: 0.0174533 # 1 deg
-    translation: 1.0e-2  # 10 mm
-    jacobian_augmentation: true
+  covariance:
+    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
+    #   POINT_TO_PLANE_NONLINEAR
+    method: "POINT_TO_PLANE_LINEARISED"
+    constant:
+      rotation: 0.0174533 # 1 deg
+      translation: 1.0e-2  # 10 mm
+    point_covariance: # For method = <linearised, NONLINEAR>
+      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
+      constant: 0.01
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
@@ -84,10 +90,16 @@ s2s:
     outlier_ratio: 0.55
 
 s2m:
-  base_noise:
-    rotation: 0.0174533 # 1 deg
-    translation: 1.0e-2  # 10 mm
-    jacobian_augmentation: true
+  covariance:
+    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
+    #   POINT_TO_PLANE_NONLINEAR
+    method: "POINT_TO_PLANE_LINEARISED"
+    constant:
+      rotation: 0.0174533 # 1 deg
+      translation: 1.0e-2  # 10 mm
+    point_covariance: # For method = <LINEARISED, NONLINEAR>
+      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
+      constant: 0.01
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:

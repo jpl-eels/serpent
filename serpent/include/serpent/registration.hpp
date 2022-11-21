@@ -13,11 +13,12 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
 
+#include <Eigen/Dense>
 #include <eigen_ext/matrix.hpp>
 #include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 
-#include "serpent/registration_degeneracy.hpp"
+#include "serpent/registration_covariance_estimator.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {
@@ -27,20 +28,17 @@ public:
     explicit Registration();
 
 private:
-    /**
-     * @brief Compute the covariance matrix for a registration, given a base covariance. Also publishes the jacobian as
-     * a debug message if configured to. The resultant covariance terms will not be less than the base covariance.
-     *
-     * @tparam PointSource
-     * @tparam PointTarget
-     * @param registration
-     * @param base_covariance
-     * @param jacobian_augmentation
-     * @return Eigen::Matrix<double, 6, 6>
-     */
-    template<typename PointSource, typename PointTarget>
-    Eigen::Matrix<double, 6, 6> covariance_from_registration(pcl::Registration<PointSource, PointTarget>& registration,
-            const Eigen::Matrix<double, 6, 6>& base_covariance, const bool jacobian_augmentation);
+    enum CovarianceEstimationMethod {
+        CONSTANT,
+        POINT_TO_POINT_LINEARISED,
+        POINT_TO_POINT_NONLINEAR,
+        POINT_TO_PLANE_LINEARISED,
+        POINT_TO_PLANE_NONLINEAR
+    };
+
+    template<typename PointSource, typename PointTarget, typename Scalar>
+    Eigen::Matrix<double, 6, 6> covariance_from_registration(
+            pcl::Registration<PointSource, PointTarget, Scalar>& registration);
 
     /**
      * @brief Publish the registration-refined transform with covariance
@@ -72,13 +70,22 @@ private:
      */
     void s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& msg);
 
+    /**
+     * @brief Convert string to covariance estimation method enum.
+     *
+     * @param string
+     * @return CovarianceEstimationMethod
+     */
+    CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string) const;
+
+    std::string to_string(const CovarianceEstimationMethod method) const;
+
     //// ROS Communication
     ros::NodeHandle nh;
     ros::Publisher refined_transform_publisher;
     ros::Publisher debug_previous_cloud_publisher;
     ros::Publisher debug_current_cloud_publisher;
     ros::Publisher debug_imu_guess_cloud_publisher;
-    ros::Publisher debug_registration_jacobian_publisher;
     ros::Publisher debug_s2s_transformed_cloud_publisher;
     ros::Publisher debug_s2m_transformed_cloud_publisher;
     ros::Publisher debug_s2s_transformed_cloud_alt_publisher;
@@ -90,17 +97,23 @@ private:
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
+    // Body-to-lidar adjoint transform (rotation then translation order)
+    Eigen::Matrix<double, 6, 6> body_lidar_transform_adjoint;
 
     // Thread Management
     mutable std::mutex s2s_mutex;
 
     //// Configuration
+    // Enable scan-to-map
     bool s2m_enabled;
+    // Covariance estimation method
+    CovarianceEstimationMethod covariance_estimation_method;
+    // Constant point variance
+    float point_variance;
 
     //// Debug Configuration
     bool publish_registration_clouds;
     bool publish_registration_clouds_alt;
-    bool publish_registration_jacobian;
 
     //// Pointclouds
     // Previous pointcloud for S2S registration
@@ -114,47 +127,33 @@ private:
     pcl::Registration<pcl::PointNormal, pcl::PointNormal>::Ptr s2m;
     // Scan-to-Scan Registrations
     std::deque<Eigen::Isometry3d> s2s_registrations;
-    // Scan-to-scan registration covariance base (rotation then translation order)
-    Eigen::Matrix<double, 6, 6> s2s_covariance_base;
-    // Scan-to-map registration covariance base (rotation then translation order)
-    Eigen::Matrix<double, 6, 6> s2m_covariance_base;
-    // Scan-to-Scan Jacobian Augmentation
-    bool s2s_jacobian_augmentation;
-    // Scan-to-Map Jacobian Augmentation
-    bool s2m_jacobian_augmentation;
-    // Body-to-lidar adjoint transform (rotation then translation order)
-    Eigen::Matrix<double, 6, 6> body_lidar_transform_adjoint;
+
+    //// Covariance estimation
+    // Covariance estimator
+    std::unique_ptr<RegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>> covariance_estimator;
 };
 
-template<typename PointSource, typename PointTarget>
+template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
-        pcl::Registration<PointSource, PointTarget>& registration, const Eigen::Matrix<double, 6, 6>& base_covariance,
-        const bool jacobian_augmentation) {
+        pcl::Registration<PointSource, PointTarget, Scalar>& registration) {
     ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
-    Eigen::Matrix<double, 6, 6> covariance{base_covariance};
-    if (jacobian_augmentation || publish_registration_jacobian) {
-        ros::WallTime tic = ros::WallTime::now();
-        int count;
-        const Eigen::Matrix<float, 6, 1> jacobianf = point_to_plane_jacobian(registration, count);
-        const Eigen::Matrix<double, 6, 1> jacobian = jacobianf.cast<double>();
-        ROS_INFO_STREAM("Point to plane J:\n" << to_flat_string(jacobian));
-        ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute jacobian (" << count
-                                << " correspondences).");
-        if (publish_registration_jacobian) {
-            debug_registration_jacobian_publisher.publish(eigen_ros::to_ros<std_msgs::Float64MultiArray>(jacobian));
-        }
-        if (jacobian_augmentation) {
-            if (count > 0) {
-                const Eigen::Matrix<double, 6, 6> jacobian_matrix_inv =
-                        Eigen::DiagonalMatrix<double, 6>{jacobian}.inverse();
-                covariance = jacobian_matrix_inv * base_covariance * jacobian_matrix_inv;
-                covariance = covariance.cwiseMax(base_covariance);
-            } else {
-                ROS_WARN_STREAM("No correspondences found for computing jacobian.");
-            }
-        }
+    if (!covariance_estimator) {
+        throw std::runtime_error("covariance estimator not created");
     }
-    ROS_INFO_STREAM("Reg Covariance:\n" << covariance);
+
+    // Covariance estimation
+    ros::WallTime tic = ros::WallTime::now();
+    Eigen::Matrix<double, 6, 6> covariance =
+            covariance_estimator->estimate_covariance(registration, point_variance).template cast<double>();
+    ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute covariance.");
+
+    // Print additional information
+    const CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>* corr_cov_est =
+            dynamic_cast<const CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>*>(
+                    covariance_estimator.get());
+    if (corr_cov_est != nullptr) {
+        ROS_INFO_STREAM(corr_cov_est->correspondence_count() << " correspondences were used in covariance estimation");
+    }
     return covariance;
 }
 

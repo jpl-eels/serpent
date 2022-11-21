@@ -190,7 +190,8 @@ if(CATKIN_ENABLE_TESTING)
         src/graph_manager.cpp
         src/utilities.cpp
         test/graph_manager.cpp
-        test/registration_degeneracy.cpp
+        test/DEPRECATED_registration_degeneracy.cpp
+        test/registration_covariance_estimator.cpp
         test/serpent.cpp
         test/test_main.cpp
         test/src/read_data.cpp

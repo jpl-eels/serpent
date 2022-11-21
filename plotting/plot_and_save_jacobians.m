@@ -16,8 +16,8 @@ function jacobians = plot_and_save_jacobians(jacobian_data, plot_opts)
                 "squared_jacobian"], ""), filetype);
             fprintf("Finished saving figures as .%s\n", filetype);
         end
-        if plot_opts.close_after_save
-            close(fig_jacobian);
-        end
+    end
+    if plot_opts.close_figures
+        close(fig_jacobian);
     end
 end

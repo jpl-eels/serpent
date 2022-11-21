@@ -12,5 +12,5 @@ function plot_opts = default_plot_opts()
     plot_opts.save = false;
     plot_opts.save_dir = "";
     plot_opts.filetypes = ["fig", "png", "svg"];
-    plot_opts.close_after_save = false;
+    plot_opts.close_figures = false;
 end

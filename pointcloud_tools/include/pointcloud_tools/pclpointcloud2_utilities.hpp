@@ -17,6 +17,16 @@ void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
 void change_field_name(pcl::PCLPointCloud2& pointcloud, const std::string& from, const std::string& to);
 
 /**
+ * @brief Return a count of the number of normals which have a norm different from 1 by a threshold. Therefore it is
+ * desirable for this number to be 0. It will always be less than or equal to the number of points in the cloud.
+ *
+ * @param pointcloud
+ * @param threshold
+ * @return int
+ */
+int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold = 0.000001f);
+
+/**
  * @brief Deskew a pointcloud under the assumption that there has been a constant twist applied over a time dt resulting
  * in a transform from the starting origin frame to the final frame.
  *
@@ -42,6 +52,8 @@ template<typename T>
 T field_data(const std::uint8_t* field_ptr, const std::uint8_t datatype);
 
 std::string field_string(const pcl::PCLPointField& field);
+
+std::string field_type_to_string(const std::uint8_t field_type);
 
 template<typename T>
 void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const pcl::PCLPointField& field,
@@ -290,6 +302,8 @@ template<typename T = double>
 inline T variance(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name) {
     return variance<T>(pointcloud, get_field(pointcloud, field_name));
 }
+
+std::string to_string(const pcl::PCLPointField::PointFieldTypes field_type);
 
 }
 
