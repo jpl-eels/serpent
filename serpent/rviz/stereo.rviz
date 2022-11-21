@@ -86,6 +86,36 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: false
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: distance
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 239; 41; 41
+      Max Intensity: 1
+      Min Color: 138; 226; 52
+      Min Intensity: 0
+      Name: Track Points With Distance
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.05000000074505806
+      Style: Spheres
+      Topic: /serpent/stereo/track_points_with_distances
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: false
+      Value: true
     - Class: rviz/Camera
       Enabled: true
       Image Rendering: background and overlay
@@ -103,6 +133,7 @@ Visualization Manager:
         LiDAR: true
         TF: false
         Track Points: true
+        Track Points With Distance: true
         Value: true
       Zoom Factor: 1
     - Class: rviz/Camera
@@ -122,6 +153,7 @@ Visualization Manager:
         LiDAR: true
         TF: false
         Track Points: true
+        Track Points With Distance: true
         Value: true
       Zoom Factor: 1
     - Class: rviz/TF
@@ -153,6 +185,8 @@ Visualization Manager:
           Value: true
         lidar:
           Value: true
+        map:
+          Value: true
         os_imu:
           Value: true
         os_lidar:
@@ -166,32 +200,33 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        head:
-          imu:
-            camera_front_l:
-              {}
-            camera_front_r:
-              {}
-            camera_left_l:
-              {}
-            camera_left_r:
-              {}
-            camera_right_l:
-              {}
-            camera_right_r:
-              {}
-            camera_top_l:
-              {}
-            camera_top_r:
-              {}
-            imu_link:
-              {}
-            lidar:
-              os_sensor:
-                os_imu:
-                  {}
-                os_lidar:
-                  {}
+        map:
+          head:
+            imu:
+              camera_front_l:
+                {}
+              camera_front_r:
+                {}
+              camera_left_l:
+                {}
+              camera_left_r:
+                {}
+              camera_right_l:
+                {}
+              camera_right_r:
+                {}
+              camera_top_l:
+                {}
+              camera_top_r:
+                {}
+              imu_link:
+                {}
+              lidar:
+                os_sensor:
+                  os_imu:
+                    {}
+                  os_lidar:
+                    {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -266,9 +301,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4052028954029083
+      Pitch: 0.5002026557922363
       Target Frame: <Fixed Frame>
-      Yaw: 3.9703800678253174
+      Yaw: 3.3153786659240723
     Saved: ~
 Window Geometry:
   Camera Left:

@@ -1,0 +1,11 @@
+<launch>
+    <arg name="input_source"     value="/serpent/stereo/track_points"/>
+    <arg name="pointcloud_topic" default="/pointcloud"/>
+    <arg name="output"           default="$(arg input_source)_with_distances"/>
+
+    <include file="$(find pointcloud_tools)/launch/pointcloud_compute_distances.launch">
+        <arg name="input_source" value="$(arg input_source)"/>
+        <arg name="input_target" value="$(arg pointcloud_topic)"/>
+        <arg name="output"       value="$(arg input_source)_with_distances"/>
+    </include>
+</launch>
