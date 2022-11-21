@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
 
     eigen_ext
     eigen_ros
+    statistics_msgs
 )
 find_package(PCL REQUIRED)
 
@@ -41,6 +42,7 @@ catkin_package(
 
         eigen_ext
         eigen_ros
+        statistics_msgs
     LIBRARIES ${LIBRARY_NAME}
     DEPENDS
         PCL

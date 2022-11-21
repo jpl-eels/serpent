@@ -1,7 +1,9 @@
 <launch>
-    <arg name="input"       default="input"/>
+    <arg name="input"               default="input"/>
+    <arg name="output_statistics"   default="output_statistics"/>
 
     <node pkg="pointcloud_tools" type="pointcloud_analyser" name="analyser" ns="$(arg input)" output="screen">
-        <remap from="~input"    to="$(arg input)"/>
+        <remap from="~input"                to="$(arg input)"/>
+        <remap from="~output_statistics"    to="$(arg output_statistics)"/>
     </node>
 </launch>

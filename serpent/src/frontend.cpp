@@ -300,7 +300,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
     // Compute scan end time
     pcl::PCLPointCloud2::Ptr deskewed_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
-    const ros::Duration sweep_duration{pct::has_field(*msg, "t") ? pct::max_value<float>(*msg, "t") : 0};
+    const ros::Duration sweep_duration{pct::has_field(*msg, "t") ? pct::max<float>(*msg, "t") : 0};
     if (sweep_duration == ros::Duration(0)) {
         // No sweep required
         *deskewed_pointcloud = *msg;

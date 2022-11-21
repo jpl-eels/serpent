@@ -16,6 +16,7 @@
 
     <depend>eigen_ext</depend>
     <depend>eigen_ros</depend>
+    <depend>statistics_msgs</depend>
 
     <depend>PCL</depend>
 

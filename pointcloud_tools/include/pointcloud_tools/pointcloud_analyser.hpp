@@ -15,6 +15,7 @@ private:
 
     // ROS objects
     ros::NodeHandle nh;
+    ros::Publisher statistics_array_publisher;
     ros::Subscriber subscriber;
 };
 
