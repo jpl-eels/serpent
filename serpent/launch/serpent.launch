@@ -22,6 +22,7 @@
     <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
+    <arg name="run_track_distance_analysis"     default="false"/>
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
     <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
@@ -37,6 +38,9 @@
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
+    <include if="$(arg run_track_distance_analysis)" file="$(find serpent)/launch/analyse_track_distances.launch">
+        <arg name="pointcloud_topic"    value="/serpent/frontend/deskewed_pointcloud"/>
+    </include>
     <arg name="program_name" value="serpent"/>
     <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
     <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
