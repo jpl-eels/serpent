@@ -11,20 +11,25 @@ data_name = "athabasca_023";
 % No GT yet, so use odometry
 config.gt.data_dir = join([data_base_dir, "results/", data_source, ...
     data_name, "/"], "");
-config.gt.filename = "s2s_p2planelin_2022-11-17-22-30-51.bag";
+config.gt.filename = "sad_3x3_2022-11-21-23-27-28.bag";
 config.gt.topic = "/serpent/optimisation/odometry";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
 config.data_dir = join([data_base_dir, "results/", data_source, ...
     data_name, "/"], "");
-analysis_name = "point_to_plane_covariances";
-config.filenames = ["s2s_p2planelin_2022-11-18-02-42-19.bag", ...
-    "s2s_p2planenonlin_2022-11-18-02-56-38.bag"];
-config.names = ["s2s-p2plane-lin", "s2s-p2plane-nonlin"];
+analysis_name = "track_points_statistics";
+config.filenames = "sad_3x3_2022-11-21-23-27-28.bag";
+config.names = "sad 3x3";
 config.odom_topics = repmat("/serpent/optimisation/odometry", 1, ...
     length(config.names));
 config.reg_tf_topics = repmat("/serpent/registration/transform", ...
     1, length(config.names));
+% config.track_points_topics = repmat( ...
+%     "/serpent/stereo/track_points_with_distances", 1, ...
+%     length(config.names));
+config.track_points_statistics_topics = repmat( ...
+    "/serpent/stereo/track_points_with_distances/statistics", 1, ...
+    length(config.names));
 config.filepaths = config.data_dir + config.filenames;
 
 % Plot Options
@@ -35,15 +40,34 @@ plot_opts.save_dir = join([data_base_dir, "analysis/", data_source, ...
 plot_opts.close_figures = true;
 
 % Registration
-reg_transform_raw_data = raw_data_from_rosbags(config.filepaths, ...
-    config.reg_tf_topics, "geometry_msgs/PoseWithCovarianceStamped");
-reg_transform_data = cell(length(config.filepaths), 1);
-for i = 1:length(config.filepaths)
-    reg_transform_data{i} = extract_pose_with_covariance_stamped(...
-        reg_transform_raw_data{i});
-    fig_cov = plot_pose_with_cov(reg_transform_data{i}, plot_opts);
-    filename = join(["registration_covariance_", config.names(i)], "");
-    save_and_close_figure(fig_cov, filename, plot_opts);
+try
+    reg_transform_raw_data = raw_data_from_rosbags(config.filepaths, ...
+        config.reg_tf_topics, "geometry_msgs/PoseWithCovarianceStamped");
+    reg_transform_data = cell(length(config.filepaths), 1);
+    for i = 1:length(config.filepaths)
+        reg_transform_data{i} = extract_pose_with_covariance_stamped(...
+            reg_transform_raw_data{i});
+        fig_cov = plot_pose_with_cov(reg_transform_data{i}, plot_opts);
+        filename = join(["registration_covariance_", config.names(i)], "");
+        save_and_close_figure(fig_cov, filename, plot_opts);
+    end
+catch ex
+    warning("Could not generate analysis for registration poses.");
+end
+
+% Stereo track points statistics
+try
+    track_points_statistics = raw_data_from_rosbags(config.filepaths, ...
+        config.track_points_statistics_topics, ...
+        "statistics_msgs/SummaryStatisticsArray");
+    plot_summary_statistics(track_points_statistics, plot_opts);
+%     track_points = raw_data_from_rosbags(config.filepaths, ...
+%         config.track_points_topics, "sensor_msgs/PointCloud2");
+%     plot_pointcloud_statistics(track_points, plot_opts);
+catch ex
+    warning(join([ ...
+        "Could not generate analysis for track point statistics: ", ...
+        ex.message], ""));
 end
 
 % Odometry
