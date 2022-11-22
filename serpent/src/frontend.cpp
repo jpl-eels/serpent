@@ -36,7 +36,7 @@ Frontend::Frontend()
     pose_publisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("output/pose", 1);
 
     // Subscribers
-    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 1000, &Frontend::imu_callback, this);
+    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 5000, &Frontend::imu_callback, this);
     imu_biases_subscriber.subscribe(nh, "optimisation/imu_biases", 10);
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
@@ -138,6 +138,8 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
                 body_frames.body_to_frame("imu").rotation() * (imu.angular_velocity + imu_biases.gyroscope());
 
         // Publish current state as odometry output
+        // update TF
+
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
         odometry->header.frame_id = map_frame_id;
@@ -150,6 +152,37 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
+        /*
+               geometry_msgs::PoseStamped pose_sensor;
+               pose_sensor.header = odometry->header;
+               pose_sensor.pose = odometry->pose.pose;
+               // baselink->head transform
+               auto obtained_transform = false;
+               while (obtained_transform == false && ros::ok()) {
+                   ROS_INFO("Looking up transfrm from %s->%s", base_link_frame_id.c_str(), sensor_frame_id.c_str());
+                   try {
+                       T_base_link2sensor = tf_buffer.lookupTransform(
+                               base_link_frame_id, sensor_frame_id, odometry->header.stamp);
+                       obtained_transform = true;
+                   } catch (tf2::TransformException& ex) {
+                       ROS_WARN("%s", ex.what());
+                       ros::Duration(0.01).sleep();
+                       continue;
+                   }
+               }
+               tf2::Transform T_base_link2sensor_tf2;
+               tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
+               tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
+               tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y,
+           pose_sensor.pose.orientation.z, pose_sensor.pose.orientation.w); tf2::Transform T_map_sensor(R, T);
+               tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
+               tf2::Stamped<tf2::Transform> tf(T_map_base_link, odometry->header.stamp, map_frame_id);
+               auto tf_msg = tf2::toMsg(tf);
+               ROS_INFO("updating %s->%s", map_frame_id.c_str(), base_link_frame_id.c_str());
+               tf_msg.header.frame_id = map_frame_id;
+               tf_msg.child_frame_id = base_link_frame_id;
+               tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
+          */
     }
 }
 
@@ -168,38 +201,43 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     pose_sensor.pose = optimised_odometry_msg->pose.pose;
     // baselink->head transform
     auto obtained_transform = false;
-    while (obtained_transform == false && ros::ok()) {
-        ROS_INFO("Looking up transfrm from %s->%s", base_link_frame_id.c_str(), sensor_frame_id.c_str());
+    ROS_INFO("Looking up transform from %s->%s at time stamp: %f", base_link_frame_id.c_str(), sensor_frame_id.c_str(),
+            optimised_odometry_msg->header.stamp.toSec());
+    std::string err_msg;
+    if (tf_buffer.canTransform(
+                base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0)),
+            &err_msg) {
+        ROS_INFO("can transform!!");
         try {
             T_base_link2sensor = tf_buffer.lookupTransform(
-                    base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp);
+                    base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0));
             obtained_transform = true;
-        } catch (tf2::TransformException& ex) {
-            ROS_WARN("%s", ex.what());
-            ros::Duration(0.01).sleep();
-            continue;
-        }
-    }
-    tf2::Transform T_base_link2sensor_tf2;
-    tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
-    tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
-    tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y, pose_sensor.pose.orientation.z,
-            pose_sensor.pose.orientation.w);
-    tf2::Transform T_map_sensor(R, T);
-    tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
-    tf2::Stamped<tf2::Transform> tf(T_map_base_link, optimised_odometry_msg->header.stamp, map_frame_id);
-    auto tf_msg = tf2::toMsg(tf);
-    ROS_INFO("updating %s->%s", map_frame_id.c_str(), base_link_frame_id.c_str());
-    tf_msg.header.frame_id = map_frame_id;
-    tf_msg.child_frame_id = base_link_frame_id;
-    tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
+            tf2::Transform T_base_link2sensor_tf2;
+            tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
+            tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
+            tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y,
+                    pose_sensor.pose.orientation.z, pose_sensor.pose.orientation.w);
+            tf2::Transform T_map_sensor(R, T);
+            tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
+            tf2::Stamped<tf2::Transform> tf(T_map_base_link, optimised_odometry_msg->header.stamp, map_frame_id);
+            auto tf_msg = tf2::toMsg(tf);
+            ROS_INFO("updating %s->%s", map_frame_id.c_str(), base_link_frame_id.c_str());
+            tf_msg.header.frame_id = map_frame_id;
+            tf_msg.child_frame_id = base_link_frame_id;
+            tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
 
-    auto pose = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
-    pose->header = optimised_odometry_msg->header;
-    // pose->header.frame_id =;
-    // tf2::toMsg(T_map_base_link,pose->pose.pose);
-    pose->pose = optimised_odometry_msg->pose;
-    pose_publisher.publish(pose);
+            auto pose = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
+            pose->header = optimised_odometry_msg->header;
+            // pose->header.frame_id =;
+            // tf2::toMsg(T_map_base_link,pose->pose.pose);
+            pose->pose = optimised_odometry_msg->pose;
+            pose_publisher.publish(pose);
+        } catch (tf2::ExtrapolationException& e) {
+            ROS_ERROR("%s", e.what());
+        }
+    } else {
+        ROS_ERROR("cannot transform: %s", err_msg.c_str());
+    }
 
     // Save biases
     from_ros(*imu_biases_msg, imu_biases);
@@ -223,8 +261,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
-    ROS_INFO_STREAM("Received pointcloud seq=" << msg->header.seq << " (" << pct::size_points(*msg)
-                                               << " pts) with timestamp " << pointcloud_start);
+    //   ROS_INFO_STREAM("Received pointcloud seq=" << msg->header.seq << " (" << pct::size_points(*msg)
+    //                                              << " pts) with timestamp " << pointcloud_start);
     if (pct::empty(*msg)) {
         throw std::runtime_error("Handling of empty pointclouds not yet supported");
     }
@@ -247,7 +285,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     }
 
     // Wait until previous imu_biases received (before sending publishing IMU S2S)
-    ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
+    //  ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
     if (!protected_sleep(optimised_odometry_mutex, 0.01, false, true,
                 [this]() { return imu_bias_timestamp != previous_pointcloud_start; })) {
         return;
