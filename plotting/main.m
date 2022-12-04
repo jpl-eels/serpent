@@ -8,10 +8,9 @@ config.gt = struct;
 data_base_dir = join([getenv("HOME"), "/data/jpl/"], "");
 data_source = "eels1/";
 data_name = "athabasca_023";
-% No GT yet, so use odometry
 config.gt.data_dir = join([data_base_dir, "results/", data_source, ...
     data_name, "/"], "");
-config.gt.filename = "sad_3x3_2022-11-21-23-27-28.bag";
+config.gt.filename = "locus_gt_odometry_bodyframe_2022-12-04-17-54-19.bag";
 config.gt.topic = "/serpent/optimisation/odometry";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];

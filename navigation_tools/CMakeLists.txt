@@ -63,3 +63,22 @@ target_link_libraries(integrate_imu
     ${catkin_LIBRARIES}
     gtsam
 )
+
+# odometry to tf
+add_executable(odometry_to_tf
+    src/odometry_to_tf_node.cpp
+    src/odometry_to_tf.cpp
+)
+
+target_include_directories(odometry_to_tf PUBLIC
+    include
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_include_directories(odometry_to_tf SYSTEM PUBLIC
+    ${GTSAM_INCLUDE_DIRS}
+)
+
+target_link_libraries(odometry_to_tf
+    ${catkin_LIBRARIES}
+)
