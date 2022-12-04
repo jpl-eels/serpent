@@ -1,0 +1,17 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="input_image_topic"   default="/in/image"/>
+    <arg name="input_info_topic"    default="/in/camera_info"/>
+    <arg name="output_image_topic"  default="/out/image"/>
+    <arg name="output_info_topic"   default="/out/camera_info"/>
+    <arg name="frame_id"            default="new_frame_id"/>
+    <arg name="node_name"           default="change_frame_id"/>
+
+    <node pkg="camera_tools" type="change_frame_id" name="$(arg node_name)" output="screen">
+        <remap from="~input/image" to="$(arg input_image_topic)"/>
+        <remap from="~input/camera_info" to="$(arg input_info_topic)"/>
+        <remap from="~output/image" to="$(arg output_image_topic)"/>
+        <remap from="~output/camera_info" to="$(arg output_info_topic)"/>
+        <rosparam param="frame_id" subst_value="True">$(arg frame_id)</rosparam>
+    </node>
+</launch>
