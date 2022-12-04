@@ -1,0 +1,7 @@
+<launch>
+    <arg name="odometry_topic"          default="odometry"/>
+
+    <node pkg="navigation_tools" type="odometry_to_tf" name="odometry_to_tf" output="screen">
+        <remap from="~input"    to="$(arg odometry_topic)"/>
+    </node>
+</launch>
