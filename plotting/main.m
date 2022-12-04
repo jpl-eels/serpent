@@ -10,8 +10,8 @@ data_source = "eels1/";
 data_name = "athabasca_023";
 config.gt.data_dir = join([data_base_dir, "results/", data_source, ...
     data_name, "/"], "");
-config.gt.filename = "locus_gt_odometry_bodyframe_2022-12-04-17-54-19.bag";
-config.gt.topic = "/serpent/optimisation/odometry";
+config.gt.filename = "locus_gt_odometry_bodyframe_2022-12-04-21-24-15.bag";
+config.gt.topic = "/eels1/lo_frontend/odometry";
 config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
 config.data_dir = join([data_base_dir, "results/", data_source, ...
