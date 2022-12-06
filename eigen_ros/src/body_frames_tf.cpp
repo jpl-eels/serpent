@@ -6,7 +6,8 @@
 
 namespace eigen_ros {
 
-BodyFramesTf::BodyFramesTf() {
+BodyFramesTf::BodyFramesTf()
+    : nh("~") {
     std::vector<geometry_msgs::TransformStamped> transforms;
     for (const std::string& frame : body_frames.frames()) {
         const std::string frame_id = body_frames.frame_id(frame);
@@ -31,6 +32,15 @@ BodyFramesTf::BodyFramesTf() {
     static_tf_broadcaster.sendTransform(transforms);
     ROS_INFO_STREAM("Loaded " << body_frames.frames().size() << " frames and published " << transforms.size()
                               << " static transforms.");
+
+    // Create lookup transform server
+    lookup_transform_server = nh.advertiseService("lookup_transform", &BodyFramesTf::lookup_transform_callback, this);
+}
+
+bool BodyFramesTf::lookup_transform_callback(eigen_ros::lookup_transform::Request& request,
+        eigen_ros::lookup_transform::Response& response) {
+    eigen_ros::to_ros(response.transform, body_frames.frame_to_frame(request.source_frame, request.target_frame));
+    return true;
 }
 
 }

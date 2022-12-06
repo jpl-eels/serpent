@@ -156,8 +156,10 @@ Eigen::Isometry3d BodyFrames::transform_from_node(const XmlRpc::XmlRpcValue& nod
         throw std::runtime_error("failed to add frame_id \"" + frame_id_ + "\" to looked_up map");
     }
     if (lookup_tf) {
+        // We must have target_frame = parent_frame_id, source_frame = frame_id_ in order to obtain the transform of
+        // frame_id_ with respect to parent_frame_id (T_{parent}^{child}).
         const geometry_msgs::TransformStamped tf =
-                tf_buffer.lookupTransform(frame_id_, parent_frame_id, ros::Time(0), lookup_tf_timeout);
+                tf_buffer.lookupTransform(parent_frame_id, frame_id_, ros::Time(0), lookup_tf_timeout);
         eigen_ros::from_ros(tf.transform, transform);
     } else {
         Eigen::Translation<double, 3> translation{Eigen::Vector3d::Zero()};
