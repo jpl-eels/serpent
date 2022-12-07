@@ -64,7 +64,7 @@ Frontend::Frontend()
 
     // Preintegration parameters
     nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
-    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
@@ -266,7 +266,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         const Eigen::Quaterniond body_orientation =
                 pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))
                         ? Eigen::Quaterniond::Identity()
-                        : Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+                        : pc_start_imu.orientation * Eigen::Quaterniond(body_frames.frame_to_body("imu").rotation());
         const eigen_ros::Pose pose{
                 Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0), nh.param<double>("pose/position/y", 0.0),
                         nh.param<double>("pose/position/z", 0.0)),

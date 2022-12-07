@@ -87,7 +87,7 @@ Optimisation::Optimisation()
     }
 
     // Preintegration parameters
-    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
