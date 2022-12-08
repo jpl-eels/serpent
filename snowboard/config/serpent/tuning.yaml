@@ -5,14 +5,18 @@ prior_noise:
   linear_velocity: 0.001
   accelerometer_bias: 5.0e-3
   gyroscope_bias: 5.0e-3
-imu_noise:
-  integration: 1.0e-4
-  integration_bias: 3.0e-3
-  accelerometer_bias: 5.0e-04 # Manufacturer Estimate: 5.0e-6
-  gyroscope_bias: 2.4e-05     # Manufacturer Estimate: 2.4e-7
-  overwrite: true # These imu noise values will only be used if overwrite set to true
-  accelerometer: 3.9e-2 # Datasheet: 3.92266e-04
-  gyroscope: 2.4e-4     # Datasheet: 2.42406840554768e-05
+
+# IMU
+imu:
+  reference_frame: "NED" # Options: NED (downwards gravity), NWU (upwards gravity)
+  noise:
+    integration: 1.0e-4
+    integration_bias: 3.0e-3
+    accelerometer_bias: 5.0e-04 # Manufacturer Estimate: 5.0e-6
+    gyroscope_bias: 2.4e-05     # Manufacturer Estimate: 2.4e-7
+    overwrite: true # These imu noise values will only be used if overwrite set to true
+    accelerometer: 3.9e-2 # Datasheet: 3.92266e-04
+    gyroscope: 2.4e-4     # Datasheet: 2.42406840554768e-05
 
 # Motion Distortion Correction
 mdc:
