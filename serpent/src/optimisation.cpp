@@ -87,16 +87,23 @@ Optimisation::Optimisation()
     }
 
     // Preintegration parameters
-    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
+    const std::string imu_reference_frame = nh.param<std::string>("imu/reference_frame", "NED");
+    if (imu_reference_frame == "NED") {
+        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
+    } else if (imu_reference_frame == "NWU") {
+        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
+    } else {
+        throw std::runtime_error("Unrecognised IMU reference frame " + imu_reference_frame);
+    }
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasAccCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
     preintegration_params->setBodyPSensor(body_to_imu);

@@ -1,18 +1,22 @@
-# Integration and Noise
+# Prior
 prior_noise:
   position: 1.0e-3
   rotation: 1.0e-3
   linear_velocity: 1.0e-3
   accelerometer_bias: 1.0e-3
   gyroscope_bias: 1.0e-3
-imu_noise:
-  integration: 1.0e-3
-  integration_bias: 1.0e-3
-  accelerometer_bias: 1.0e-3
-  gyroscope_bias: 1.0e-3
-  overwrite: false # These imu noise values will only be used if overwrite set to true
-  accelerometer: 1.0e-3
-  gyroscope: 1.0e-3
+
+# IMU
+imu:
+  reference_frame: "NED" # Options: NED (downwards gravity), NWU (upwards gravity)
+  noise:
+    integration: 1.0e-3
+    integration_bias: 1.0e-3
+    accelerometer_bias: 1.0e-3
+    gyroscope_bias: 1.0e-3
+    overwrite: false # These imu noise values will only be used if overwrite set to true
+    accelerometer: 1.0e-3
+    gyroscope: 1.0e-3
 
 # Motion Distortion Correction
 mdc:

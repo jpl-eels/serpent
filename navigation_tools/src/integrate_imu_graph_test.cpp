@@ -18,19 +18,19 @@ IntegrateImu::IntegrateImu()
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input", 100, &IntegrateImu::integrate, this);
 
     // Integration parameters
-    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
     preintegration_params->setAccelerometerCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer", 1.0e-3), 2.0));
     preintegration_params->setGyroscopeCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope", 1.0e-3), 2.0));
     preintegration_params->setIntegrationCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasAccCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     preintegration_params->print();
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
