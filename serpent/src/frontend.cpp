@@ -64,14 +64,7 @@ Frontend::Frontend()
 
     // Preintegration parameters
     nh.param<bool>("imu/noise/overwrite", overwrite_imu_covariance, false);
-    nh.param<std::string>("imu/reference_frame", imu_reference_frame, "NED");
-    if (imu_reference_frame == "NED") {
-        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
-    } else if (imu_reference_frame == "NWU") {
-        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
-    } else {
-        throw std::runtime_error("Unrecognised IMU reference frame " + imu_reference_frame);
-    }
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
@@ -275,6 +268,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             body_orientation = Eigen::Quaterniond::Identity();
         } else {
             // Compute T_R^B = T_R^I * T_I^B where R = imu_reference_frame. If R = NWU our computation is done.
+            const std::string imu_reference_frame = nh.param<std::string>("imu/reference_frame", "NED");
             body_orientation =
                     pc_start_imu.orientation * Eigen::Quaterniond(body_frames.frame_to_body("imu").rotation());
             if (imu_reference_frame == "NED") {

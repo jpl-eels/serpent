@@ -18,7 +18,7 @@ IntegrateImu::IntegrateImu()
     imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input", 100, &IntegrateImu::integrate, this);
 
     // Integration parameters
-    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     preintegration_params->setAccelerometerCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer", 1.0e-3), 2.0));
     preintegration_params->setGyroscopeCovariance(

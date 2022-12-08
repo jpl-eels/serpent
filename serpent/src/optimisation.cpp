@@ -87,14 +87,7 @@ Optimisation::Optimisation()
     }
 
     // Preintegration parameters
-    const std::string imu_reference_frame = nh.param<std::string>("imu/reference_frame", "NED");
-    if (imu_reference_frame == "NED") {
-        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedD(nh.param<double>("gravity", 9.81));
-    } else if (imu_reference_frame == "NWU") {
-        preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
-    } else {
-        throw std::runtime_error("Unrecognised IMU reference frame " + imu_reference_frame);
-    }
+    preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));

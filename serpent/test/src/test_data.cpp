@@ -66,7 +66,7 @@ gtsam::PreintegratedCombinedMeasurements test_preintegrated_measurements() {
 }
 
 boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> test_preintegrated_params() {
-    auto preintegrated_params = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedD(9.81);
+    auto preintegrated_params = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(9.81);
     preintegrated_params->setIntegrationCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));
     preintegrated_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() * std::pow(1.0e-3, 2.0));
     preintegrated_params->setBiasAccCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));

@@ -69,7 +69,7 @@ TEST(serpent, isam2_optimise) {
     ++key;
 
     // Preintegration setup using overwritten covariances
-    auto preintegration_params = gtsam::PreintegrationParams::MakeSharedD(9.81);
+    auto preintegration_params = gtsam::PreintegrationParams::MakeSharedU(9.81);
     preintegration_params->setAccelerometerCovariance(overwrite_accelerometer_covariance);
     EXPECT_GT(preintegration_params->getAccelerometerCovariance().diagonal().minCoeff(), 0.0);
     preintegration_params->setGyroscopeCovariance(overwrite_gyroscope_covariance);

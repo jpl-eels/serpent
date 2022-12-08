@@ -136,8 +136,6 @@ private:
     Eigen::Matrix3d overwrite_accelerometer_covariance;
     // Overwrite IMU accelerometer covariance
     Eigen::Matrix3d overwrite_gyroscope_covariance;
-    // IMU reference frame
-    std::string imu_reference_frame;
 
     //// IMU thread
     // IMU FIFO buffer
