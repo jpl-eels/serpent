@@ -170,40 +170,44 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     pose_sensor.pose = optimised_odometry_msg->pose.pose;
     // baselink->head transform
     auto obtained_transform = false;
-    ROS_INFO("Looking up transform from %s->%s at time stamp: %f", base_link_frame_id.c_str(), sensor_frame_id.c_str(),
-            optimised_odometry_msg->header.stamp.toSec());
     std::string err_msg;
+    // attempt to look up the base_link->sensor_frame ID at the odometry timestamp.
     if (tf_buffer.canTransform(
                 base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0)),
             &err_msg) {
-        ROS_INFO("can transform!!");
         try {
+            // look up the base_link->sensor_frame_id TF if it can be found
             T_base_link2sensor = tf_buffer.lookupTransform(
                     base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0));
             obtained_transform = true;
+
+            // convert both transforms to tf2
             tf2::Transform T_base_link2sensor_tf2;
             tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
             tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
             tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y,
                     pose_sensor.pose.orientation.z, pose_sensor.pose.orientation.w);
             tf2::Transform T_map_sensor(R, T);
+
+            // compute the map->base_link TF from the latest odometry
             tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
             tf2::Stamped<tf2::Transform> tf(T_map_base_link, optimised_odometry_msg->header.stamp, map_frame_id);
+
+            // convert the map->base_link TF and broadcast it.
             auto tf_msg = tf2::toMsg(tf);
-            ROS_INFO("updating %s->%s", map_frame_id.c_str(), base_link_frame_id.c_str());
             tf_msg.header.frame_id = map_frame_id;
             tf_msg.child_frame_id = base_link_frame_id;
             tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
 
+            // Publish the odometry as a pose with covariance stamped.
             auto pose = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
             pose->header = optimised_odometry_msg->header;
-            // pose->header.frame_id =;
-            // tf2::toMsg(T_map_base_link,pose->pose.pose);
             pose->pose = optimised_odometry_msg->pose;
             pose_publisher.publish(pose);
         } catch (tf2::ExtrapolationException& e) {
             ROS_ERROR("%s", e.what());
         }
+    // do not broadcast TF if the sensor->base_link TF cannot be found.
     } else {
         ROS_ERROR("cannot transform: %s", err_msg.c_str());
     }
