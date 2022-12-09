@@ -152,37 +152,6 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
         // eigen_ros::to_ros(odometry->twist.covariance, eigen_ext::reorder_covariance(twist_covariance, 3));
         ROS_WARN_ONCE("TODO FIX: IMU-rate odometry is not valid");
         odometry_publisher.publish(odometry);
-        /*
-               geometry_msgs::PoseStamped pose_sensor;
-               pose_sensor.header = odometry->header;
-               pose_sensor.pose = odometry->pose.pose;
-               // baselink->head transform
-               auto obtained_transform = false;
-               while (obtained_transform == false && ros::ok()) {
-                   ROS_INFO("Looking up transfrm from %s->%s", base_link_frame_id.c_str(), sensor_frame_id.c_str());
-                   try {
-                       T_base_link2sensor = tf_buffer.lookupTransform(
-                               base_link_frame_id, sensor_frame_id, odometry->header.stamp);
-                       obtained_transform = true;
-                   } catch (tf2::TransformException& ex) {
-                       ROS_WARN("%s", ex.what());
-                       ros::Duration(0.01).sleep();
-                       continue;
-                   }
-               }
-               tf2::Transform T_base_link2sensor_tf2;
-               tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
-               tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
-               tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y,
-           pose_sensor.pose.orientation.z, pose_sensor.pose.orientation.w); tf2::Transform T_map_sensor(R, T);
-               tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
-               tf2::Stamped<tf2::Transform> tf(T_map_base_link, odometry->header.stamp, map_frame_id);
-               auto tf_msg = tf2::toMsg(tf);
-               ROS_INFO("updating %s->%s", map_frame_id.c_str(), base_link_frame_id.c_str());
-               tf_msg.header.frame_id = map_frame_id;
-               tf_msg.child_frame_id = base_link_frame_id;
-               tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
-          */
     }
 }
 
