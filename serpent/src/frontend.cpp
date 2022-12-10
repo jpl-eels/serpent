@@ -41,8 +41,8 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(
-            "formatter/formatted_pointcloud", 100, &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
+            &Frontend::pointcloud_callback, this);
 
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
     nh.param<std::string>("base_link_frame_id", base_link_frame_id, "base_link");
@@ -66,8 +66,8 @@ Frontend::Frontend()
         right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
         left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
         right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
-        stereo_sync.connectInput(
-                left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
+        stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber,
+                right_info_subcriber);
         stereo_sync.registerCallback(boost::bind(&Frontend::stereo_callback, this, _1, _2, _3, _4));
     }
 
@@ -91,8 +91,8 @@ Frontend::Frontend()
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
         ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
         ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
-        update_preintegration_params(
-                *preintegration_params, overwrite_accelerometer_covariance, overwrite_gyroscope_covariance);
+        update_preintegration_params(*preintegration_params, overwrite_accelerometer_covariance,
+                overwrite_gyroscope_covariance);
     }
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
@@ -161,8 +161,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 
     // Save optimised odometry
     world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
-    world_state = gtsam::NavState(
-            gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position, world_odometry.twist.linear);
+    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
+            world_odometry.twist.linear);
 
     // Publish map to body TF at t_i-1
     geometry_msgs::PoseStamped pose_sensor;
@@ -172,13 +172,13 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     auto obtained_transform = false;
     std::string err_msg;
     // attempt to look up the base_link->sensor_frame ID at the odometry timestamp.
-    if (tf_buffer.canTransform(
-                base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0)),
+    if (tf_buffer.canTransform(base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp,
+                ros::Duration(0.0)),
             &err_msg) {
         try {
             // look up the base_link->sensor_frame_id TF if it can be found
-            T_base_link2sensor = tf_buffer.lookupTransform(
-                    base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0));
+            T_base_link2sensor = tf_buffer.lookupTransform(base_link_frame_id, sensor_frame_id,
+                    optimised_odometry_msg->header.stamp, ros::Duration(0.0));
             obtained_transform = true;
 
             // convert both transforms to tf2
@@ -207,7 +207,7 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
         } catch (tf2::ExtrapolationException& e) {
             ROS_ERROR("%s", e.what());
         }
-    // do not broadcast TF if the sensor->base_link TF cannot be found.
+        // do not broadcast TF if the sensor->base_link TF cannot be found.
     } else {
         ROS_ERROR("cannot transform: %s", err_msg.c_str());
     }
