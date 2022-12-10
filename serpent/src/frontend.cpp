@@ -46,7 +46,6 @@ Frontend::Frontend()
 
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
     nh.param<std::string>("base_link_frame_id", base_link_frame_id, "base_link");
-    nh.param<std::string>("sensor_frame_id", sensor_frame_id, "sensor");
 
     // Motion distortion correction
     nh.param<bool>("mdc/translation", deskew_translation, false);
@@ -172,12 +171,12 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     auto obtained_transform = false;
     std::string err_msg;
     // attempt to look up the base_link->sensor_frame ID at the odometry timestamp.
-    if (tf_buffer.canTransform(base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp,
+    if (tf_buffer.canTransform(base_link_frame_id, body_frames.body_frame_id(), optimised_odometry_msg->header.stamp,
                 ros::Duration(0.0)),
             &err_msg) {
         try {
-            // look up the base_link->sensor_frame_id TF if it can be found
-            T_base_link2sensor = tf_buffer.lookupTransform(base_link_frame_id, sensor_frame_id,
+            // look up the base_link->body_frame_id TF if it can be found
+            T_base_link2sensor = tf_buffer.lookupTransform(base_link_frame_id, body_frames.body_frame_id(),
                     optimised_odometry_msg->header.stamp, ros::Duration(0.0));
             obtained_transform = true;
 
