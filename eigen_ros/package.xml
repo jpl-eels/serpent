@@ -15,4 +15,7 @@
     <depend>tf2_ros</depend>
 
     <depend>eigen_ext</depend>
+
+    <build_depend>message_generation</build_depend>
+    <exec_depend>message_runtime</exec_depend>
 </package>
