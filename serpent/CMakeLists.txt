@@ -21,7 +21,6 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     std_srvs
     tf2_ros
-    tf2_geometry_msgs
 
     eigen_ext
     eigen_gtsam
@@ -64,7 +63,6 @@ catkin_package(
         sensor_msgs
         std_srvs
         tf2_ros
-        tf2_geometry_msgs
 
         eigen_ext
         eigen_gtsam

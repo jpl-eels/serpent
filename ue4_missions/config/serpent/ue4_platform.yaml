@@ -1,6 +1,6 @@
 # Body frame origin is at IMU, with a NWU (x-forward, y-left, z-up) orientation (tfs are body to frame)
 body_frames:
-  body:
+  base_link:
     frame_id: "base_link"
     frames:
       imu:

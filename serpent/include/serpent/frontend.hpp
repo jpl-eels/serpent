@@ -13,7 +13,6 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <Eigen/Geometry>
 #include <deque>
@@ -109,12 +108,6 @@ private:
     message_filters::Subscriber<nav_msgs::Odometry> optimised_odometry_subscriber;
     message_filters::TimeSynchronizer<serpent::ImuBiases, nav_msgs::Odometry> optimised_odometry_sync;
     tf2_ros::TransformBroadcaster tf_broadcaster;
-
-    std::string base_link_frame_id;
-    tf2_ros::Buffer tf_buffer;
-    tf2_ros::TransformListener tf_listener;
-    geometry_msgs::TransformStamped T_base_link2sensor;
-    geometry_msgs::TransformStamped T_base_link2sensor_inv;
 
     //// Stereo data comms
     image_transport::ImageTransport it;

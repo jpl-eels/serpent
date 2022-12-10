@@ -1,5 +1,5 @@
 body_frames:
-  body:
+  base_link:
     frame_id: "head_base"
     frames:
       imu:

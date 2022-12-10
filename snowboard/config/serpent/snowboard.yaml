@@ -11,7 +11,7 @@
 #   y: -0.9981348
 #   z: 0.0
 body_frames:
-  body:
+  base_link:
     frame_id: "base_link"
     frames:
       imu:
