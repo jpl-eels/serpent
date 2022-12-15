@@ -3,6 +3,8 @@
 
 #include <Eigen/Core>
 
+#include "eigen_ros/stamped.hpp"
+
 namespace eigen_ros {
 
 class Twist {
@@ -25,6 +27,8 @@ public:
     // Covariance. Order is [w1, w2, w3, v1, v2, v3], i.e. angular velocity then linear velocity
     Eigen::Matrix<double, 6, 6> covariance;
 };
+
+using TwistStamped = Stamped<Twist>;
 
 bool operator==(const Twist& lhs, const Twist& rhs);
 

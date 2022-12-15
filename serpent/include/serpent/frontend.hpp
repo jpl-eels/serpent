@@ -101,12 +101,14 @@ private:
     ros::Publisher imu_s2s_publisher;
     ros::Publisher initial_odometry_publisher;
     ros::Publisher odometry_publisher;
+    ros::Publisher pose_publisher;
     ros::Subscriber imu_subscriber;
     ros::Subscriber pointcloud_subscriber;
     message_filters::Subscriber<serpent::ImuBiases> imu_biases_subscriber;
     message_filters::Subscriber<nav_msgs::Odometry> optimised_odometry_subscriber;
     message_filters::TimeSynchronizer<serpent::ImuBiases, nav_msgs::Odometry> optimised_odometry_sync;
     tf2_ros::TransformBroadcaster tf_broadcaster;
+
     //// Stereo data comms
     image_transport::ImageTransport it;
     image_transport::Publisher left_image_publisher;
@@ -128,6 +130,8 @@ private:
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
+    // Map frame id
+    std::string map_frame_id;
 
     //// Configuration
     // Overwrite IMU covariance flag

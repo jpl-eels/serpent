@@ -138,6 +138,8 @@ private:
 
     // Extrinsics
     const eigen_ros::BodyFrames body_frames;
+    // Map frame id
+    std::string map_frame_id;
 
     //// Factor Configuration
     bool imu_factors_enabled;
@@ -154,7 +156,8 @@ private:
     bool publish_stereo_points;
 };
 
-nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix);
+nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix,
+        const std::string& map_frame_id);
 
 nav_msgs::Path extract_changed_poses(const nav_msgs::Path& full_path, const gtsam::ISAM2Result& optimisation_result);
 

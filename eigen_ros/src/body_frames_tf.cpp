@@ -11,7 +11,7 @@ BodyFramesTf::BodyFramesTf()
     std::vector<geometry_msgs::TransformStamped> transforms;
     for (const std::string& frame : body_frames.frames()) {
         const std::string frame_id = body_frames.frame_id(frame);
-        if (frame_id != body_frames.body_frame_id() && !body_frames.lookedup_tf(frame_id)) {
+        if (frame_id != body_frames.body_frame_id() && !body_frames.lookedup_tf(frame)) {
             geometry_msgs::TransformStamped transform;
             transform.header.stamp = ros::Time(0);
             transform.header.frame_id = body_frames.body_frame_id();
