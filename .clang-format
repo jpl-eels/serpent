@@ -1,5 +1,5 @@
 BasedOnStyle: Google
-UseTab: Never
+# UseTab: Never
 IndentWidth: 4
 TabWidth: 4
 ContinuationIndentWidth: 8
@@ -9,15 +9,15 @@ ColumnLimit: 120
 AccessModifierOffset: -4
 NamespaceIndentation: None
 FixNamespaceComments: false
-PackConstructorInitializers: Never
+# PackConstructorInitializers: Never
 PointerAlignment: Left
-ReferenceAlignment: Left
-SpacesInAngles: Never
+# ReferenceAlignment: Left
+# SpacesInAngles: Never
 SpaceAfterTemplateKeyword: false
 AlignAfterOpenBracket: DontAlign
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortEnumsOnASingleLine: false
+# AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowAllArgumentsOnNextLine: false
 AlwaysBreakBeforeMultilineStrings: false

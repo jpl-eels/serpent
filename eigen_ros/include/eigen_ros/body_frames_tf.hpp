@@ -5,6 +5,7 @@
 #include <tf2_ros/static_transform_broadcaster.h>
 
 #include "eigen_ros/body_frames.hpp"
+#include "eigen_ros/lookup_transform.h"
 
 namespace eigen_ros {
 
@@ -17,8 +18,16 @@ public:
     explicit BodyFramesTf();
 
 private:
+    bool lookup_transform_callback(eigen_ros::lookup_transform::Request& request,
+            eigen_ros::lookup_transform::Response& response);
+
     //// ROS Communications
+    // Nodehandle
+    ros::NodeHandle nh;
+    // Static transform publisher
     tf2_ros::StaticTransformBroadcaster static_tf_broadcaster;
+    // Transform lookup server
+    ros::ServiceServer lookup_transform_server;
 
     // Body frames
     const BodyFrames body_frames;

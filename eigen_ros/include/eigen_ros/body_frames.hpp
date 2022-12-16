@@ -2,6 +2,7 @@
 #define EIGEN_ROS_BODY_FRAMES_HPP
 
 #include <ros/ros.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <Eigen/Geometry>
 #include <map>
@@ -11,28 +12,6 @@
 
 namespace eigen_ros {
 
-/**
- * @brief Get the transform from a node of format:
- *      my_frame:
- *          translation:
- *              x: <double>
- *              y: <double>
- *              z: <double>
- *          rotation:
- *              w: <double>
- *              x: <double>
- *              y: <double>
- *              z: <double>
- *
- * Note that each of x, y and z in the translation field are optional, and is replaced by 0.0 if missing.
- * The rotation field is also optional, and set to identity if missing. However if rotation exists, then all of w, x, y
- * and z must be set.
- *
- * @param node
- * @return Eigen::Isometry3d
- */
-Eigen::Isometry3d transform_from_node(const XmlRpc::XmlRpcValue& node);
-
 class BodyFrames {
 public:
     /**
@@ -41,30 +20,49 @@ public:
      *
      *  body_frames:
      *      <body_frame_name>:
-     *          [frame_id]: <frame_id:string>
+     *          [frame_id]: <string>
      *          [frames]:
      *              <named_frame>:
-     *                  [frame_id]: <frame_id:string>
+     *                  [frame_id]: <string>
+     *                  [aliases]: <list(string)>
+     *                  [lookup_tf]: <bool>
      *                  [translation]:
-     *                      x: <x:double>
-     *                      y: <y:double>
-     *                      z: <z:double>
+     *                      x: <double>
+     *                      y: <double>
+     *                      z: <double>
      *                  [rotation]:
-     *                      w: <w:double>
-     *                      x: <x:double>
-     *                      y: <y:double>
-     *                      z: <z:double>
+     *                      w: <double>
+     *                      x: <double>
+     *                      y: <double>
+     *                      z: <double>
      *                  [frames]:
-     *                      <nested_frame>:
-     *                          ...
+     *                      ...
      *              ...
      *
-     * The frame_id defaults to <named_frame> if not set.
+     * Terminology:
+     * * A "frame" is a string label for consistent internal usage (e.g. "imu", "lidar", "camera").
+     * * A "frame_id" is the ROS frame_id used in std_msgs/Header messages and exists in the TF tree.
+     * * An alias is also a frame_id, which allows multiple frame_ids to be associated to the same frame.
+     *
+     * Notes:
+     * * The frame_id defaults to <named_frame> (or <body_frame_name>) if not set.
+     * * If lookup_tf == true, then translation and rotation are ignored and the transform is found with a TF2 lookup
+     *      from the parent frame_id to frame_id.
+     * * frames can have as many <named_frame> blocks as desired, and can be recursively nested.
+     * * Aliases map to the same transform during lookup.
      */
     explicit BodyFrames();
 
     /**
-     * @brief Get name of body frame
+     * @brief Return the aliases for a frame_id
+     *
+     * @param frame
+     * @return std::vector<std::string>
+     */
+    std::vector<std::string> aliases(const std::string& frame_id) const;
+
+    /**
+     * @brief Get name of body frame <body_frame_name>.
      *
      * @return std::string
      */
@@ -115,27 +113,89 @@ public:
     Eigen::Isometry3d frame_to_frame(const std::string& frame1, const std::string& frame2) const;
 
     /**
-     * @brief Get a list of all frames
+     * @brief Get a list of all frames, including the body_frame.
      *
      * @return std::vector<std::string>
      */
     std::vector<std::string> frames() const;
 
-private:
-    void process_frames(const XmlRpc::XmlRpcValue& frames, const Eigen::Isometry3d& prepend_transform);
+    /**
+     * @brief Get the frame for a known frame_id.
+     *
+     * @param frame_id
+     * @return std::string
+     */
+    std::string frame(const std::string& frame_id) const;
 
+    /**
+     * @brief Check if frame_id was looked up using TF api.
+     *
+     * @param frame_id
+     * @return true if found using TF
+     * @return false otherwise
+     */
+    bool lookedup_tf(const std::string& frame_id) const;
+
+private:
+    void add_frame(const std::string& frame, const std::string& frame_id, const Eigen::Isometry3d& body_to_frame);
+
+    void add_frame(const std::string& frame, const std::string& frame_id, const Eigen::Isometry3d& body_to_frame,
+            const Eigen::Isometry3d& frame_to_body);
+
+    void process_frames(const XmlRpc::XmlRpcValue& frames, const Eigen::Isometry3d& prepend_transform,
+            const std::string& parent_frame);
+
+    /**
+     * @brief Get the transform from a node of format:
+     *      my_frame:
+     *          lookup_tf: <bool>
+     *          translation:
+     *              x: <double>
+     *              y: <double>
+     *              z: <double>
+     *          rotation:
+     *              w: <double>
+     *              x: <double>
+     *              y: <double>
+     *              z: <double>
+     *
+     * Note that each of x, y and z in the translation field are optional, and is replaced by 0.0 if missing.
+     * The rotation field is also optional, and set to identity if missing. However if rotation exists, then all of w,
+     * x, y and z must be set.
+     *
+     * @param node
+     * @return Eigen::Isometry3d
+     */
+    Eigen::Isometry3d transform_from_node(const XmlRpc::XmlRpcValue& node, const std::string& frame_id,
+            const std::string& parent_frame_id);
+
+    //// ROS Communications
     // ROS nodehandle
     ros::NodeHandle nh;
+    // TF2 Lookup
+    tf2_ros::Buffer tf_buffer;
+    tf2_ros::TransformListener tf_listener;
+    ros::Duration lookup_tf_timeout;
 
+    // Body frame name
     std::string body_frame_;
 
-    // Frame ids
-    std::unordered_map<std::string, std::string> frame_ids;
+    // frame -> frame_id
+    std::unordered_map<std::string, std::string> frame_ids_map;
 
-    // Body-to-frame transforms
+    // frame_id & aliases -> frame
+    std::unordered_map<std::string, std::string> frames_map;
+
+    // frame_id -> true if looked up from TF, false otherwise
+    std::unordered_map<std::string, bool> lookedup_tf_map;
+
+    // frame_id -> aliases
+    std::unordered_map<std::string, std::vector<std::string>> aliases_map;
+
+    // frame -> body-to-frame transform
     std::unordered_map<std::string, Eigen::Isometry3d> body_to_frame_map;
 
-    // Frame-to-body transforms (inverse)
+    // frame -> frame-to-body transform (inverse of body-to-frame transform)
     std::unordered_map<std::string, Eigen::Isometry3d> frame_to_body_map;
 };
 

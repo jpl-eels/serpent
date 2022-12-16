@@ -4,6 +4,7 @@ project(eigen_ros)
 # Load catkin and all dependencies required for this package
 find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
+    message_generation
     nav_msgs
     roscpp
     sensor_msgs
@@ -13,12 +14,24 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Eigen3 REQUIRED)
 
+add_service_files(
+    DIRECTORY srv
+    FILES
+        lookup_transform.srv
+)
+
+generate_messages(
+    DEPENDENCIES
+        geometry_msgs
+)
+
 set(LIBRARY_NAME ${PROJECT_NAME})
 
 catkin_package(
     INCLUDE_DIRS
         include
     CATKIN_DEPENDS
+        message_runtime
         geometry_msgs
         nav_msgs
         roscpp
@@ -32,6 +45,7 @@ catkin_package(
         ${LIBRARY_NAME}
 )
 
+# Library
 add_library(${LIBRARY_NAME}
     src/body_frames_tf.cpp
     src/body_frames.cpp
@@ -43,6 +57,11 @@ add_library(${LIBRARY_NAME}
     src/pose.cpp
     src/sensor_msgs.cpp
     src/twist.cpp
+)
+
+add_dependencies(${LIBRARY_NAME}
+    ${catkin_EXPORTED_TARGETS}
+    ${PROJECT_NAME}_generate_messages_cpp
 )
 
 target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -66,8 +85,14 @@ set_target_properties(${LIBRARY_NAME}
         CXX_STANDARD_REQUIRED ON
 )
 
+# Executable
 add_executable(body_frames_tf_node
     src/body_frames_tf_node.cpp
+)
+
+add_dependencies(body_frames_tf_node
+    ${catkin_EXPORTED_TARGETS}
+    ${PROJECT_NAME}_generate_messages_cpp
 )
 
 target_include_directories(body_frames_tf_node PUBLIC
