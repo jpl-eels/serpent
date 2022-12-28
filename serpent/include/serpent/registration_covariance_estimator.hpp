@@ -254,7 +254,7 @@ Eigen::Matrix<double, 6, 6> ConstantCovariance<PointSource, PointTarget, Scalar>
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
-typename Eigen::Matrix<double, 6, 6>
+Eigen::Matrix<double, 6, 6>
 CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::estimate_covariance(
         typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance) {
     // Setup

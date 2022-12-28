@@ -143,8 +143,7 @@ Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
 
     // Covariance estimation
     ros::WallTime tic = ros::WallTime::now();
-    Eigen::Matrix<double, 6, 6> covariance =
-            covariance_estimator->estimate_covariance(registration, point_variance).template cast<double>();
+    Eigen::Matrix<double, 6, 6> covariance = covariance_estimator->estimate_covariance(registration, point_variance);
     ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute covariance.");
 
     // Print additional information
