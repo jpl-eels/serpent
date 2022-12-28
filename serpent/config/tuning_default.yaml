@@ -139,6 +139,9 @@ s2m:
     step_size: 0.1
     outlier_ratio: 0.55
 
+# Map frame id
+map_frame_id: "map"
+
 # Mapping
 mapping:
   frame_extraction_number: 10

@@ -96,6 +96,8 @@ private:
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
+    // Map frame id
+    std::string map_frame_id;
 
     //// Configuration
     // Translation threshold (metres)

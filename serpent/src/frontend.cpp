@@ -1,5 +1,6 @@
 #include "serpent/frontend.hpp"
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl_ros/point_cloud.h>
@@ -29,15 +30,28 @@ Frontend::Frontend()
     imu_s2s_publisher = nh.advertise<serpent::ImuArray>("frontend/imu_s2s", 1);
     initial_odometry_publisher = nh.advertise<nav_msgs::Odometry>("frontend/initial_odometry", 1);
     odometry_publisher = nh.advertise<nav_msgs::Odometry>("output/odometry", 1);
+    pose_publisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("output/pose", 1);
 
     // Subscribers
-    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 1000, &Frontend::imu_callback, this);
+    imu_subscriber = nh.subscribe<sensor_msgs::Imu>("input/imu", 5000, &Frontend::imu_callback, this);
     imu_biases_subscriber.subscribe(nh, "optimisation/imu_biases", 10);
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
     pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
             &Frontend::pointcloud_callback, this);
+
+    // Check base_link frame exists
+    if (!body_frames.has_frame("base_link")) {
+        throw std::runtime_error(
+                "SERPENT requires base_link frame to be defined in order to publish transforms and "
+                "poses from the map frame to it. A common use case is to set the body_frame_name to base_link, and "
+                "then optionally to set the frame_id also (may differ from \"base_link\"). See README and "
+                "body_frames.hpp documentation.");
+    }
+
+    // Map frame
+    nh.param<std::string>("map_frame_id", map_frame_id, "map");
 
     // Motion distortion correction
     nh.param<bool>("mdc/translation", deskew_translation, false);
@@ -129,9 +143,11 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
                 body_frames.body_to_frame("imu").rotation() * (imu.angular_velocity + imu_biases.gyroscope());
 
         // Publish current state as odometry output
+        // update TF
+
         auto odometry = boost::make_shared<nav_msgs::Odometry>();
         odometry->header.stamp = imu.timestamp;
-        odometry->header.frame_id = "map";
+        odometry->header.frame_id = map_frame_id;
         odometry->child_frame_id = body_frames.body_frame_id();
         eigen_ros::to_ros(odometry->pose.pose.position, state.position());
         eigen_ros::to_ros(odometry->pose.pose.orientation, state.attitude().toQuaternion());
@@ -153,16 +169,29 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
             world_odometry.twist.linear);
 
-    // Publish map to body TF at t_i-1
-    geometry_msgs::TransformStamped tf;
-    tf.header.stamp = optimised_odometry_msg->header.stamp;
-    tf.header.frame_id = "map";
-    tf.child_frame_id = body_frames.body_frame_id();
-    tf.transform.translation.x = optimised_odometry_msg->pose.pose.position.x;
-    tf.transform.translation.y = optimised_odometry_msg->pose.pose.position.y;
-    tf.transform.translation.z = optimised_odometry_msg->pose.pose.position.z;
-    tf.transform.rotation = optimised_odometry_msg->pose.pose.orientation;
-    tf_broadcaster.sendTransform(tf);
+    // Compute T_W^{BL} TF at t_i-1 for output (note that the odometry pose is T_W^B)
+    try {
+        // Avoid transformation of pose and covariance if we can.
+        eigen_ros::PoseStamped map_to_base_link = world_odometry.pose_stamped();
+        if (body_frames.body_frame() != "base_link") {
+            // Compute transform from map to base_link (including covariance): T_W^{BL} = T_W^B * T_B^{BL}
+            map_to_base_link = eigen_ros::apply_transform(map_to_base_link,
+                    body_frames.body_to_frame("base_link", world_odometry.timestamp));
+        }
+
+        // Broadcast T_W^{BL} TF 
+        auto map_to_base_link_tf = eigen_ros::to_ros<geometry_msgs::TransformStamped>(map_to_base_link);
+        map_to_base_link_tf.header.frame_id = optimised_odometry_msg->header.frame_id;
+        map_to_base_link_tf.child_frame_id = body_frames.frame_id("base_link");
+        tf_broadcaster.sendTransform(map_to_base_link_tf);
+
+        // Publish T_W^{BL} pose with covariance
+        auto map_to_base_link_pose = eigen_ros::to_ros<geometry_msgs::PoseWithCovarianceStamped>(map_to_base_link);
+        map_to_base_link_pose.header.frame_id = optimised_odometry_msg->header.frame_id;
+        pose_publisher.publish(map_to_base_link_pose);
+    } catch (const std::exception& ex) {
+        ROS_ERROR_STREAM("Failed to publish map_frame -> base_link_frame TF or pose. Exception: " << ex.what());
+    }
 
     // Save biases
     from_ros(*imu_biases_msg, imu_biases);
@@ -289,7 +318,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
         const eigen_ros::Twist twist{linear_velocity, pc_start_imu.angular_velocity, linear_twist_covariance,
                 pc_start_imu.angular_velocity_covariance};
-        world_odometry = eigen_ros::Odometry{pose, twist, pointcloud_start, "map", body_frames.body_frame_id()};
+        world_odometry = eigen_ros::Odometry{pose, twist, pointcloud_start, map_frame_id, body_frames.body_frame_id()};
 
         // Set world state so first deskew is valid (TODO: clean up code duplication)
         world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
@@ -419,5 +448,4 @@ void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
         stereo_data.emplace_back(left_image, right_image, left_info, right_info);
     }
 }
-
 }

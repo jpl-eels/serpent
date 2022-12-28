@@ -29,6 +29,7 @@ Mapping::Mapping()
     publish_map_server = nh.advertiseService("publish_map", &Mapping::publish_map_service_callback, this);
 
     // Configuration
+    nh.param<std::string>("map_frame_id", map_frame_id, "map");
     nh.param<double>("mapping/distance_threshold", distance_threshold, 1.0);
     nh.param<double>("mapping/rotation_threshold", rotation_threshold, M_PI / 6.0);
     const int frame_extraction_number_ = nh.param<int>("mapping/frame_extraction_number", 10);
@@ -137,7 +138,7 @@ bool Mapping::publish_map_service_callback(std_srvs::Empty::Request&, std_srvs::
     auto pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
     if (!map.empty()) {
         pointcloud->header.stamp = pcl_conversions::toPCL(last_frame().pose.timestamp);
-        pointcloud->header.frame_id = "map";
+        pointcloud->header.frame_id = map_frame_id;
         for (const auto& map_frame_pair : map) {
             const auto& map_frame = map_frame_pair.second;
             auto pointcloud_i = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
