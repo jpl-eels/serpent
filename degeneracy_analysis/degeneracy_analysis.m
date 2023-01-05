@@ -79,6 +79,23 @@ for i = 1:length(d2H_dzdx_lin(1,:))
     end
 end
 
+% By Hand
+A = [cross(p, n)', n'];
+b = (q - p)' * n;
+d2H_dx2_lin_hand = 2 * (A' * A);
+d2H_dx2_lin_hand_alt = 2 * [cross(p, n) * cross(p, n)', cross(p, n) * n';
+                                      n * cross(p, n)',           n * n'];
+n_skew = [0, -nz, ny; nz, 0, -nx; -ny, nx, 0];
+dATAx_dp = [-(cross(p, n)' * r) * n_skew - cross(p, n) * r' * n_skew - n_skew * (n' * t); n * cross(n, r)'];
+dATAx_dq = zeros(6, 3);
+dATAx_dz = [dATAx_dp, dATAx_dq];
+dATb_dp = [-n_skew * (n' * q) + n_skew * (p * n' + n' * p * eye(3)); -n * n'];
+dATb_dq = [cross(p, n) * n'; n * n'];
+dATb_dz = [dATb_dp, dATb_dq];
+d2H_dzdx_lin_hand = 2 * (dATAx_dz - dATb_dz);
+d2H_dzdx_lin_hand_alt = 2 * [(n' * (q - p - t) - cross(p, n)' * r) * n_skew - cross(p, n) * (r' * n_skew - n'), -cross(p, n) * n';
+                                                                                       n * (cross(n, r)' + n'),           -n * n'];
+
 %% Nonlinear Rotation
 % Angle-axis
 syms a sa ca
