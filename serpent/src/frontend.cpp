@@ -38,8 +38,8 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
-            &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber =
+        nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1, &Frontend::pointcloud_callback, this);
 
     // Check base_link frame exists
     if (!body_frames.has_frame("base_link")) {
