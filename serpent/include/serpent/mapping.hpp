@@ -71,6 +71,7 @@ private:
             const nav_msgs::Path::ConstPtr& path_changes_msg);
 
     bool publish_map_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+    bool publish_pose_graph_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
     /**
      * @brief Check if a new frame should be added to the map.
@@ -86,10 +87,13 @@ private:
     ros::NodeHandle nh;
     ros::Publisher local_map_publisher;
     ros::Publisher global_map_publisher;
+    ros::Publisher pose_graph_publisher;
+
     message_filters::Subscriber<pcl::PointCloud<pcl::PointNormal>> pointcloud_subscriber;
     message_filters::Subscriber<nav_msgs::Path> path_changes_subscriber;
     message_filters::TimeSynchronizer<pcl::PointCloud<pcl::PointNormal>, nav_msgs::Path> correct_map_sync;
     ros::ServiceServer publish_map_server;
+    ros::ServiceServer publish_pose_graph_server;
 
     //// Thread Management
     mutable std::mutex map_mutex;
