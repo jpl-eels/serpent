@@ -148,7 +148,10 @@ bool Mapping::publish_pose_graph_service_callback(std_srvs::Empty::Request&, std
       sensor_msgs::PointCloud2 pointcloud_ros;
       pcl::toROSMsg(*frame.pointcloud, pointcloud_ros);
       pose_graph.clouds.push_back(pointcloud_ros);
-      pose_graph.poses.push_back(eigen_ros::to_msg(frame.pose));
+      geometry_msgs::PoseWithCovarianceStamped pose;
+      eigen_ros::to_ros(pose, frame.pose);
+      pose.header.frame_id = "head";
+      pose_graph.poses.push_back(pose);
     }
     pose_graph_publisher.publish(pose_graph);
   }
