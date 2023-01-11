@@ -1,0 +1,86 @@
+<launch>
+    <!-- Launch Arguments -->
+    <arg name="imu_topic"                       default="/imu"/>
+    <arg name="pointcloud_topic"                default="/pointcloud"/>
+    <arg name="stereo_left_cam_image_topic"     default="/stereo/left/image"/>
+    <arg name="stereo_right_cam_image_topic"    default="/stereo/right/image"/>
+    <arg name="stereo_left_cam_info_topic"      default="/stereo/left/camera_info"/>
+    <arg name="stereo_right_cam_info_topic"     default="/stereo/right/camera_info"/>
+    <arg name="robot_file"                      default="$(find serpent)/config/robot_default.yaml"/>
+    <arg name="mission_file"                    default="$(find serpent)/config/mission_default.yaml"/>
+    <arg name="filter_file"                     default="$(find serpent)/config/filter_default.yaml"/>
+    <arg name="format_file"                     default="$(find serpent)/config/format_default.yaml"/>
+    <arg name="normal_estimation_file"          default="$(find serpent)/config/normal_estimation_default.yaml"/>
+    <arg name="tuning_file"                     default="$(find serpent)/config/tuning_default.yaml"/>
+    <arg name="debug_file"                      default="$(find serpent)/config/debug_default.yaml"/>
+    <arg name="threads"                         default="4"/>
+
+    <!-- Debugging Arguments -->
+    <arg name="use_gdb"                         default="false"/>
+    <arg name="use_callgrind"                   default="false"/>
+    <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
+
+    <!-- Rosbag Playback Arguments-->
+    <arg name="play_rosbag"                     default="false"/>
+    <arg name="use_sim_time"                    default="$(arg play_rosbag)"/>
+    <arg name="rosbag"                          default=""/>
+    <arg name="rosbag_data_dir"                 default="$(env HOME)/data/"/>
+    <arg name="rosbag_rate"                     default="1"/>
+    <arg name="rosbag_start"                    default="0"/>
+    <arg name="rosbag_duration"                 default=""/>
+    <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
+
+    <!-- Debugging -->
+    <arg name="program_name" value="serpent"/>
+    <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
+    <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
+            value="valgrind --tool=callgrind --callgrind-out-file='callgrind.$(arg program_name).%p'"/>
+    <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
+    <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
+
+    <node pkg="serpent" type="serpent_frontend_node" name="$(arg program_name)" output="screen"
+            launch-prefix="$(arg launch_prefix)">
+        <!-- Topics -->
+        <remap from="~input/imu"                        to="$(arg imu_topic)"/>
+        <remap from="~input/pointcloud"                 to="$(arg pointcloud_topic)"/>
+        <remap from="~input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="~input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="~input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="~input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
+
+        <!-- Robot Configuration -->
+        <rosparam if="$(eval robot_file != '')"             command="load" file="$(arg robot_file)"/>
+
+        <!-- Mission Configuration -->
+        <rosparam if="$(eval mission_file != '')"           command="load" file="$(arg mission_file)"/>
+
+        <!-- Filter Configuration -->
+        <rosparam if="$(eval filter_file != '')"            command="load" file="$(arg filter_file)"/>
+
+        <!-- Format Configuration -->
+        <rosparam if="$(eval format_file != '')"            command="load" file="$(arg format_file)"/>
+
+        <!-- Normal Estimation Configuration -->
+        <rosparam if="$(eval normal_estimation_file != '')" command="load" file="$(arg normal_estimation_file)"/>
+
+        <!-- Tuning Configuration -->
+        <rosparam if="$(eval tuning_file != '')"            command="load" file="$(arg tuning_file)"/>
+
+        <!-- Debug Configuration -->
+        <rosparam if="$(eval debug_file != '')"             command="load" file="$(arg debug_file)"/>
+
+        <!-- Parameters -->
+        <rosparam subst_value="true">
+            threads: $(arg threads)
+        </rosparam>
+    </node>
+
+    <!-- Rosbag -->
+    <include if="$(arg play_rosbag)" file="$(find serpent)/launch/rosbag.launch">
+        <arg name="rosbag"   value="$(arg rosbag)"/>
+        <arg name="data_dir" value="$(arg rosbag_data_dir)"/>
+        <arg name="rate"     value="$(arg rosbag_rate)"/>
+        <arg name="start"    value="$(arg rosbag_start)"/>
+        <arg name="duration" value="$(arg rosbag_duration)"/>
+    </include>
+</launch>
