@@ -439,7 +439,7 @@ void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
         const sensor_msgs::ImageConstPtr& right_image, const sensor_msgs::CameraInfoConstPtr& left_info,
         const sensor_msgs::CameraInfoConstPtr& right_info) {
     std::lock_guard<std::mutex> guard{stereo_mutex};
-    ROS_DEBUG_STREAM("Received stereo image at t = " << left_image->header.stamp);
+    ROS_INFO_STREAM("Received stereo image at t = " << left_image->header.stamp);
     // Publish stereo data or add to queue
     if (publish_next_stereo) {
         publish_stereo_data(StereoData{left_image, right_image, left_info, right_info}, publish_next_stereo_timestamp);

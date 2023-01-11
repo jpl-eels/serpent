@@ -76,7 +76,8 @@ Optimisation::Optimisation()
     if (registration_factors_enabled) {
         registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
                 &Optimisation::registration_callback, this);
-    } else if (stereo_factors_enabled) {
+    }
+    if (stereo_factors_enabled) {
         stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>("stereo/features", 10,
                 &Optimisation::stereo_features_callback, this);
     }
@@ -247,7 +248,11 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 
 void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features) {
     gm->increment("stereo");
+    ROS_INFO_STREAM("Features timestamp = " << std::fixed << features->header.stamp.toSec());
     if (gm->timestamp("stereo") != features->header.stamp) {
+        for (const auto& [key, timestamp] : gm->timestamps()) {
+            ROS_ERROR_STREAM(key << ": " << std::fixed << timestamp.toSec());
+        }
         throw std::runtime_error("Stereo features are out of sync with graph manager [Graph timestamp: " +
                                  std::to_string(gm->timestamp("stereo").toSec()) +
                                  ", Features timestamp:" + std::to_string(features->header.stamp.toSec()) + "].");
@@ -571,9 +576,11 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
 
 void Optimisation::stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features) {
     // Pose at (the next) stereo key must be set in order to create landmarks.
+    ROS_INFO_STREAM("Waiting for pose at key " << gm->key("stereo", 1) << " to be set.");
     if (!protected_sleep(graph_mutex, 0.01, false, true, [this]() { return !gm->has_pose("stereo", 1); })) {
         return;
     };
+    ROS_INFO_STREAM("Pose at key " << gm->key("stereo", 1) << " was set, ready to add stereo factors.");
 
     // Integrate stereo data
     add_stereo_factors(features);
