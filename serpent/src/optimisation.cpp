@@ -69,6 +69,9 @@ Optimisation::Optimisation()
                                                 << "\nStereo         "
                                                 << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
 
+    // Map frame
+    nh.param<std::string>("map_frame_id", map_frame_id, "map");
+
     // Optimisation subscribers
     if (registration_factors_enabled) {
         registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
@@ -452,7 +455,7 @@ void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result
     // Publish optimised pose
     auto optimised_odometry_msg = boost::make_shared<nav_msgs::Odometry>();
     optimised_odometry_msg->header.stamp = gm->timestamp(key);
-    optimised_odometry_msg->header.frame_id = "map";
+    optimised_odometry_msg->header.frame_id = map_frame_id;
     optimised_odometry_msg->child_frame_id = body_frames.body_frame_id();
     auto pose = gm->pose(key);
     ROS_INFO_STREAM("Pose:\n" << pose.matrix());
@@ -485,7 +488,8 @@ void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result
     imu_biases_publisher.publish(imu_bias_msg);
 
     // Publish optimised path and changed path
-    auto global_path = boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key, body_frames.body_frame_id()));
+    auto global_path =
+            boost::make_shared<nav_msgs::Path>(convert_to_path(*gm, key, body_frames.body_frame_id(), map_frame_id));
     auto global_path_changes = boost::make_shared<nav_msgs::Path>(extract_changed_poses(*global_path, isam2_result));
     path_publisher.publish(global_path);
     path_changes_publisher.publish(global_path_changes);
@@ -601,10 +605,11 @@ void Optimisation::update_velocity_from_transforms(const std::string& named_key)
     gm->set_velocity(named_key, linear_velocity);
 }
 
-nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix) {
+nav_msgs::Path convert_to_path(const GraphManager& gm, const int max_key, const std::string& frame_id_prefix,
+        const std::string& map_frame_id) {
     nav_msgs::Path path;
     path.header.stamp = gm.timestamp(max_key);
-    path.header.frame_id = "map";
+    path.header.frame_id = map_frame_id;
     for (int key = 0; key <= max_key; ++key) {
         geometry_msgs::PoseStamped pose_msg;
         pose_msg.header.stamp = gm.timestamp(key);

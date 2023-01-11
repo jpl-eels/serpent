@@ -10,6 +10,14 @@ Odometry::Odometry(const Pose& pose, const Twist& twist, const ros::Time& timest
       frame(frame),
       child_frame(child_frame) {}
 
+PoseStamped Odometry::pose_stamped() const {
+    return PoseStamped{pose, timestamp};
+}
+
+TwistStamped Odometry::twist_stamped() const {
+    return TwistStamped{twist, timestamp};
+}
+
 Odometry apply_transform(const Odometry& current_odometry, const PoseStamped& transform) {
     return Odometry(apply_transform(current_odometry.pose, transform.data), current_odometry.twist, transform.timestamp,
             current_odometry.frame, current_odometry.child_frame);

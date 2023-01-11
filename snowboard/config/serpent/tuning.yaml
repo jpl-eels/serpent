@@ -138,6 +138,9 @@ s2m:
     resolution: 1.0
     step_size: 0.1
     outlier_ratio: 0.55
+
+# Map frame id
+map_frame_id: "map"
     
 # Mapping
 mapping:

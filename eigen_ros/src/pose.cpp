@@ -36,7 +36,16 @@ std::ostream& operator<<(std::ostream& os, const Pose& pose) {
 }
 
 Pose apply_transform(const Pose& current_pose, const Pose& transform) {
-    return Pose(to_transform(current_pose) * to_transform(transform), current_pose.covariance);
+    return apply_transform(current_pose, to_transform(transform));
+}
+
+Pose apply_transform(const Pose& current_pose, const Eigen::Isometry3d& transform) {
+    return Pose(to_transform(current_pose) * transform,
+            eigen_ext::change_covariance_frame(current_pose.covariance, transform.inverse()));
+}
+
+PoseStamped apply_transform(const PoseStamped& current_pose, const Eigen::Isometry3d& transform) {
+    return PoseStamped{apply_transform(current_pose.data, transform), current_pose.timestamp};
 }
 
 Eigen::Isometry3d to_transform(const Pose& pose) {

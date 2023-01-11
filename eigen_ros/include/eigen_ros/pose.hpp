@@ -34,9 +34,10 @@ bool operator==(const Pose& lhs, const Pose& rhs);
 std::ostream& operator<<(std::ostream& os, const Pose& pose);
 
 /**
- * @brief Apply a transform to the current pose.
+ * @brief Apply a transform to the current pose: T_A^C = T_A^B * T_B^C where T_A^B is the current pose and T_B^C is the
+ * transform. The covariance is also transformed from frame B -> C.
  *
- * TODO FIX: The covariance is currently copied from the current pose, but should be concatenated correctly.
+ * TODO FIX: The covariance of the second pose is not used (assumed 0), but should be concatenated correctly.
  *
  * @param current_pose
  * @param transform
@@ -45,7 +46,26 @@ std::ostream& operator<<(std::ostream& os, const Pose& pose);
 Pose apply_transform(const Pose& current_pose, const Pose& transform);
 
 /**
- * @brief Obtain the pose in the form of a isometry transform (the covariance is ignored).
+ * @brief Apply a transform to the current pose: T_A^C = T_A^B * T_B^C where T_A^B is the current pose and T_B^C is the
+ * transform. The covariance is also transformed from frame B -> C.
+ *
+ * @param current_pose
+ * @param transform
+ * @return Pose
+ */
+Pose apply_transform(const Pose& current_pose, const Eigen::Isometry3d& transform);
+
+/**
+ * @brief Same as apply_transform(const Pose&, const Eigen::Isometry3d&) except for PoseStamped.
+ * 
+ * @param current_pose 
+ * @param transform 
+ * @return PoseStamped 
+ */
+PoseStamped apply_transform(const PoseStamped& current_pose, const Eigen::Isometry3d& transform);
+
+/**
+ * @brief Obtain the pose in the form of a isometry transform (the covariance is not used).
  *
  * @param pose
  * @return Eigen::Isometry3d

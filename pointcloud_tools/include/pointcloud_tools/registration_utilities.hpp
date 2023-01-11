@@ -32,7 +32,7 @@ pcl::CorrespondencesPtr compute_registration_correspondences(
     pcl::CorrespondencesPtr correspondences = boost::make_shared<pcl::Correspondences>();
     const auto target_cloud = registration.getInputTarget();
     const double max_sq_dist = std::pow(registration.getMaxCorrespondenceDistance(), 2.0);
-    const Eigen::Matrix<Scalar, 4, 4> transform = registration.getFinalTransformation();
+    const Eigen::Matrix<float, 4, 4> transform = registration.getFinalTransformation().template cast<float>();
     if (use_reciprocal_correspondences) {
         const std::size_t target_size = registration.getInputTarget()->size();
         const auto search = registration.getSearchMethodSource();
