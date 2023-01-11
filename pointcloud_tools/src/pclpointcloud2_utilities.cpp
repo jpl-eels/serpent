@@ -22,11 +22,37 @@ void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
                 std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
             } else {
                 throw std::runtime_error(
-                        "Converting field.datatype " + std::to_string(field.datatype) + " not supported yet.");
+                        "Converting field.datatype " + field_type_to_string(field.datatype) + " not supported yet.");
             }
         }
         field.datatype = pcl::PCLPointField::PointFieldTypes::FLOAT32;
     }
+}
+
+int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold) {
+    const pcl::PCLPointField& normal_x_field = get_field(pointcloud, "normal_x");
+    const pcl::PCLPointField& normal_y_field = get_field(pointcloud, "normal_y");
+    const pcl::PCLPointField& normal_z_field = get_field(pointcloud, "normal_z");
+    if (normal_x_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32 ||
+            normal_y_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32 ||
+            normal_z_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
+        throw std::runtime_error(
+                "Expected normal fields to be FLOAT32 but was " + field_type_to_string(normal_x_field.datatype) + ", " +
+                field_type_to_string(normal_y_field.datatype) + ", " + field_type_to_string(normal_z_field.datatype));
+    }
+    int unnormalised_count{0};
+    for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
+        const float* normal_x = reinterpret_cast<const float*>(&pointcloud.data[i + normal_x_field.offset]);
+        const float* normal_y = reinterpret_cast<const float*>(&pointcloud.data[i + normal_y_field.offset]);
+        const float* normal_z = reinterpret_cast<const float*>(&pointcloud.data[i + normal_z_field.offset]);
+        const Eigen::Vector3f normal{*normal_x, *normal_y, *normal_z};
+        if (std::abs(normal.norm() - 1.f) > threshold) {
+            ++unnormalised_count;
+            std::cerr << "Normal (" << normal.norm() << "): " << normal[0] << ", " << normal[1] << ", " << normal[2]
+                      << "\n";
+        }
+    }
+    return unnormalised_count;
 }
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field) {
@@ -145,9 +171,13 @@ bool empty(const pcl::PCLPointCloud2& pointcloud) {
 
 std::string field_string(const pcl::PCLPointField& field) {
     std::stringstream ss;
-    ss << "name: " << field.name << ", offset: " << field.offset << ", datatype: " << static_cast<int>(field.datatype)
-       << ", count: " << field.count;
+    ss << "name: " << field.name << ", offset: " << field.offset
+       << ", datatype: " << field_type_to_string(field.datatype) << ", count: " << field.count;
     return ss.str();
+}
+
+std::string field_type_to_string(const std::uint8_t field_type) {
+    return to_string(static_cast<pcl::PCLPointField::PointFieldTypes>(field_type));
 }
 
 const pcl::PCLPointField& get_field(const pcl::PCLPointCloud2& pointcloud, const std::string& name) {
@@ -242,8 +272,8 @@ void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& nam
             *f *= scale;
         }
     } else {
-        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " + std::to_string(field.datatype) +
-                                 "Not yet supported.");
+        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " +
+                                 field_type_to_string(field.datatype) + "Not yet supported.");
     }
 }
 
@@ -253,6 +283,29 @@ std::uint32_t size_bytes(const pcl::PCLPointCloud2& pointcloud) {
 
 std::uint32_t size_points(const pcl::PCLPointCloud2& pointcloud) {
     return pointcloud.height * pointcloud.width;
+}
+
+std::string to_string(const pcl::PCLPointField::PointFieldTypes field_type) {
+    switch (field_type) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
+            return "FLOAT32";
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return "FLOAT64";
+        case pcl::PCLPointField::PointFieldTypes::INT8:
+            return "INT8";
+        case pcl::PCLPointField::PointFieldTypes::INT16:
+            return "INT16";
+        case pcl::PCLPointField::PointFieldTypes::INT32:
+            return "INT32";
+        case pcl::PCLPointField::PointFieldTypes::UINT8:
+            return "UINT8";
+        case pcl::PCLPointField::PointFieldTypes::UINT16:
+            return "UINT16";
+        case pcl::PCLPointField::PointFieldTypes::UINT32:
+            return "UINT32";
+        default:
+            throw std::runtime_error("Unknown PointFieldType " + std::to_string(field_type));
+    }
 }
 
 }

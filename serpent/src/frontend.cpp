@@ -38,8 +38,8 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 100,
-            &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber =
+        nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1, &Frontend::pointcloud_callback, this);
 
     // Check base_link frame exists
     if (!body_frames.has_frame("base_link")) {
@@ -77,22 +77,22 @@ Frontend::Frontend()
     }
 
     // Preintegration parameters
-    nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
+    nh.param<bool>("imu/noise/overwrite", overwrite_imu_covariance, false);
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasAccCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     if (overwrite_imu_covariance) {
         overwrite_accelerometer_covariance =
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0);
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer", 1.0e-3), 2.0);
         overwrite_gyroscope_covariance =
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0);
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope", 1.0e-3), 2.0);
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
         ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
         ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
@@ -292,10 +292,19 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
         const Eigen::Matrix3d rotation_covariance =
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        const Eigen::Quaterniond body_orientation =
-                pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))
-                        ? Eigen::Quaterniond::Identity()
-                        : Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+        Eigen::Quaterniond body_orientation;
+        if (pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))) {
+            body_orientation = Eigen::Quaterniond::Identity();
+        } else {
+            // Compute T_R^B = T_R^I * T_I^B where R = imu_reference_frame. If R = NWU our computation is done.
+            const std::string imu_reference_frame = nh.param<std::string>("imu/reference_frame", "NED");
+            body_orientation =
+                    pc_start_imu.orientation * Eigen::Quaterniond(body_frames.frame_to_body("imu").rotation());
+            if (imu_reference_frame == "NED") {
+                // Since body orientation is relative NWU (map), compute T_NWU^B = T_NWU^NED * T_NED^B
+                body_orientation = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()) * body_orientation;
+            }
+        }
         const eigen_ros::Pose pose{
                 Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0), nh.param<double>("pose/position/y", 0.0),
                         nh.param<double>("pose/position/z", 0.0)),

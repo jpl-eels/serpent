@@ -63,15 +63,15 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
                 "trajectory velocity"], ""), filetype);
             fprintf("Finished saving figures as .%s\n", filetype);
         end
-        if plot_opts.close_after_save
-            close(fig_position);
-            close(fig_orientation);
-            close(fig_lin_vel);
-            close(fig_ang_vel);
-            close(fig_trajectory);
-            close(fig_trajectory_orientation);
-            close(fig_trajectory_velocity);
-        end
+    end
+    if plot_opts.close_figures
+        close(fig_position);
+        close(fig_orientation);
+        close(fig_lin_vel);
+        close(fig_ang_vel);
+        close(fig_trajectory);
+        close(fig_trajectory_orientation);
+        close(fig_trajectory_velocity);
     end
 
     fmt_str = ['%30s: %.', num2str(plot_opts.summary_decimal_places), 'f'];

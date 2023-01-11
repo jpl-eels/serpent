@@ -93,13 +93,13 @@ Optimisation::Optimisation()
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasAccCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
     preintegration_params->setBodyPSensor(body_to_imu);
@@ -211,12 +211,21 @@ Optimisation::Optimisation()
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     gm->increment("reg");
-    // Extract registration information
-    const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
+    // Extract registration information (note that eigen_ros reorders covariance from ROS to eigen_ros/GTSAM convention)
+    eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
     const gtsam::Pose3 registration_pose_gtsam =
             gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation), registration_pose.data.position);
+
+    // Check if valid covariance matrix
+    if (eigen_ext::is_valid_covariance(registration_pose.data.covariance)) {
+        ROS_ERROR_STREAM("Registration covariance is invalid:\n" << registration_pose.data.covariance);
+        throw std::runtime_error("Covariance matrix is not valid.");
+    }
+
+    // Convert to GTSAM noise model
     auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
-    ROS_INFO_STREAM("Registration covariance sigmas: " << to_flat_string(registration_covariance->sigmas()));
+    ROS_INFO_STREAM("Registration covariance:\n" << registration_covariance->covariance());
+    ROS_INFO_STREAM("Registration covariance sigmas (r, t): " << to_flat_string(registration_covariance->sigmas()));
     if (registration_covariance->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Registration noise sigmas contained a zero.");
     }
@@ -307,7 +316,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     // Note that result is in body frame because gm stores poses in body frame
     const Eigen::Isometry3d s2s_pose_body =
             Eigen::Isometry3d(gm->pose("imu", -1).matrix()).inverse() * Eigen::Isometry3d(gm->pose("imu").matrix());
-    // Convert to the lidar frame
+    // Convert to the lidar frame, T_{L_i-1}^{L_i}
     const eigen_ros::Pose s2s_pose_lidar{
             eigen_ext::change_relative_transform_frame(s2s_pose_body, body_frames.frame_to_body("lidar"))};
     ROS_WARN_ONCE("DESIGN DECISION: change output to odometry to pass velocity & covs to registration module?");
@@ -521,7 +530,7 @@ void Optimisation::print_information_at_key(const gtsam::Key key) {
     int factor_counter{0};
     const gtsam::Values& values = gm->values();
     for (const auto& factor : connected_factors) {
-        factor->print("Factor " + std::to_string(factor_counter++) + ":");
+        factor->print("Factor " + std::to_string(factor_counter++) + ": ");
         std::cerr << "error: " << factor->error(values) << "\n\n";
     }
 }

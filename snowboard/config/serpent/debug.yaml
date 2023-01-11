@@ -2,7 +2,6 @@ debug:
   registration:
     publish_clouds: true
     publish_clouds_alt: false
-    publish_jacobian: false
 
   stereo:
     print_stats: true
