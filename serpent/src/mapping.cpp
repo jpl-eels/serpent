@@ -13,8 +13,9 @@ MapFrame::MapFrame(const eigen_ros::PoseStamped& pose, const pcl::PointCloud<pcl
       pointcloud(pointcloud) {}
 
 Mapping::Mapping()
-    : nh("~"),
-      correct_map_sync(10) {
+    : nh("serpent"),
+      correct_map_sync(10),
+      body_frames("serpent") {
     // Publishers
     local_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("mapping/local_map", 1);
     global_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("output/global_map", 1, true);

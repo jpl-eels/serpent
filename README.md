@@ -25,6 +25,10 @@ cd ~/catkin_ws
 catkin build
 ```
 
+## Usage
+
+See `serpent/README.md`.
+
 ## Plotting Results
 
 To generate plots for trials and compare to ground truth reference, first record the output odometry to file.

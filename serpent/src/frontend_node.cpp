@@ -7,8 +7,8 @@
 
 int main(int argc, char** argv) {
     // Initialise ROS
-    ros::init(argc, argv, "serpent");
-    ros::NodeHandle nh("~");
+    ros::init(argc, argv, "serpent_frontend");
+    ros::NodeHandle nh("serpent");
 
     // Initialise Modules
     serpent::Frontend frontend;

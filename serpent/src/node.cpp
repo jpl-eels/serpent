@@ -15,10 +15,10 @@
 int main(int argc, char** argv) {
     // Initialise ROS
     ros::init(argc, argv, "serpent");
-    ros::NodeHandle nh("~");
+    ros::NodeHandle nh("serpent");
 
     // Initialise Modules
-    eigen_ros::BodyFramesTf body_frames_tf;
+    eigen_ros::BodyFramesTf body_frames_tf("serpent");
     serpent::Frontend frontend;
     serpent::Mapping mapping;
     serpent::Optimisation optimisation;

@@ -43,41 +43,35 @@
     <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
     <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
 
+    <!-- Parameter Configuration -->
+    <!-- Robot -->
+    <rosparam ns="serpent" if="$(eval robot_file != '')"             file="$(arg robot_file)"/>
+    <!-- Mission -->
+    <rosparam ns="serpent" if="$(eval mission_file != '')"           file="$(arg mission_file)"/>
+    <!-- Filter -->
+    <rosparam ns="serpent" if="$(eval filter_file != '')"            file="$(arg filter_file)"/>
+    <!-- Format -->
+    <rosparam ns="serpent" if="$(eval format_file != '')"            file="$(arg format_file)"/>
+    <!-- Normal Estimation -->
+    <rosparam ns="serpent" if="$(eval normal_estimation_file != '')" file="$(arg normal_estimation_file)"/>
+    <!-- Tuning -->
+    <rosparam ns="serpent" if="$(eval tuning_file != '')"            file="$(arg tuning_file)"/>
+    <!-- Debug -->
+    <rosparam ns="serpent" if="$(eval debug_file != '')"             file="$(arg debug_file)"/>
+    <!-- Other Parameters -->
+    <rosparam ns="serpent" subst_value="true">
+        threads: $(arg threads)
+    </rosparam>
+
     <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
         <!-- Topics -->
-        <remap from="~input/imu"                        to="$(arg imu_topic)"/>
-        <remap from="~input/pointcloud"                 to="$(arg pointcloud_topic)"/>
-        <remap from="~input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
-        <remap from="~input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
-        <remap from="~input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
-        <remap from="~input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
-
-        <!-- Robot Configuration -->
-        <rosparam if="$(eval robot_file != '')"             command="load" file="$(arg robot_file)"/>
-
-        <!-- Mission Configuration -->
-        <rosparam if="$(eval mission_file != '')"           command="load" file="$(arg mission_file)"/>
-
-        <!-- Filter Configuration -->
-        <rosparam if="$(eval filter_file != '')"            command="load" file="$(arg filter_file)"/>
-
-        <!-- Format Configuration -->
-        <rosparam if="$(eval format_file != '')"            command="load" file="$(arg format_file)"/>
-
-        <!-- Normal Estimation Configuration -->
-        <rosparam if="$(eval normal_estimation_file != '')" command="load" file="$(arg normal_estimation_file)"/>
-
-        <!-- Tuning Configuration -->
-        <rosparam if="$(eval tuning_file != '')"            command="load" file="$(arg tuning_file)"/>
-
-        <!-- Debug Configuration -->
-        <rosparam if="$(eval debug_file != '')"             command="load" file="$(arg debug_file)"/>
-
-        <!-- Parameters -->
-        <rosparam subst_value="true">
-            threads: $(arg threads)
-        </rosparam>
+        <remap from="serpent/input/imu"                        to="$(arg imu_topic)"/>
+        <remap from="serpent/input/pointcloud"                 to="$(arg pointcloud_topic)"/>
+        <remap from="serpent/input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="serpent/input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="serpent/input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="serpent/input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
     </node>
 
     <!-- Rosbag -->

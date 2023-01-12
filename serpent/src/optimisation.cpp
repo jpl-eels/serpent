@@ -47,7 +47,8 @@ gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std
 }
 
 Optimisation::Optimisation()
-    : nh("~") {
+    : nh("serpent"),
+      body_frames("serpent") {
     // Publishers
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
     imu_transform_publisher = nh.advertise<geometry_msgs::TransformStamped>("optimisation/imu_transform", 1);
