@@ -7,8 +7,8 @@
 
 namespace eigen_ros {
 
-BodyFrames::BodyFrames()
-    : nh("~"),
+BodyFrames::BodyFrames(const std::string& node_namespace)
+    : nh(node_namespace),
       tf_listener(tf_buffer) {
     // TF lookup configuration
     lookup_tf_timeout = ros::Duration(nh.param<double>("lookup_tf_timeout", 1.0));
