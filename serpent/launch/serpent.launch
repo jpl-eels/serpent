@@ -88,24 +88,17 @@
         <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
 
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+    <!-- Visualisation -->
+    <include file="$(find serpent)/launch/serpent_visualisation.launch">
+        <arg name="rviz"        value="$(arg rviz)"/>
+        <arg name="rqt"         value="$(arg rqt)"/>
+        <arg name="rviz_stereo" value="$(arg rviz_stereo)"/>
+        <arg name="rqt_stereo"  value="$(arg rqt_stereo)"/>
 
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
-
-    <!-- RViz Stereo -->
-    <node if="$(arg rviz_stereo)" pkg="rviz" type="rviz" name="serpent_rviz_stereo"
-            args="-d $(find serpent)/rviz/stereo.rviz">
-        <remap from="/lidar_remap/points"         to="$(arg pointcloud_topic)"/>
-        <remap from="/left_remap/image_rect"      to="$(arg stereo_left_cam_image_topic)"/>
-        <remap from="/left_remap/camera_info"     to="$(arg stereo_left_cam_info_topic)"/>
-        <remap from="/right_remap/image_rect"     to="$(arg stereo_right_cam_image_topic)"/>
-        <remap from="/right_remap/camera_info"    to="$(arg stereo_right_cam_info_topic)"/>
-    </node>
-
-    <!-- RQT Stereo -->
-    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
+        <arg name="pointcloud_topic"                value="$(arg pointcloud_topic)"/>
+        <arg name="stereo_left_cam_image_topic"     value="$(arg stereo_left_cam_image_topic)"/>
+        <arg name="stereo_right_cam_image_topic"    value="$(arg stereo_right_cam_image_topic)"/>
+        <arg name="stereo_left_cam_info_topic"      value="$(arg stereo_left_cam_info_topic)"/>
+        <arg name="stereo_right_cam_info_topic"     value="$(arg stereo_right_cam_info_topic)"/>
+    </include>
 </launch>
