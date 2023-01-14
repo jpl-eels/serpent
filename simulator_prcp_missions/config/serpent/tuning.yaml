@@ -182,6 +182,9 @@ stereo_factors:
       c: 2.9846
       reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
   left_cam_frame: "camera_front_left"
+
+# Stereo Tracking
+stereo_tracking:
   new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
