@@ -7,7 +7,7 @@
 namespace serpent {
 
 PointcloudNormalEstimation::PointcloudNormalEstimation()
-    : nh("~") {
+    : nh("serpent") {
     // Publisher
     normal_pointcloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("normal_estimation/pointcloud", 1);
 

@@ -15,7 +15,7 @@ namespace eigen_ros {
  */
 class BodyFramesTf {
 public:
-    explicit BodyFramesTf();
+    explicit BodyFramesTf(const std::string& node_namespace = "~");
 
 private:
     bool lookup_transform_callback(eigen_ros::lookup_transform::Request& request,

@@ -8,7 +8,7 @@
 namespace serpent {
 
 PointcloudFilter::PointcloudFilter()
-    : nh("~") {
+    : nh("serpent") {
     const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", true);
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", false);
