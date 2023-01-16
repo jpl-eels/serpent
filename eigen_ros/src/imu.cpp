@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <iostream>
 
+#include "eigen_ext/matrix.hpp"
+
 namespace eigen_ros {
 
 Imu::Imu(const Eigen::Quaterniond& orientation, const Eigen::Vector3d& angular_velocity,
@@ -63,6 +65,36 @@ bool operator==(const Imu& lhs, const Imu& rhs) {
            lhs.angular_velocity_covariance.isApprox(rhs.angular_velocity_covariance) &&
            lhs.linear_acceleration_covariance.isApprox(rhs.linear_acceleration_covariance) &&
            lhs.timestamp == rhs.timestamp && lhs.frame == rhs.frame;
+}
+
+Imu interpolate(const Imu& imu1, const Imu& imu2, const ros::Time& interp_timestamp) {
+    // Check interpolation is possible
+    if (interp_timestamp < imu1.timestamp || interp_timestamp > imu2.timestamp) {
+        throw std::runtime_error("Imu interpolation error: new_timestamp " + std::to_string(interp_timestamp.toSec()) +
+                                 " was not between imu timestamps " + std::to_string(imu1.timestamp.toSec()) + " and " +
+                                 std::to_string(imu2.timestamp.toSec()) + ".");
+    }
+
+    // Special case
+    if (imu1.timestamp == imu2.timestamp) {
+        return imu1;
+    }
+
+    // Interpolation constant
+    const double interp = (interp_timestamp - imu1.timestamp).toSec() / (imu2.timestamp - imu1.timestamp).toSec();
+    std::cerr << "interp = " << interp << "\n";
+    std::cerr << "lower_half = " << (interp <= 0.5 ? "True" : "False") << "\n";
+
+    // Return interpolated Imu measurement.
+    return Imu{imu1.orientation == Eigen::Quaterniond(0, 0, 0, 0) || imu2.orientation == Eigen::Quaterniond(0, 0, 0, 0)
+                       ? Eigen::Quaterniond(0, 0, 0, 0)
+                       : imu1.orientation.slerp(interp, imu2.orientation),
+            eigen_ext::linear_interpolate(imu1.angular_velocity, imu2.angular_velocity, interp),
+            eigen_ext::linear_interpolate(imu1.linear_acceleration, imu2.linear_acceleration, interp),
+            interp <= 0.5 ? imu1.orientation_covariance : imu2.orientation_covariance,
+            interp <= 0.5 ? imu1.angular_velocity_covariance : imu2.angular_velocity_covariance,
+            interp <= 0.5 ? imu1.linear_acceleration_covariance : imu2.linear_acceleration_covariance, interp_timestamp,
+            interp <= 0.5 ? imu1.frame : imu2.frame};
 }
 
 }

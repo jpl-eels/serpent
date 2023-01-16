@@ -21,9 +21,9 @@ Eigen::Matrix3d test_covariance_3x3(const unsigned int i) {
                     0.02, 0.07, 0.30;
             break;
         default:
-            cov <<  0.001, 0.002, 0.003, 
-                    0.002, 0.005, 0.006,
-                    0.003, 0.006, 0.009;
+            cov <<  0.1, 0.002, 0.003, 
+                    0.002, 0.2, 0.006,
+                    0.003, 0.006, 0.3;
             cov *= static_cast<double>(i);
             break;
     }
