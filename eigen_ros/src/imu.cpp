@@ -7,7 +7,7 @@ namespace eigen_ros {
 
 Imu::Imu(const Eigen::Quaterniond& orientation, const Eigen::Vector3d& angular_velocity,
         const Eigen::Vector3d& linear_acceleration, const Eigen::Matrix3d& orientation_covariance,
-        const Eigen::Matrix3d& angular_velocity_covariance, const Eigen::Matrix3d& inear_acceleration_covariance,
+        const Eigen::Matrix3d& angular_velocity_covariance, const Eigen::Matrix3d& linear_acceleration_covariance,
         const ros::Time& timestamp, const std::string& frame)
     : orientation(orientation),
       angular_velocity(angular_velocity),
