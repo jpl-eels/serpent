@@ -56,10 +56,12 @@ int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold) 
     return unnormalised_count;
 }
 
-void deskew(const Eigen::Isometry3d& skew, const double dt, const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest) {
+void deskew(const Eigen::Isometry3d& skew, const double dt, const std::uint64_t new_time,
+        const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest) {
     // Perform a point cloud copy if there is no transform
     if (skew.isApprox(Eigen::Isometry3d::Identity())) {
         dest = src;
+        dest.header.stamp = new_time;
     } else {
         // Error handling
         if (dt <= 0.0) {
@@ -70,7 +72,16 @@ void deskew(const Eigen::Isometry3d& skew, const double dt, const pcl::PCLPointC
         const Eigen::Isometry3d deskew = skew.inverse();
         const Eigen::Vector3d deskew_translation = deskew.translation();
         const Eigen::Quaterniond deskew_quaternion = Eigen::Quaterniond(deskew.rotation());
+        // Compute
+        const double new_time_seconds = static_cast<double>(new_time - src.header.stamp) / 1.0e6;  // us to s
+        const double new_time_fraction = new_time_seconds / dt;
+        const Eigen::Vector3d new_time_translation = new_time_fraction * deskew_translation;
+        const Eigen::Quaterniond new_time_quaternion =
+                Eigen::Quaterniond::Identity().slerp(new_time_fraction, deskew_quaternion);
+        const Eigen::Isometry3d new_time_transform =
+                eigen_ext::to_transform(new_time_translation, new_time_quaternion).inverse();
         dest.header = src.header;
+        dest.header.stamp = new_time;
         dest.height = src.height;
         dest.width = src.width;
         dest.fields = src.fields;
@@ -131,7 +142,7 @@ void deskew(const Eigen::Isometry3d& skew, const double dt, const pcl::PCLPointC
             const Eigen::Quaterniond interp_quaternion =
                     Eigen::Quaterniond::Identity().slerp(interp_fraction, deskew_quaternion);
             const Eigen::Isometry3d interp_transform = eigen_ext::to_transform(interp_translation, interp_quaternion);
-            const Eigen::Vector3d p_deskew = interp_transform * p;
+            const Eigen::Vector3d p_deskew = new_time_transform * interp_transform * p;
 
             // Copy the deskewed point data
             for (std::size_t j = 0; j < p_fields.size(); ++j) {

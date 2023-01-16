@@ -27,15 +27,17 @@ void change_field_name(pcl::PCLPointCloud2& pointcloud, const std::string& from,
 int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold = 0.000001f);
 
 /**
- * @brief Deskew a pointcloud under the assumption that there has been a constant twist applied over a time dt resulting
- * in a transform from the starting origin frame to the final frame.
+ * @brief Deskew a pointcloud to new_time under the assumption that there has been a constant twist applied over a time
+ * dt resulting in a transform from the starting origin frame to the final frame.
  *
  * @param skew skew transform
  * @param dt time of point cloud sweep
+ * @param new_time target time to deskew to
  * @param src skewed point cloud
  * @param dest deskewed point cloud
  */
-void deskew(const Eigen::Isometry3d& skew, const double dt, const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest);
+void deskew(const Eigen::Isometry3d& skew, const double dt, const std::uint64_t new_time,
+        const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest);
 
 bool empty(const pcl::PCLPointCloud2& pointcloud);
 

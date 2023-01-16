@@ -582,6 +582,8 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
         return;
     };
     ROS_INFO_STREAM("Pose at key " << gm->key("stereo", 1) << " was set, ready to add stereo factors.");
+    ROS_ERROR_STREAM("This code assumes the same number of incoming stereo messages as robot states, and assumes "
+                     "that there is never a missed stereo frame. FIX THIS.");
 
     // Integrate stereo data
     add_stereo_factors(features);
