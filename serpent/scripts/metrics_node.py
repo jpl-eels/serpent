@@ -103,7 +103,7 @@ class MetricsCalculator(object):
                 pose2.orientation.w,
             ]
         )
-        angle = 2.0 * np.arccos(abs(np.dot(q1, q2)))
+        angle = abs(2.0 * np.arccos(abs(np.dot(q1, q2))))
 
         return norm, angle
 
@@ -114,35 +114,35 @@ class MetricsCalculator(object):
 
         # registration covariance diagonal
         rx, ry, rz, tx, ty, tz = self.get_registration_diag()
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_RX, Dictionary.UNIT_NONE, rx)
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_RY, Dictionary.UNIT_NONE, ry)
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_RZ, Dictionary.UNIT_NONE, rz)
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_TX, Dictionary.UNIT_NONE, tx)
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_TY, Dictionary.UNIT_NONE, ty)
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(MetricDefines.REGISTRATION_TZ, Dictionary.UNIT_NONE, tz)
         )
 
         # covariance outliers
         covariance_outlier_max, covariance_outlier_idx = self.get_outlier()
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.COVARIANCE_OUTLIER_MAX,
                 Dictionary.UNIT_NONE,
                 covariance_outlier_max,
             )
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.COVARIANCE_OUTLIER_IDX,
                 Dictionary.UNIT_NONE,
@@ -158,12 +158,12 @@ class MetricsCalculator(object):
             )
         else:
             opt_tf_diff_norm, opt_tf_diff_angl = -1.0, -1.0
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.OPT_TF_DIFF_NORM, Dictionary.UNIT_NONE, opt_tf_diff_norm
             )
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.OPT_TF_DIFF_ANGL, Dictionary.UNIT_NONE, opt_tf_diff_angl
             )
@@ -179,14 +179,14 @@ class MetricsCalculator(object):
             )
         else:
             non_opt_tf_diff_norm, non_opt_tf_diff_angl = -1.0, -1.0
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.NON_OPT_TF_DIFF_NORM,
                 Dictionary.UNIT_NONE,
                 non_opt_tf_diff_norm,
             )
         )
-        metrics.dictionaries.append(
+        metrics.data.append(
             self.compile_metric(
                 MetricDefines.NON_OPT_TF_DIFF_ANGL,
                 Dictionary.UNIT_NONE,
