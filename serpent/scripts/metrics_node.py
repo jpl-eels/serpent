@@ -32,6 +32,7 @@ class MetricsCalculator(object):
         self.metrics_pub = rospy.Publisher(
             "/serpent/metrics", DictionaryList, queue_size=10
         )
+        rospy.loginfo("Initialized metrics node")
 
     def optimized_pose_seq_cb(self, msg):
         self.optimized_pose_seq = msg
@@ -56,12 +57,12 @@ class MetricsCalculator(object):
         """
         if self.registration is None:
             return -1.0, -1.0, -1.0, -1.0, -1.0, -1.0
-        rx = self.registration.covariance[0]
-        ry = self.registration.covariance[7]
-        rz = self.registration.covariance[14]
-        tx = self.registration.covariance[21]
-        ty = self.registration.covariance[28]
-        tz = self.registration.covariance[35]
+        rx = self.registration.pose.covariance[0]
+        ry = self.registration.pose.covariance[7]
+        rz = self.registration.pose.covariance[14]
+        tx = self.registration.pose.covariance[21]
+        ty = self.registration.pose.covariance[28]
+        tz = self.registration.pose.covariance[35]
         return rx, ry, rz, tx, ty, tz
 
     def get_outlier(self):
