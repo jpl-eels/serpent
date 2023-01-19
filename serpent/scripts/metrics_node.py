@@ -11,18 +11,18 @@ import copy
 
 class MetricsCalculator(object):
     def __init__(self):
-        self.optimized_pose_seq = None
+        self.optimized_path = None
         self.registration = None
         self.optimized_pose_curr = None
         self.optimized_pose_prev = None
 
-        self.optimized_pose_seq_sub = rospy.Subscriber(
-            "/serpent/output/path", Path, self.optimized_pose_seq_cb
+        self.optimized_path_sub = rospy.Subscriber(
+            "/serpent/output/path", Path, self.optimized_path_cb
         )
         self.optimized_pose_sub = rospy.Subscriber(
             "/serpent/output/pose", PoseWithCovarianceStamped, self.optimized_pose_cb
         )
-        self.registration_sub = rospy.Subscriber(
+        self.registration_tf_sub = rospy.Subscriber(
             "/serpent/registration/transform",
             PoseWithCovarianceStamped,
             self.registration_cb,
@@ -32,25 +32,25 @@ class MetricsCalculator(object):
         )
         rospy.loginfo("Initialized metrics node")
 
-    def optimized_pose_seq_cb(self, msg):
-        self.optimized_pose_seq = msg
+    def optimized_path_cb(self, msg):
+        self.optimized_path = msg
 
     def optimized_pose_cb(self, msg):
-        # copy current pose to previous pose
         self.optimized_pose_prev = copy.deepcopy(self.optimized_pose_curr)
         self.optimized_pose_curr = msg
 
     def registration_cb(self, msg):
         self.registration = msg
 
-    def compile_metric(self, name, unit, value):
+    def add_metric(self, name, unit, value, metrics_message):
         metric = Dictionary()
         metric.name = name
         metric.unit = unit
         metric.value = value
-        return metric
+        metrics_message.data.append(metric)
+        return metrics_message
 
-    def get_registration_diag(self):
+    def get_var_diag(self):
         """ gets diagonal elements of covariance matrix
         """
         if self.registration is None:
@@ -63,7 +63,7 @@ class MetricsCalculator(object):
         tz = self.registration.pose.covariance[35]
         return rx, ry, rz, tx, ty, tz
 
-    def get_outlier(self):
+    def get_var_outlier(self):
         """ looks at covariance matrix and returns the maximum value and its index
         """
         if self.optimized_pose_curr is None:
@@ -77,7 +77,7 @@ class MetricsCalculator(object):
                 covariance_outlier_idx = i
         return covariance_outlier_max, covariance_outlier_idx
 
-    def get_tf_diff(self, pose1, pose2):
+    def get_rel_pose(self, pose1, pose2):
         """ returns norm of pose1.position - pose2.position and angle between pose1.orientation and pose2.orientation 
         """
         # norm
@@ -103,75 +103,69 @@ class MetricsCalculator(object):
                 pose2.orientation.w,
             ]
         )
-        dot = np.dot(q1, q2)
-        angle = abs(np.arccos(2 * dot * dot - 1))
-
+        dot = min(1, np.dot(q1, q2))
+        angle = 2 * np.arccos(dot)
         return norm, angle
 
-    def calculate_metrics(self):
+    def get_metrics(self):
         """ Computes and publishes metrics
         """
         metrics = DictionaryList()
 
         # registration covariance diagonal
-        rx, ry, rz, tx, ty, tz = self.get_registration_diag()
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_RX, Dictionary.UNIT_NONE, rx)
+        rx, ry, rz, tx, ty, tz = self.get_var_diag()
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_RX, Dictionary.UNIT_NONE, rx, metrics
         )
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_RY, Dictionary.UNIT_NONE, ry)
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_RY, Dictionary.UNIT_NONE, ry, metrics
         )
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_RZ, Dictionary.UNIT_NONE, rz)
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_RZ, Dictionary.UNIT_NONE, rz, metrics
         )
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_TX, Dictionary.UNIT_NONE, tx)
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_TX, Dictionary.UNIT_NONE, tx, metrics
         )
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_TY, Dictionary.UNIT_NONE, ty)
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_TY, Dictionary.UNIT_NONE, ty, metrics
         )
-        metrics.data.append(
-            self.compile_metric(MetricDefines.REGISTRATION_TZ, Dictionary.UNIT_NONE, tz)
+        metrics = self.add_metric(
+            MetricDefines.REGISTRATION_VAR_TZ, Dictionary.UNIT_NONE, tz, metrics
         )
 
         # covariance outliers
-        covariance_outlier_max, covariance_outlier_idx = self.get_outlier()
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.COVARIANCE_OUTLIER_MAX,
-                Dictionary.UNIT_NONE,
-                covariance_outlier_max,
-            )
+        covariance_outlier_max, covariance_outlier_idx = self.get_var_outlier()
+        metrics = self.add_metric(
+            MetricDefines.VARIANCE_OUTLIER_MAX,
+            Dictionary.UNIT_NONE,
+            covariance_outlier_max,
+            metrics,
         )
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.COVARIANCE_OUTLIER_IDX,
-                Dictionary.UNIT_NONE,
-                covariance_outlier_idx,
-            )
+        metrics = self.add_metric(
+            MetricDefines.VARIANCE_OUTLIER_IDX,
+            Dictionary.UNIT_NONE,
+            covariance_outlier_idx,
+            metrics,
         )
 
         # optimized tf diff (use last and second to last poses in optimized pose seq)
-        if self.optimized_pose_seq is not None:
-            opt_tf_diff_norm, opt_tf_diff_angl = self.get_tf_diff(
-                self.optimized_pose_seq.poses[-1].pose,
-                self.optimized_pose_seq.poses[-2].pose,
+        if self.optimized_path is not None:
+            opt_tf_diff_norm, opt_tf_diff_angl = self.get_rel_pose(
+                self.optimized_path.poses[-1].pose, self.optimized_path.poses[-2].pose
             )
         else:
             opt_tf_diff_norm, opt_tf_diff_angl = -1.0, -1.0
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.OPTIMIZED_TRANSFORM_UPDATE_NORM,
-                Dictionary.UNIT_NONE,
-                opt_tf_diff_norm,
-            )
+        metrics = self.add_metric(
+            MetricDefines.CONSISTENT_RELATIVE_POSE_UPDATE_NORM,
+            Dictionary.UNIT_NONE,
+            opt_tf_diff_norm,
+            metrics,
         )
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.OPTIMIZED_TRANSFORM_UPDATE_ANGL,
-                Dictionary.UNIT_NONE,
-                opt_tf_diff_angl,
-            )
+        metrics = self.add_metric(
+            MetricDefines.CONSISTENT_RELATIVE_POSE_UPDATE_ANGL,
+            Dictionary.UNIT_NONE,
+            opt_tf_diff_angl,
+            metrics,
         )
 
         # non optimized tf diff (use current and previous optimized poses)
@@ -179,24 +173,22 @@ class MetricsCalculator(object):
             self.optimized_pose_curr is not None
             and self.optimized_pose_prev is not None
         ):
-            non_opt_tf_diff_norm, non_opt_tf_diff_angl = self.get_tf_diff(
+            non_opt_tf_diff_norm, non_opt_tf_diff_angl = self.get_rel_pose(
                 self.optimized_pose_curr.pose.pose, self.optimized_pose_prev.pose.pose
             )
         else:
             non_opt_tf_diff_norm, non_opt_tf_diff_angl = -1.0, -1.0
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.NON_OPTIMIZED_TRANSFORM_UPDATE_NORM,
-                Dictionary.UNIT_NONE,
-                non_opt_tf_diff_norm,
-            )
+        metrics = self.add_metric(
+            MetricDefines.INSTANT_OPTIMIZED_RELATIVE_POSE_NORM,
+            Dictionary.UNIT_NONE,
+            non_opt_tf_diff_norm,
+            metrics,
         )
-        metrics.data.append(
-            self.compile_metric(
-                MetricDefines.NON_OPTIMIZED_TRANSFORM_UPDATE_ANGL,
-                Dictionary.UNIT_NONE,
-                non_opt_tf_diff_angl,
-            )
+        metrics = self.add_metric(
+            MetricDefines.INSTANT_OPTIMIZED_RELATIVE_POSE_ANGL,
+            Dictionary.UNIT_NONE,
+            non_opt_tf_diff_angl,
+            metrics,
         )
 
         return metrics
@@ -212,7 +204,7 @@ def main():
     metrics_calculator = MetricsCalculator()
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
-        metrics = metrics_calculator.calculate_metrics()
+        metrics = metrics_calculator.get_metrics()
         metrics_calculator.publish_metrics(metrics)
         rate.sleep()
 
