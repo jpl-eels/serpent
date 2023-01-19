@@ -17,12 +17,10 @@ class MetricsCalculator(object):
         self.optimized_pose_prev = None
 
         self.optimized_pose_seq_sub = rospy.Subscriber(
-            "/serpent/output/global_path", Path, self.optimized_pose_seq_cb
+            "/serpent/output/path", Path, self.optimized_pose_seq_cb
         )
         self.optimized_pose_sub = rospy.Subscriber(
-            "/serpent/optimization/pose",
-            PoseWithCovarianceStamped,
-            self.optimized_pose_cb,
+            "/serpent/output/pose", PoseWithCovarianceStamped, self.optimized_pose_cb
         )
         self.registration_sub = rospy.Subscriber(
             "/serpent/registration/transform",
@@ -38,9 +36,9 @@ class MetricsCalculator(object):
         self.optimized_pose_seq = msg
 
     def optimized_pose_cb(self, msg):
-        self.optimized_pose_curr = msg
         # copy current pose to previous pose
         self.optimized_pose_prev = copy.deepcopy(self.optimized_pose_curr)
+        self.optimized_pose_curr = msg
 
     def registration_cb(self, msg):
         self.registration = msg
@@ -68,13 +66,14 @@ class MetricsCalculator(object):
     def get_outlier(self):
         """ looks at covariance matrix and returns the maximum value and its index
         """
-        if self.optimized_pose_seq is None:
+        if self.optimized_pose_curr is None:
             return -1.0, -1.0
         covariance_outlier_max = 0.0
         covariance_outlier_idx = -1
-        for i, pose in enumerate(self.optimized_pose_seq.poses):
-            if pose.covariance[0] > covariance_outlier_max:
-                covariance_outlier_max = pose.covariance[0]
+        # look through optimized_pose_curr and check what the maximum covariance value is
+        for i in range(0, len(self.optimized_pose_curr.pose.covariance)):
+            if self.optimized_pose_curr.pose.covariance[i] > covariance_outlier_max:
+                covariance_outlier_max = self.optimized_pose_curr.pose.covariance[i]
                 covariance_outlier_idx = i
         return covariance_outlier_max, covariance_outlier_idx
 
@@ -104,7 +103,8 @@ class MetricsCalculator(object):
                 pose2.orientation.w,
             ]
         )
-        angle = abs(2.0 * np.arccos(abs(np.dot(q1, q2))))
+        dot = np.dot(q1, q2)
+        angle = abs(np.arccos(2 * dot * dot - 1))
 
         return norm, angle
 
@@ -161,12 +161,16 @@ class MetricsCalculator(object):
             opt_tf_diff_norm, opt_tf_diff_angl = -1.0, -1.0
         metrics.data.append(
             self.compile_metric(
-                MetricDefines.OPT_TF_DIFF_NORM, Dictionary.UNIT_NONE, opt_tf_diff_norm
+                MetricDefines.OPTIMIZED_TRANSFORM_UPDATE_NORM,
+                Dictionary.UNIT_NONE,
+                opt_tf_diff_norm,
             )
         )
         metrics.data.append(
             self.compile_metric(
-                MetricDefines.OPT_TF_DIFF_ANGL, Dictionary.UNIT_NONE, opt_tf_diff_angl
+                MetricDefines.OPTIMIZED_TRANSFORM_UPDATE_ANGL,
+                Dictionary.UNIT_NONE,
+                opt_tf_diff_angl,
             )
         )
 
@@ -176,20 +180,20 @@ class MetricsCalculator(object):
             and self.optimized_pose_prev is not None
         ):
             non_opt_tf_diff_norm, non_opt_tf_diff_angl = self.get_tf_diff(
-                self.optimized_pose_curr.pose, self.optimized_pose_prev.pose
+                self.optimized_pose_curr.pose.pose, self.optimized_pose_prev.pose.pose
             )
         else:
             non_opt_tf_diff_norm, non_opt_tf_diff_angl = -1.0, -1.0
         metrics.data.append(
             self.compile_metric(
-                MetricDefines.NON_OPT_TF_DIFF_NORM,
+                MetricDefines.NON_OPTIMIZED_TRANSFORM_UPDATE_NORM,
                 Dictionary.UNIT_NONE,
                 non_opt_tf_diff_norm,
             )
         )
         metrics.data.append(
             self.compile_metric(
-                MetricDefines.NON_OPT_TF_DIFF_ANGL,
+                MetricDefines.NON_OPTIMIZED_TRANSFORM_UPDATE_ANGL,
                 Dictionary.UNIT_NONE,
                 non_opt_tf_diff_angl,
             )
