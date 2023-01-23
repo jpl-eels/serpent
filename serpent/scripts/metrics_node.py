@@ -150,21 +150,21 @@ class MetricsCalculator(object):
 
         # optimized tf diff (use last and second to last poses in optimized pose seq)
         if self.optimized_path is not None:
-            opt_tf_diff_norm, opt_tf_diff_angl = self.get_rel_pose(
+            consistent_relative_pose_norm, consistent_relative_pose_angl = self.get_rel_pose(
                 self.optimized_path.poses[-1].pose, self.optimized_path.poses[-2].pose
             )
         else:
-            opt_tf_diff_norm, opt_tf_diff_angl = -1.0, -1.0
+            consistent_relative_pose_norm, consistent_relative_pose_angl = -1.0, -1.0
         metrics = self.add_metric(
-            MetricDefines.CONSISTENT_RELATIVE_POSE_UPDATE_NORM,
+            MetricDefines.CONSISTENT_RELATIVE_POSE_NORM,
             Dictionary.UNIT_NONE,
-            opt_tf_diff_norm,
+            consistent_relative_pose_norm,
             metrics,
         )
         metrics = self.add_metric(
-            MetricDefines.CONSISTENT_RELATIVE_POSE_UPDATE_ANGL,
+            MetricDefines.CONSISTENT_RELATIVE_POSE_ANGL,
             Dictionary.UNIT_NONE,
-            opt_tf_diff_angl,
+            consistent_relative_pose_angl,
             metrics,
         )
 
@@ -173,21 +173,21 @@ class MetricsCalculator(object):
             self.optimized_pose_curr is not None
             and self.optimized_pose_prev is not None
         ):
-            non_opt_tf_diff_norm, non_opt_tf_diff_angl = self.get_rel_pose(
+            instant_relative_pose_norm, instant_relative_pose_angl = self.get_rel_pose(
                 self.optimized_pose_curr.pose.pose, self.optimized_pose_prev.pose.pose
             )
         else:
-            non_opt_tf_diff_norm, non_opt_tf_diff_angl = -1.0, -1.0
+            instant_relative_pose_norm, instant_relative_pose_angl = -1.0, -1.0
         metrics = self.add_metric(
-            MetricDefines.INSTANT_OPTIMIZED_RELATIVE_POSE_NORM,
+            MetricDefines.INSTANT_RELATIVE_POSE_NORM,
             Dictionary.UNIT_NONE,
-            non_opt_tf_diff_norm,
+            instant_relative_pose_norm,
             metrics,
         )
         metrics = self.add_metric(
-            MetricDefines.INSTANT_OPTIMIZED_RELATIVE_POSE_ANGL,
+            MetricDefines.INSTANT_RELATIVE_POSE_ANGL,
             Dictionary.UNIT_NONE,
-            non_opt_tf_diff_angl,
+            instant_relative_pose_angl,
             metrics,
         )
 
