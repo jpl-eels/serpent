@@ -82,8 +82,6 @@ Imu interpolate(const Imu& imu1, const Imu& imu2, const ros::Time& interp_timest
 
     // Interpolation constant
     const double interp = (interp_timestamp - imu1.timestamp).toSec() / (imu2.timestamp - imu1.timestamp).toSec();
-    std::cerr << "interp = " << interp << "\n";
-    std::cerr << "lower_half = " << (interp <= 0.5 ? "True" : "False") << "\n";
 
     // Return interpolated Imu measurement.
     return Imu{imu1.orientation == Eigen::Quaterniond(0, 0, 0, 0) || imu2.orientation == Eigen::Quaterniond(0, 0, 0, 0)
