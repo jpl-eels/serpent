@@ -185,7 +185,7 @@ stereo_factors:
 
 # Stereo Tracking
 stereo_tracking:
-  only_graph_frames: false # If true and registration factors enabled, only process frames at registration timestamps. 
+  only_graph_frames: true # If true and registration factors enabled, only process frames at registration timestamps.
   new_feature_dist_threshold: 5.0
   detector:
     type: "FAST" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
