@@ -55,9 +55,9 @@ private:
      * @brief Obtain the orientation from an IMU measurement in the body frame. Performs the required IMU reference
      * frame change (e.g. NED to NWU), and sensor to body transformation. Returns identity rotation if imu rotation is
      * invalid.
-     * 
-     * @param imu 
-     * @return Eigen::Quaterniond 
+     *
+     * @param imu
+     * @return Eigen::Quaterniond
      */
     Eigen::Quaterniond body_frame_orientation(const eigen_ros::Imu& imu) const;
 
@@ -73,9 +73,9 @@ private:
     /**
      * @brief Get an interpolated imu message at interp_timestamp. Requires that the IMU buffer contain an IMU
      * measurement both before and after the timestamp.
-     * 
-     * @param interp_timestamp 
-     * @return Imu 
+     *
+     * @param interp_timestamp
+     * @return Imu
      */
     eigen_ros::Imu interpolated_imu(const ros::Time interp_timestamp) const;
 

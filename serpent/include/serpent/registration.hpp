@@ -156,15 +156,6 @@ Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
     return covariance;
 }
 
-template<typename PointSource, typename PointTarget>
-std::string registration_result(pcl::Registration<PointSource, PointTarget>& registration) {
-    std::stringstream ss;
-    ss << "Converged: " << (registration.hasConverged() ? "True" : "False")
-       << ", Fitness Score: " << registration.getFitnessScore() << ", Final Transform:\n"
-       << registration.getFinalTransformation();
-    return ss.str();
-}
-
 }
 
 #endif

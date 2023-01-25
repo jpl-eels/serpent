@@ -82,8 +82,8 @@ void update_preintegration_params(gtsam::PreintegrationParams& params, const Eig
     params.setAccelerometerCovariance(accelerometer_covariance);
     params.setGyroscopeCovariance(gyroscope_covariance);
     if (!check_valid(params)) {
-        ROS_WARN_STREAM("Accelerometer covariance:\n" << accelerometer_covariance);
-        ROS_WARN_STREAM("Gyroscope covariance:\n" << gyroscope_covariance);
+        ROS_ERROR_STREAM("Accelerometer covariance:\n" << accelerometer_covariance);
+        ROS_ERROR_STREAM("Gyroscope covariance:\n" << gyroscope_covariance);
         throw std::runtime_error("IMU preintegration parameters were not valid. Covariances with zero diagonal elements"
                                  " can cause this.");
     }

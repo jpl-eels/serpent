@@ -365,9 +365,8 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     // Run processing pipeline
     const ros::WallTime tic = ros::WallTime::now();
     auto tracked_matches = tracker->process(left_image->image, right_image->image, stats_ref, intermediate_images_ref);
-    ROS_INFO_STREAM("Tracker processing completed in "
-                    << (ros::WallTime::now() - tic).toSec()
-                    << " seconds for stereo data at t = " << left_image->header.stamp);
+    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec()
+                                                       << " s for stereo data at t = " << left_image->header.stamp);
 
     // Optional printing and publishing of internal information
     if (print_stats) {

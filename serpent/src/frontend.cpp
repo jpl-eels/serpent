@@ -240,14 +240,14 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
     // Save biases
     from_ros(*imu_biases_msg, imu_biases);
     imu_bias_timestamp = imu_biases_msg->header.stamp;
-    ROS_INFO_STREAM("Updated IMU bias at t = " << imu_bias_timestamp);
+    ROS_DEBUG_STREAM("Updated IMU bias at t = " << imu_bias_timestamp);
 
     // Update the preintegration parameters according to the next IMU message (after the imu bias timestamp)
     const eigen_ros::Imu imu_bias_imu = interpolated_imu(imu_bias_timestamp);
     ROS_WARN_ONCE("DESIGN DECISION: gravity from IMU measurement?");
     update_preintegration_params(*preintegration_params, imu_bias_imu.linear_acceleration_covariance,
             imu_bias_imu.angular_velocity_covariance);
-    ROS_INFO_STREAM("Update preintegration parameters using imu message at t = " << imu_bias_imu.timestamp);
+    ROS_DEBUG_STREAM("Update preintegration parameters using imu message at t = " << imu_bias_imu.timestamp);
 
     // Create new IMU integrator with new biases for IMU-rate odometry
     preintegrated_imu = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(preintegration_params, imu_biases);
@@ -273,8 +273,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
 
     // Pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
-    ROS_INFO_STREAM("Received pointcloud (seq=" << msg->header.seq << ", " << pct::size_points(*msg) << " pts, "
-                                                << pointcloud_start << ")");
+    ROS_DEBUG_STREAM("Received pointcloud (seq=" << msg->header.seq << ", " << pct::size_points(*msg) << " pts, "
+                                                 << pointcloud_start << ")");
 
     // Process the information between the previous and current pointcloud
     if (previous_pointcloud) {
@@ -286,13 +286,21 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         // Set new state, depending on stereo data. If stereo disabled or no stereo frame exista, use the start time.
         ros::Time new_state_time = previous_pointcloud_start;
         if (stereo_enabled) {
-            // Remove old data.
-            std::lock_guard<std::mutex> stereo_data_guard{stereo_data_mutex};
-            while (!stereo_buffer.empty() && stereo_buffer.front().timestamp() < previous_pointcloud_start) {
-                stereo_buffer.pop_front();
-            }
+            // Remove old stereo data and wait for stereo data after previous_pointcloud_start (may arrive late)
+            stereo_data_mutex.lock();
+            ROS_INFO_COND(stereo_buffer.empty() || stereo_buffer.back().timestamp() < previous_pointcloud_start,
+                    "Waiting for stereo data to arrive before selecting new optimisation state.");
+            if (!protected_sleep(stereo_data_mutex, 0.01, true, true, [this, previous_pointcloud_start]() {
+                    while (!stereo_buffer.empty() && stereo_buffer.front().timestamp() < previous_pointcloud_start) {
+                        stereo_buffer.pop_front();
+                    }
+                    return stereo_buffer.empty();
+                })) {
+                return;
+            };
+
             // Check for stereo data between the point clouds.
-            if (!stereo_buffer.empty() && stereo_buffer.front().timestamp() < pointcloud_start) {
+            if (stereo_buffer.front().timestamp() < pointcloud_start) {
                 // Update the deskew time.
                 new_state_time = stereo_buffer.front().timestamp();
                 // Publish stereo data if it hasn't been already.
@@ -302,8 +310,9 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 // Remove stereo data from queue.
                 stereo_buffer.pop_front();
             }
+            stereo_data_mutex.unlock();
         }
-        ROS_INFO_STREAM("New state time set to " << new_state_time);
+        ROS_INFO_STREAM("New state time set to " << new_state_time << ".");
 
         // Initialised: publish the IMU messages between the deskew times of the pointclouds.
         // Not initialised: construct and publish the initial odometry at the deskew timestamp.
@@ -437,8 +446,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         const ros::WallTime tic = ros::WallTime::now();
         pct::deskew(skew_transform, sweep_duration.toSec(), pcl_conversions::toPCL(new_state_time),
                 *previous_pointcloud, *deskewed_pointcloud);
-        ROS_INFO_STREAM("Deskewed pointcloud to " << new_state_time << " in " << (ros::WallTime::now() - tic).toSec()
-                                                  << " seconds.");
+        ROS_INFO_STREAM(
+                "Deskewed pointcloud to " << new_state_time << " in " << (ros::WallTime::now() - tic).toSec() << " s.");
 
         // Update previous_state_time
         previous_state_time = new_state_time;
@@ -460,7 +469,7 @@ void Frontend::publish_stereo_data(const StereoData& data, const ros::Time& time
         right_image_publisher.publish(data.right_image);
         left_info_publisher.publish(data.left_info);
         right_info_publisher.publish(data.right_info);
-        ROS_INFO_STREAM("Re-publishing stereo data at its original timestamp");
+        ROS_DEBUG_STREAM("Re-publishing stereo data at its original timestamp");
     } else {
         // Changing timestamp requires a copy
         sensor_msgs::ImagePtr left_image = boost::make_shared<sensor_msgs::Image>(*data.left_image);
@@ -475,9 +484,9 @@ void Frontend::publish_stereo_data(const StereoData& data, const ros::Time& time
         right_image_publisher.publish(right_image);
         left_info_publisher.publish(left_info);
         right_info_publisher.publish(right_info);
-        ROS_INFO_STREAM("Re-publishing stereo data with new timestamp = "
-                        << timestamp << " (originally " << data.left_image->header.stamp
-                        << ", diff = " << (data.left_image->header.stamp - timestamp).toSec() << " s)");
+        ROS_DEBUG_STREAM("Re-publishing stereo data with new timestamp = "
+                         << timestamp << " (originally " << data.left_image->header.stamp
+                         << ", diff = " << (data.left_image->header.stamp - timestamp).toSec() << " s)");
     }
 }
 
@@ -488,11 +497,13 @@ void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
     // Since PCL timestamps are accurate to the microsecond, the stereo timestamps must also be modified to ensure sync
     const ros::Time timestamp = pcl_conversions::fromPCL(pcl_conversions::toPCL(left_image->header.stamp));
     // Add stereo data to queue
+    ROS_WARN_ONCE("TODO: Fix inefficiency where stereo data is always copied to change timestamp, even when "
+                  "only_graph_frames is true.");
     stereo_buffer.push_back(change_timestamp(StereoData{left_image, right_image, left_info, right_info}, timestamp));
-    ROS_INFO_STREAM("Received stereo image at t = " << stereo_buffer.back().timestamp());
+    ROS_DEBUG_STREAM("Saved stereo image (t = " << stereo_buffer.back().timestamp() << ").");
     // If all stereo frames will be republished, republish immediately.
     if (!only_graph_frames) {
-        publish_stereo_data(stereo_buffer.front());
+        publish_stereo_data(stereo_buffer.back());
     }
 }
 }
