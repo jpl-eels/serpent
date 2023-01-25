@@ -71,6 +71,7 @@ private:
             const nav_msgs::Path::ConstPtr& path_changes_msg);
 
     bool publish_map_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+    
     bool publish_pose_graph_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
     /**
