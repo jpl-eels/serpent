@@ -1,11 +1,12 @@
 #include "serpent/mapping.hpp"
-#include "serpent/PoseGraph.h"
 
 #include <pcl/common/transforms.h>
 
 #include <cmath>
 #include <eigen_ros/eigen_ros.hpp>
 #include <eigen_ros/geometry_msgs.hpp>
+
+#include "serpent/PoseGraph.h"
 
 namespace serpent {
 
@@ -30,7 +31,7 @@ Mapping::Mapping()
     // Service servers
     publish_map_server = nh.advertiseService("publish_map", &Mapping::publish_map_service_callback, this);
     publish_pose_graph_server =
-        nh.advertiseService("publish_pose_graph", &Mapping::publish_pose_graph_service_callback, this);
+            nh.advertiseService("publish_pose_graph", &Mapping::publish_pose_graph_service_callback, this);
 
     // Configuration
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
@@ -135,27 +136,20 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
     local_map_publisher.publish(map_region);
 }
 
-bool Mapping::publish_pose_graph_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
-{
-  std::lock_guard<std::mutex> guard{ map_mutex };
-
-  if (!map.empty())
-  {
+bool Mapping::publish_pose_graph_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+    std::lock_guard<std::mutex> guard{map_mutex};
     serpent::PoseGraph pose_graph;
-    for (const auto& map_frame_pair : map)
-    {
-      const auto& frame = map_frame_pair.second;
-      sensor_msgs::PointCloud2 pointcloud_ros;
-      pcl::toROSMsg(*frame.pointcloud, pointcloud_ros);
-      pose_graph.clouds.push_back(pointcloud_ros);
-      geometry_msgs::PoseWithCovarianceStamped pose;
-      eigen_ros::to_ros(pose, frame.pose);
-      pose.header.frame_id = "head";
-      pose_graph.poses.push_back(pose);
+    for (const auto& map_frame_pair : map) {
+        const auto& map_frame = map_frame_pair.second;
+        sensor_msgs::PointCloud2 pointcloud_ros;
+        pcl::toROSMsg(*map_frame.pointcloud, pointcloud_ros);
+        pose_graph.clouds.push_back(pointcloud_ros);
+        auto pose = eigen_ros::to_ros<geometry_msgs::PoseWithCovarianceStamped>(map_frame.pose);
+        pose.header.frame_id = body_frames.frame_id("lidar");
+        pose_graph.poses.push_back(pose);
     }
     pose_graph_publisher.publish(pose_graph);
-  }
-  return true;
+    return true;
 }
 
 bool Mapping::publish_map_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
