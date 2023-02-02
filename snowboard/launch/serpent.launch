@@ -13,12 +13,6 @@
     <arg name="threads"         default="8"/>
     <arg name="stereo_camera"   default="snowboard_left"/>
 
-    <!-- IMU transform -->
-    <include file="$(find snowboard)/launch/imu_transform.launch">
-        <arg name="overwrite_frame" value="true"/>
-        <arg name="new_frame"       value="imu"/>
-    </include>
-
     <!-- Split Images -->
     <include file="$(find snowboard)/launch/split_images.launch"/>
 
@@ -29,7 +23,7 @@
 
     <!-- SERPENT -->
     <include file="$(find serpent)/launch/serpent.launch">
-        <arg name="imu_topic"                       value="/vectornav/imu_nwu"/>
+        <arg name="imu_topic"                       value="/vectornav/imu"/>
         <arg name="pointcloud_topic"                value="/os_cloud_node/points"/>
         <arg name="stereo_left_cam_image_topic"     value="/$(arg stereo_camera)/left/rect/image"/>
         <arg name="stereo_right_cam_image_topic"    value="/$(arg stereo_camera)/right/rect/image"/>

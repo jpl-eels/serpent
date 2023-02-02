@@ -21,7 +21,6 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     std_srvs
     tf2_ros
-    tf2_geometry_msgs
 
     eigen_ext
     eigen_gtsam
@@ -33,11 +32,14 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
+catkin_python_setup()
+
 add_message_files(
     DIRECTORY msg
     FILES
         ImuArray.msg
         ImuBiases.msg
+        PoseGraph.msg
         StereoFeature.msg
         StereoFeatures.msg
         StereoTrackerStatistics.msg
@@ -64,7 +66,6 @@ catkin_package(
         sensor_msgs
         std_srvs
         tf2_ros
-        tf2_geometry_msgs
 
         eigen_ext
         eigen_gtsam
@@ -188,7 +189,8 @@ if(CATKIN_ENABLE_TESTING)
         src/graph_manager.cpp
         src/utilities.cpp
         test/graph_manager.cpp
-        test/registration_degeneracy.cpp
+        test/DEPRECATED_registration_degeneracy.cpp
+        test/registration_covariance_estimator.cpp
         test/serpent.cpp
         test/test_main.cpp
         test/src/read_data.cpp

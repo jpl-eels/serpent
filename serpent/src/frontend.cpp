@@ -4,7 +4,6 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl_ros/point_cloud.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <eigen_ext/covariance.hpp>
 #include <eigen_ext/geometry.hpp>
@@ -25,9 +24,7 @@ Frontend::Frontend()
       stereo_sync(10),
       last_preint_imu_timestamp(0.0),
       initialised(false),
-      publish_next_stereo(false),
-      tf_buffer(),
-      tf_listener(tf_buffer) {
+      publish_next_stereo(false) {
     // Publishers
     deskewed_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("frontend/deskewed_pointcloud", 1);
     imu_s2s_publisher = nh.advertise<serpent::ImuArray>("frontend/imu_s2s", 1);
@@ -41,12 +38,20 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(
-            "formatter/formatted_pointcloud", 100, &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber =
+        nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1, &Frontend::pointcloud_callback, this);
 
+    // Check base_link frame exists
+    if (!body_frames.has_frame("base_link")) {
+        throw std::runtime_error(
+                "SERPENT requires base_link frame to be defined in order to publish transforms and "
+                "poses from the map frame to it. A common use case is to set the body_frame_name to base_link, and "
+                "then optionally to set the frame_id also (may differ from \"base_link\"). See README and "
+                "body_frames.hpp documentation.");
+    }
+
+    // Map frame
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
-    nh.param<std::string>("base_link_frame_id", base_link_frame_id, "base_link");
-    nh.param<std::string>("sensor_frame_id", sensor_frame_id, "sensor");
 
     // Motion distortion correction
     nh.param<bool>("mdc/translation", deskew_translation, false);
@@ -66,33 +71,33 @@ Frontend::Frontend()
         right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
         left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
         right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
-        stereo_sync.connectInput(
-                left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
+        stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber,
+                right_info_subcriber);
         stereo_sync.registerCallback(boost::bind(&Frontend::stereo_callback, this, _1, _2, _3, _4));
     }
 
     // Preintegration parameters
-    nh.param<bool>("imu_noise/overwrite", overwrite_imu_covariance, false);
+    nh.param<bool>("imu/noise/overwrite", overwrite_imu_covariance, false);
     preintegration_params = gtsam::PreintegrationCombinedParams::MakeSharedU(nh.param<double>("gravity", 9.81));
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/integration", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
-                                              std::pow(nh.param<double>("imu_noise/integration_bias", 1.0e-3), 2.0));
+                                              std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasAccCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
-            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope_bias", 1.0e-3), 2.0));
+            Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     if (overwrite_imu_covariance) {
         overwrite_accelerometer_covariance =
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/accelerometer", 1.0e-3), 2.0);
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer", 1.0e-3), 2.0);
         overwrite_gyroscope_covariance =
-                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu_noise/gyroscope", 1.0e-3), 2.0);
+                Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope", 1.0e-3), 2.0);
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
         ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
         ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
-        update_preintegration_params(
-                *preintegration_params, overwrite_accelerometer_covariance, overwrite_gyroscope_covariance);
+        update_preintegration_params(*preintegration_params, overwrite_accelerometer_covariance,
+                overwrite_gyroscope_covariance);
     }
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
@@ -161,55 +166,31 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 
     // Save optimised odometry
     world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
-    world_state = gtsam::NavState(
-            gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position, world_odometry.twist.linear);
+    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
+            world_odometry.twist.linear);
 
-    // Publish map to body TF at t_i-1
-    geometry_msgs::PoseStamped pose_sensor;
-    pose_sensor.header = optimised_odometry_msg->header;
-    pose_sensor.pose = optimised_odometry_msg->pose.pose;
-    // baselink->head transform
-    auto obtained_transform = false;
-    std::string err_msg;
-    // attempt to look up the base_link->sensor_frame ID at the odometry timestamp.
-    if (tf_buffer.canTransform(
-                base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0)),
-            &err_msg) {
-        try {
-            // look up the base_link->sensor_frame_id TF if it can be found
-            T_base_link2sensor = tf_buffer.lookupTransform(
-                    base_link_frame_id, sensor_frame_id, optimised_odometry_msg->header.stamp, ros::Duration(0.0));
-            obtained_transform = true;
-
-            // convert both transforms to tf2
-            tf2::Transform T_base_link2sensor_tf2;
-            tf2::fromMsg(T_base_link2sensor.transform, T_base_link2sensor_tf2);
-            tf2::Vector3 T(pose_sensor.pose.position.x, pose_sensor.pose.position.y, pose_sensor.pose.position.z);
-            tf2::Quaternion R(pose_sensor.pose.orientation.x, pose_sensor.pose.orientation.y,
-                    pose_sensor.pose.orientation.z, pose_sensor.pose.orientation.w);
-            tf2::Transform T_map_sensor(R, T);
-
-            // compute the map->base_link TF from the latest odometry
-            tf2::Transform T_map_base_link = T_map_sensor * T_base_link2sensor_tf2.inverse();
-            tf2::Stamped<tf2::Transform> tf(T_map_base_link, optimised_odometry_msg->header.stamp, map_frame_id);
-
-            // convert the map->base_link TF and broadcast it.
-            auto tf_msg = tf2::toMsg(tf);
-            tf_msg.header.frame_id = map_frame_id;
-            tf_msg.child_frame_id = base_link_frame_id;
-            tf_broadcaster.sendTransform(tf2::toMsg(tf_msg));
-
-            // Publish the odometry as a pose with covariance stamped.
-            auto pose = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>();
-            pose->header = optimised_odometry_msg->header;
-            pose->pose = optimised_odometry_msg->pose;
-            pose_publisher.publish(pose);
-        } catch (tf2::ExtrapolationException& e) {
-            ROS_ERROR("%s", e.what());
+    // Compute T_W^{BL} TF at t_i-1 for output (note that the odometry pose is T_W^B)
+    try {
+        // Avoid transformation of pose and covariance if we can.
+        eigen_ros::PoseStamped map_to_base_link = world_odometry.pose_stamped();
+        if (body_frames.body_frame() != "base_link") {
+            // Compute transform from map to base_link (including covariance): T_W^{BL} = T_W^B * T_B^{BL}
+            map_to_base_link = eigen_ros::apply_transform(map_to_base_link,
+                    body_frames.body_to_frame("base_link", world_odometry.timestamp));
         }
-    // do not broadcast TF if the sensor->base_link TF cannot be found.
-    } else {
-        ROS_ERROR("cannot transform: %s", err_msg.c_str());
+
+        // Broadcast T_W^{BL} TF 
+        auto map_to_base_link_tf = eigen_ros::to_ros<geometry_msgs::TransformStamped>(map_to_base_link);
+        map_to_base_link_tf.header.frame_id = optimised_odometry_msg->header.frame_id;
+        map_to_base_link_tf.child_frame_id = body_frames.frame_id("base_link");
+        tf_broadcaster.sendTransform(map_to_base_link_tf);
+
+        // Publish T_W^{BL} pose with covariance
+        auto map_to_base_link_pose = eigen_ros::to_ros<geometry_msgs::PoseWithCovarianceStamped>(map_to_base_link);
+        map_to_base_link_pose.header.frame_id = optimised_odometry_msg->header.frame_id;
+        pose_publisher.publish(map_to_base_link_pose);
+    } catch (const std::exception& ex) {
+        ROS_ERROR_STREAM("Failed to publish map_frame -> base_link_frame TF or pose. Exception: " << ex.what());
     }
 
     // Save biases
@@ -234,8 +215,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Save pointcloud start time
     const ros::Time pointcloud_start = pcl_conversions::fromPCL(msg->header.stamp);
-    //   ROS_INFO_STREAM("Received pointcloud seq=" << msg->header.seq << " (" << pct::size_points(*msg)
-    //                                              << " pts) with timestamp " << pointcloud_start);
+    ROS_INFO_STREAM("Received pointcloud seq=" << msg->header.seq << " (" << pct::size_points(*msg)
+                                               << " pts) with timestamp " << pointcloud_start);
     if (pct::empty(*msg)) {
         throw std::runtime_error("Handling of empty pointclouds not yet supported");
     }
@@ -258,7 +239,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     }
 
     // Wait until previous imu_biases received (before sending publishing IMU S2S)
-    //  ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
+    ROS_INFO_STREAM("Waiting for previous bias at " << previous_pointcloud_start);
     if (!protected_sleep(optimised_odometry_mutex, 0.01, false, true,
                 [this]() { return imu_bias_timestamp != previous_pointcloud_start; })) {
         return;
@@ -311,10 +292,19 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/position", 1.0e-3), 2.0);
         const Eigen::Matrix3d rotation_covariance =
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("prior_noise/rotation", 1.0e-3), 2.0);
-        const Eigen::Quaterniond body_orientation =
-                pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))
-                        ? Eigen::Quaterniond::Identity()
-                        : Eigen::Quaterniond{(pc_start_imu.orientation * body_frames.frame_to_body("imu")).rotation()};
+        Eigen::Quaterniond body_orientation;
+        if (pc_start_imu.orientation.isApprox(Eigen::Quaterniond(0, 0, 0, 0))) {
+            body_orientation = Eigen::Quaterniond::Identity();
+        } else {
+            // Compute T_R^B = T_R^I * T_I^B where R = imu_reference_frame. If R = NWU our computation is done.
+            const std::string imu_reference_frame = nh.param<std::string>("imu/reference_frame", "NED");
+            body_orientation =
+                    pc_start_imu.orientation * Eigen::Quaterniond(body_frames.frame_to_body("imu").rotation());
+            if (imu_reference_frame == "NED") {
+                // Since body orientation is relative NWU (map), compute T_NWU^B = T_NWU^NED * T_NED^B
+                body_orientation = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()) * body_orientation;
+            }
+        }
         const eigen_ros::Pose pose{
                 Eigen::Vector3d(nh.param<double>("pose/position/x", 0.0), nh.param<double>("pose/position/y", 0.0),
                         nh.param<double>("pose/position/z", 0.0)),
@@ -458,5 +448,4 @@ void Frontend::stereo_callback(const sensor_msgs::ImageConstPtr& left_image,
         stereo_data.emplace_back(left_image, right_image, left_info, right_info);
     }
 }
-
 }
