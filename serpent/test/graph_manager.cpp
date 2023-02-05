@@ -436,8 +436,8 @@ TEST(graph_manager, pose_graph_reg_optimise_multi) {
 
     // Create
     const int size{5};
-    std::vector<Eigen::Isometry3d> poses{size};
-    std::vector<Eigen::Matrix<double, 6, 6>> covariances{size};
+    std::vector<Eigen::Isometry3d> poses(size);
+    std::vector<Eigen::Matrix<double, 6, 6>> covariances(size);
     poses.at(0) = eigen_gtsam::to_eigen<Eigen::Isometry3d>(prior_pose);
     covariances.at(0) = prior_cov;
     for (int i = 1; i < size; ++i) {

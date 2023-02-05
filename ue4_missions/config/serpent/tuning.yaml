@@ -240,3 +240,5 @@ stereo_tracking:
       height: 7
     cost_threshold: 64.0
     vertical_pixel_threshold: 5.0
+    matching_filter: "RATIO_TEST" # Options: UNIDIRECTIONAL, BIDIRECTIONAL, RATIO_TEST
+    ratio: 0.1
