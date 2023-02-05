@@ -1,4 +1,5 @@
 #include "serpent/mapping.hpp"
+#include "serpent/PoseGraph.h"
 
 #include <pcl/common/transforms.h>
 
@@ -19,6 +20,7 @@ Mapping::Mapping()
     // Publishers
     local_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("mapping/local_map", 1);
     global_map_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("output/global_map", 1, true);
+    pose_graph_publisher = nh.advertise<serpent::PoseGraph>("output/pose_graph", 1, true);
 
     // Subscribers
     pointcloud_subscriber.subscribe(nh, "normal_estimation/pointcloud", 10);
@@ -28,6 +30,8 @@ Mapping::Mapping()
 
     // Service servers
     publish_map_server = nh.advertiseService("publish_map", &Mapping::publish_map_service_callback, this);
+    publish_pose_graph_server =
+        nh.advertiseService("publish_pose_graph", &Mapping::publish_pose_graph_service_callback, this);
 
     // Configuration
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
@@ -130,6 +134,29 @@ void Mapping::map_update_callback(const pcl::PointCloud<pcl::PointNormal>::Const
 
     // Publish the local map
     local_map_publisher.publish(map_region);
+}
+
+bool Mapping::publish_pose_graph_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
+{
+  std::lock_guard<std::mutex> guard{ map_mutex };
+
+  if (!map.empty())
+  {
+    serpent::PoseGraph pose_graph;
+    for (const auto& map_frame_pair : map)
+    {
+      const auto& frame = map_frame_pair.second;
+      sensor_msgs::PointCloud2 pointcloud_ros;
+      pcl::toROSMsg(*frame.pointcloud, pointcloud_ros);
+      pose_graph.clouds.push_back(pointcloud_ros);
+      geometry_msgs::PoseWithCovarianceStamped pose;
+      eigen_ros::to_ros(pose, frame.pose);
+      pose.header.frame_id = "head";
+      pose_graph.poses.push_back(pose);
+    }
+    pose_graph_publisher.publish(pose_graph);
+  }
+  return true;
 }
 
 bool Mapping::publish_map_service_callback(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
