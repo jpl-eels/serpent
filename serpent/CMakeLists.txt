@@ -32,11 +32,14 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
+catkin_python_setup()
+
 add_message_files(
     DIRECTORY msg
     FILES
         ImuArray.msg
         ImuBiases.msg
+        PoseGraph.msg
         StereoFeature.msg
         StereoFeatures.msg
         StereoTrackerStatistics.msg
