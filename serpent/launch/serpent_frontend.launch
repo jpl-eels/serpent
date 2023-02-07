@@ -15,11 +15,6 @@
     <arg name="debug_file"                      default="$(find serpent)/config/debug_default.yaml"/>
     <arg name="threads"                         default="4"/>
 
-    <!-- Visualisation Arguments -->
-    <arg name="rviz"                            default="false"/>
-    <arg name="rqt"                             default="true"/>
-    <arg name="rqt_stereo"                      default="false"/>
-
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
@@ -36,7 +31,7 @@
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
-    <arg name="program_name" value="serpent"/>
+    <arg name="program_name" value="serpent_frontend"/>
     <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
     <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
             value="valgrind --tool=callgrind --callgrind-out-file='callgrind.$(arg program_name).%p'"/>
@@ -63,7 +58,7 @@
         threads: $(arg threads)
     </rosparam>
 
-    <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
+    <node pkg="serpent" type="serpent_frontend_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
         <!-- Topics -->
         <remap from="serpent/input/imu"                        to="$(arg imu_topic)"/>
@@ -82,15 +77,4 @@
         <arg name="start"    value="$(arg rosbag_start)"/>
         <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
-
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
-
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
-
-    <!-- RQT Stereo -->
-    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
 </launch>

@@ -175,7 +175,7 @@ void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::S
 }
 
 StereoFactorFinder::StereoFactorFinder()
-    : nh("~"),
+    : nh("serpent"),
       it(nh),
       stereo_sync(10) {
     // Publishers

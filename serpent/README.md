@@ -94,9 +94,20 @@ catkin build serpent
 
 ## Usage
 
+To run everything together:
 ```bash
 roslaunch serpent serpent.launch <arg>:=<value> ...
 ```
+
+To run the frontend and backend as separate processes:
+```bash
+roslaunch serpent serpent_frontend.launch <arg>:=<value> ...
+```
+```bash
+roslaunch serpent serpent_backend.launch <arg>:=<value> ...
+```
+
+This latter option may be useful if, for example, you want to run SERPENT on a remote machine and only want to run the frontend on the robot, where the pointcloud can be deskewed and downsampled before it is sent over the network.
 
 ### Frames
 

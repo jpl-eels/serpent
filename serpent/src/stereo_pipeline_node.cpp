@@ -6,11 +6,11 @@
 
 int main(int argc, char** argv) {
     // Initialise ROS
-    ros::init(argc, argv, "serpent");
-    ros::NodeHandle nh("~");
+    ros::init(argc, argv, "serpent_stereo_pipeline");
+    ros::NodeHandle nh("serpent");
 
     // Initialise Modules
-    eigen_ros::BodyFramesTf body_frames_tf;
+    eigen_ros::BodyFramesTf body_frames_tf("serpent");
     serpent::StereoFactorFinder stereo_factor_finder;
 
     // Start the Node

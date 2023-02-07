@@ -18,10 +18,11 @@
 namespace serpent {
 
 Frontend::Frontend()
-    : nh("~"),
+    : nh("serpent"),
       optimised_odometry_sync(10),
       it(nh),
       stereo_sync(10),
+      body_frames("serpent"),
       last_preint_imu_timestamp(0.0),
       initialised(false),
       publish_next_stereo(false) {

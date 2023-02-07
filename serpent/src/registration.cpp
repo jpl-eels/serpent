@@ -13,8 +13,9 @@
 namespace serpent {
 
 Registration::Registration()
-    : nh("~"),
-      s2s_sync(10) {
+    : nh("serpent"),
+      s2s_sync(10),
+      body_frames("serpent") {
     // Publishers
     refined_transform_publisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 1);
 

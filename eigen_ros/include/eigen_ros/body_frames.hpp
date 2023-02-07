@@ -56,7 +56,7 @@ public:
      * * frames can have as many <named_frame> blocks as desired, and can be recursively nested.
      * * Aliases map to the same transform during lookup.
      */
-    explicit BodyFrames();
+    explicit BodyFrames(const std::string& node_namespace = "~");
 
     /**
      * @brief Return the aliases for a frame_id
