@@ -25,7 +25,7 @@ PublishInfo::PublishInfo()
 
     camera_info.P[0] = nh.param<double>("P/fx", 0.0);
     camera_info.P[2] = nh.param<double>("P/cx", 0.0);
-    camera_info.P[3] = nh.param<double>("P/Tx", 0.0);
+    camera_info.P[3] = - camera_info.P[0] * nh.param<double>("P/baseline", 0.0);
     camera_info.P[5] = nh.param<double>("P/fy", 0.0);
     camera_info.P[6] = nh.param<double>("P/cy", 0.0);
     camera_info.P[10] = 1.0;

@@ -9,11 +9,6 @@
     <arg name="debug_file"                      default="$(find serpent)/config/debug_default.yaml"/>
     <arg name="threads"                         default="4"/>
 
-    <!-- Visualisation Arguments -->
-    <arg name="rviz"                            default="false"/>
-    <arg name="rqt"                             default="true"/>
-    <arg name="rqt_stereo"                      default="false"/>
-
     <!-- Debugging Arguments -->
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
@@ -53,15 +48,4 @@
 
     <node pkg="serpent" type="serpent_backend_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)"/>
-
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
-
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
-
-    <!-- RQT Stereo -->
-    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
 </launch>

@@ -8,8 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
     pcl_ros
     roscpp
     sensor_msgs
+    tf2_ros
 
     eigen_ext
+    eigen_ros
+    statistics_msgs
 )
 find_package(PCL REQUIRED)
 
@@ -35,8 +38,11 @@ catkin_package(
         pcl_ros
         roscpp
         sensor_msgs
+        tf2_ros
 
         eigen_ext
+        eigen_ros
+        statistics_msgs
     LIBRARIES ${LIBRARY_NAME}
     DEPENDS
         PCL
@@ -123,5 +129,26 @@ target_include_directories(pointcloud_analyser PUBLIC
 )
 
 target_link_libraries(pointcloud_analyser
+    ${LIBRARIES}
+)
+
+# ComputeDistances
+add_executable(compute_distances
+    src/compute_distances_main.cpp
+)
+
+add_dependencies(compute_distances
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(compute_distances PUBLIC SYSTEM
+    ${SYSTEM_INCLUDE_DIRS}
+)
+
+target_include_directories(compute_distances PUBLIC
+    ${INCLUDE_DIRS}
+)
+
+target_link_libraries(compute_distances
     ${LIBRARIES}
 )

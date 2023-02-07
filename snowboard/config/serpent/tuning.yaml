@@ -20,8 +20,8 @@ imu:
 
 # Motion Distortion Correction
 mdc:
-  translation: false
-  rotation: false
+  translation: true
+  rotation: true
 
 # ISAM2 Optimisation
 isam2:
@@ -182,6 +182,10 @@ stereo_factors:
       c: 2.9846
       reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
   left_cam_frame: "left_stereo_left_cam"
+
+# Stereo Tracking
+stereo_tracking:
+  only_graph_frames: true # If true and registration factors enabled, only process frames at registration timestamps.
   new_feature_dist_threshold: 5.0
   detector:
     type: "GFTT" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
@@ -230,7 +234,7 @@ stereo_factors:
       flags: 0
       min_eig_threshold: 1.0e-4
   stereo_keypoint_matcher:
-    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, INCC
+    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, NNCC
     window_size:
       width: 3
       height: 3

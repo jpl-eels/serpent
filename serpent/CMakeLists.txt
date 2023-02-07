@@ -110,10 +110,12 @@ add_library(${LIBRARY} SHARED
     src/registration_methods.cpp
     src/registration.cpp
     src/sensor_point_types.cpp
+    src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp
     src/stereo_feature_tracker.cpp
     src/stereo_keypoint_matcher.cpp
     src/utilities.cpp
+    src/window_functions.cpp
 )
 
 if(${ENABLE_GPROF})

@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "pointcloud_file_converter");
-    PointcloudFileConverter pointcloud_file_converter;
+    pct::PointcloudFileConverter pointcloud_file_converter;
     ros::spin();
     return 0;
 }

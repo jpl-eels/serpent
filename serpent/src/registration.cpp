@@ -67,7 +67,7 @@ Registration::Registration()
         default:
             throw std::runtime_error("CovarianceEstimationMethod not handled. Cannot create covariance estimator");
     }
-    ROS_INFO_STREAM("Using covariance estimation method: " << to_string(covariance_estimation_method));
+    ROS_INFO_STREAM("Using registration covariance estimation method: " << to_string(covariance_estimation_method));
 
     // Point covariance method
     const std::string point_covariance_method =
@@ -140,7 +140,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         const Eigen::Isometry3d transform =
                 to_transform(eigen_ros::from_ros<eigen_ros::Pose>(transform_msg->transform));
         const Eigen::Matrix4f tf_mat_float = transform.matrix().cast<float>();
-        ROS_INFO_STREAM("S2S initial guess:\n" << tf_mat_float);
+        ROS_DEBUG_STREAM("S2S initial guess:\n" << tf_mat_float);
 
         const std::string frame_id = body_frames.frame_id("lidar");
         if (publish_registration_clouds) {
@@ -169,18 +169,19 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         s2s->setInputSource(current_pointcloud);
         s2s->setInputTarget(previous_pointcloud);
         auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-        ROS_INFO_STREAM("S2S aligning current cloud (" << current_pointcloud->size() << " points) to previous cloud ("
-                                                       << previous_pointcloud->size() << ")");
         const ros::WallTime tic = ros::WallTime::now();
         s2s->align(*registered_pointcloud, tf_mat_float);
         registered_pointcloud->header.stamp = previous_pointcloud->header.stamp;
         registered_pointcloud->header.frame_id = frame_id;
         const Eigen::Matrix4f s2s_transform_float = s2s->getFinalTransformation();  // T_{L_i-1}^{L_i}
         const Eigen::Matrix4d s2s_transform = s2s_transform_float.cast<double>();
-        ROS_INFO_STREAM("S2S took " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2s));
-        if (!s2s->hasConverged()) {
-            ROS_WARN("Scan to Scan did not converge");
-        }
+        ROS_INFO_STREAM("S2S took " << (ros::WallTime::now() - tic).toSec() << " s to align current cloud ("
+                                    << current_pointcloud->size() << " pts) to previous cloud ("
+                                    << previous_pointcloud->size()
+                                    << " pts). Converged: " << (s2s->hasConverged() ? "True" : "False")
+                                    << ", Fitness Score: " << s2s->getFitnessScore() << ".");
+        ROS_DEBUG_STREAM("S2S final transform:\n" << s2s_transform);
+        ROS_WARN_COND(!s2s->hasConverged(), "Scan to Scan did not converge.");
 
         // Optionally publish registered pointcloud
         if (publish_registration_clouds) {
@@ -241,17 +242,18 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     s2m->setInputSource(pointcloud);
     s2m->setInputTarget(map);
     auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-    ROS_INFO_STREAM("S2M Aligning current cloud (" << pointcloud->size() << " points) to map (" << map->size() << ")");
     const ros::WallTime tic = ros::WallTime::now();
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
     registered_pointcloud->header.stamp = map->header.stamp;
     registered_pointcloud->header.frame_id = body_frames.frame_id("lidar");
     const Eigen::Matrix4f s2m_transform_float = s2m->getFinalTransformation();  // T_{L_i-1}^{L_i}
     const Eigen::Matrix4d s2m_transform = s2m_transform_float.cast<double>();
-    ROS_INFO_STREAM("S2M took " << (ros::WallTime::now() - tic).toSec() << " s. " << registration_result(*s2m));
-    if (!s2m->hasConverged()) {
-        ROS_WARN("Scan to Map did not converge");
-    }
+    ROS_INFO_STREAM("S2M took " << (ros::WallTime::now() - tic).toSec() << " s to align current cloud ("
+                                << pointcloud->size() << " pts) to map (" << map->size()
+                                << " pts). Converged: " << (s2m->hasConverged() ? "True" : "False")
+                                << ", Fitness Score: " << s2m->getFitnessScore() << ".");
+    ROS_DEBUG_STREAM("S2M final transform:\n" << s2m_transform);
+    ROS_WARN_COND(!s2m->hasConverged(), "Scan to Map did not converge.");
 
     // Optionally publish registered pointcloud
     if (publish_registration_clouds) {
@@ -290,12 +292,18 @@ Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_
 
 std::string Registration::to_string(const CovarianceEstimationMethod method) const {
     switch (method) {
-        case CovarianceEstimationMethod::CONSTANT: return "CONSTANT";
-        case CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED: return "POINT_TO_POINT_LINEARISED";
-        case CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR: return "POINT_TO_POINT_NONLINEAR";
-        case CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED: return "POINT_TO_PLANE_LINEARISED";
-        case CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR: return "POINT_TO_PLANE_NONLINEAR";
-        default: throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
+        case CovarianceEstimationMethod::CONSTANT:
+            return "CONSTANT";
+        case CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED:
+            return "POINT_TO_POINT_LINEARISED";
+        case CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR:
+            return "POINT_TO_POINT_NONLINEAR";
+        case CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED:
+            return "POINT_TO_PLANE_LINEARISED";
+        case CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR:
+            return "POINT_TO_PLANE_NONLINEAR";
+        default:
+            throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
     }
 }
 

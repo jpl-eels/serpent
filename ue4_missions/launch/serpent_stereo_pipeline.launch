@@ -22,6 +22,7 @@
 
     <!-- Launch Serpent Stereo Pipeline -->
     <include file="$(find serpent)/launch/serpent_stereo_pipeline.launch">
+        <arg name="pointcloud_topic"               value="/lidar/points"/>
         <arg name="stereo_left_cam_image_topic"    value="$(arg left_image_topic)"/>
         <arg name="stereo_left_cam_info_topic"     value="$(arg left_info_topic)"/>
         <arg name="stereo_right_cam_image_topic"   value="$(arg right_image_topic)"/>

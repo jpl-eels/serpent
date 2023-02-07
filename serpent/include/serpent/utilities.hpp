@@ -3,9 +3,9 @@
 
 #include <geometry_msgs/Pose.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/PreintegrationParams.h>
-#include <gtsam/navigation/CombinedImuFactor.h>
 #include <ros/time.h>
 #include <sensor_msgs/Imu.h>
 
@@ -27,13 +27,26 @@ bool check_non_zero_diagonals(const Eigen::MatrixBase<Derived>& matrix) {
 
 bool check_valid(const gtsam::PreintegrationParams& params);
 
-void delete_old_messages(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& messages);
+/**
+ * @brief Remove IMU messages strictly older than timestamp (imu.timestamp < timestamp). Buffer is assumed ordered.
+ *
+ * @param timestamp
+ * @param messages
+ */
+void delete_old_measurements(const ros::Time& timestamp, std::deque<eigen_ros::Imu>& imu_buffer);
 
+/**
+ * @brief IMU preintegration assumes that the acceleration and angular velocity remain constant between t and t + dt.
+ * Thus the buffer must contain at least one IMU measurment with timestamp <= start. Messages with timestamp > end are
+ * ignored.
+ *
+ * @param preint
+ * @param buffer
+ * @param start
+ * @param end
+ */
 void integrate_imu(gtsam::PreintegratedCombinedMeasurements& preint, const std::deque<eigen_ros::Imu>& buffer,
         const ros::Time& start, const ros::Time& end);
-
-std::vector<sensor_msgs::Imu> old_messages_to_ros(const ros::Time& timestamp,
-        const std::deque<eigen_ros::Imu>& messages);
 
 /**
  * @brief Sleep while condition is true, and ROS is ok(). The latter check is necessary so that ROS can exit cleanly.

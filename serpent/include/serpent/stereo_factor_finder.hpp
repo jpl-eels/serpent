@@ -18,24 +18,10 @@
 
 #include "serpent/StereoFeatures.h"
 #include "serpent/StereoTrackerStatistics.h"
+#include "serpent/stereo_equations.hpp"
 #include "serpent/stereo_feature_tracker.hpp"
 
 namespace serpent {
-
-template<typename Scalar>
-Eigen::Matrix<Scalar, 3, 1> stereo_coordinate_to_point(const Eigen::Matrix<Scalar, 3, 1>& stereo_coordinate,
-        const Eigen::Matrix<Scalar, 3, 3>& intrinsic, const Scalar baseline) {
-    Eigen::Matrix<Scalar, 3, 1> point;
-    const float u_diff = stereo_coordinate[0] - stereo_coordinate[1];
-    if (u_diff == 0.f) {
-        throw std::runtime_error("Stereo horizontal coordinates are identical, point is infinitely far.");
-    }
-    const float fx_b = intrinsic(0, 0) * baseline;
-    point[0] = (stereo_coordinate[0] - intrinsic(0, 2)) * baseline / u_diff;
-    point[1] = (stereo_coordinate[2] - intrinsic(1, 2)) * fx_b / (u_diff * intrinsic(1, 1));
-    point[2] = fx_b / u_diff;
-    return point;
-}
 
 pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline);
@@ -77,9 +63,6 @@ private:
     image_transport::Publisher stereo_filtered_matches_publisher;
     image_transport::Publisher new_matches_publisher;
     image_transport::Publisher tracked_matches_publisher;
-
-    // Stereo baseline
-    float baseline;
 
     //// Debug
     bool print_stats;

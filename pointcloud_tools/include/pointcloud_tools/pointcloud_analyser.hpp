@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
+namespace pct {
+
 class PointcloudAnalyser {
 public:
     PointcloudAnalyser();
@@ -13,7 +15,10 @@ private:
 
     // ROS objects
     ros::NodeHandle nh;
+    ros::Publisher statistics_array_publisher;
     ros::Subscriber subscriber;
 };
+
+}
 
 #endif

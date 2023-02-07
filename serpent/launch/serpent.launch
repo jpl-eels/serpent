@@ -18,9 +18,11 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
+    <arg name="rviz_stereo"                     default="false"/>
     <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
+    <arg name="run_track_distance_analysis"     default="false"/>
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
     <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
@@ -36,6 +38,9 @@
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
+    <include if="$(arg run_track_distance_analysis)" file="$(find serpent)/launch/analyse_track_distances.launch">
+        <arg name="pointcloud_topic"    value="/serpent/frontend/deskewed_pointcloud"/>
+    </include>
     <arg name="program_name" value="serpent"/>
     <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
     <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
@@ -83,14 +88,17 @@
         <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
 
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+    <!-- Visualisation -->
+    <include file="$(find serpent)/launch/serpent_visualisation.launch">
+        <arg name="rviz"        value="$(arg rviz)"/>
+        <arg name="rqt"         value="$(arg rqt)"/>
+        <arg name="rviz_stereo" value="$(arg rviz_stereo)"/>
+        <arg name="rqt_stereo"  value="$(arg rqt_stereo)"/>
 
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
-
-    <!-- RQT Stereo -->
-    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
+        <arg name="pointcloud_topic"                value="$(arg pointcloud_topic)"/>
+        <arg name="stereo_left_cam_image_topic"     value="$(arg stereo_left_cam_image_topic)"/>
+        <arg name="stereo_right_cam_image_topic"    value="$(arg stereo_right_cam_image_topic)"/>
+        <arg name="stereo_left_cam_info_topic"      value="$(arg stereo_left_cam_info_topic)"/>
+        <arg name="stereo_right_cam_info_topic"     value="$(arg stereo_right_cam_info_topic)"/>
+    </include>
 </launch>

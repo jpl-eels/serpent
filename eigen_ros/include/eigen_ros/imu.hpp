@@ -54,6 +54,8 @@ struct Imu {
 
 bool operator==(const Imu& lhs, const Imu& rhs);
 
+Imu interpolate(const Imu& imu1, const Imu& imu2, const ros::Time& interp_timestamp);
+
 /* Implementation ****************************************************************************************************/
 
 inline Eigen::Vector3d rpy(const Eigen::Quaterniond& q) {
