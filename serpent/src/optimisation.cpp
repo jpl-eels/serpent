@@ -294,8 +294,8 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     graph_mutex.lock();
     ROS_WARN_STREAM_COND(gm->opt_key() != gm->key("imu"),
             "Waiting for optimisation (key = " << gm->opt_key() << ", t = " << gm->timestamp(gm->opt_key())
-                                              << ")  to catch up (key = " << gm->key("imu")
-                                              << ", t = " << gm->timestamp("imu") << "). SERPENT may be running slow.");
+                                               << ")  to catch up (key = " << gm->key("imu") << ", t = "
+                                               << gm->timestamp("imu") << "). SERPENT may be running slow.");
     if (!protected_sleep(graph_mutex, 0.01, true, true, [this]() { return gm->opt_key() != gm->key("imu"); })) {
         return;
     };

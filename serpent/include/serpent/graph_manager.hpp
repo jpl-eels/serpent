@@ -73,6 +73,9 @@ public:
     /**
      * @brief Create the stereo factors and values for a specified key. Requires that:
      *  - the pose has been set for the specified key
+     *  - stereo features are not reacquired with the same id if lost
+     *
+     * Does not require that every consecutive key hold stereo features, i.e. handles missed keys.
      *
      * Throws std::runtime_error otherwise.
      *
