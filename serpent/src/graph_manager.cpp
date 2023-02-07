@@ -111,8 +111,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
         }
 
         // Stereo Camera (pose corresponds to current feature set)
-        const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
-        const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
+        const gtsam::StereoCamera camera = stereo_camera(key_);
 
         // Stereo feature ids
         auto ids_emplace_it = stereo_landmark_ids.emplace(key_, std::vector<int>{});
@@ -289,12 +288,12 @@ void GraphManager::set_pose(const std::string& key_, const gtsam::Pose3& pose, c
     set_pose(key(key_, offset), pose);
 }
 
-void GraphManager::set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration) {
-    K = stereo_calibration;
+void GraphManager::set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration_) {
+    K = stereo_calibration_;
 }
 
-void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration) {
-    K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration);
+void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration_) {
+    K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration_);
 }
 
 void GraphManager::set_stereo_noise_model(gtsam::SharedNoiseModel noise_model) {
@@ -321,6 +320,15 @@ void GraphManager::set_velocity(const std::string& key_, const gtsam::Velocity3&
 
 gtsam::Cal3_S2Stereo::shared_ptr GraphManager::stereo_calibration() {
     return K;
+}
+
+gtsam::StereoCamera GraphManager::stereo_camera(const std::string& key_, const int offset) const {
+    return stereo_camera(key(key_, offset));
+}
+
+gtsam::StereoCamera GraphManager::stereo_camera(const int key_) const {
+    const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
+    return gtsam::StereoCamera{world_to_stereo_left_cam, K};
 }
 
 gtsam::Point3 GraphManager::stereo_landmark(const int id) const {

@@ -218,6 +218,10 @@ public:
 
     gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
 
+    gtsam::StereoCamera stereo_camera(const std::string& key, const int offset = 0) const;
+
+    gtsam::StereoCamera stereo_camera(const int key) const;
+
     gtsam::Point3 stereo_landmark(const int id) const;
 
     /**
