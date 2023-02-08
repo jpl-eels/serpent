@@ -102,8 +102,13 @@ Frontend::Frontend()
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    preintegration_params->setBiasAccOmegaInit(Eigen::Matrix<double, 6, 6>::Identity() *
+                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#else
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#endif
     preintegration_params->setBiasAccCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(

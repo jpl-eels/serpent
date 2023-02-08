@@ -96,8 +96,13 @@ Optimisation::Optimisation()
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    preintegration_params->setBiasAccOmegaInit(Eigen::Matrix<double, 6, 6>::Identity() *
+                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#else
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#endif
     preintegration_params->setBiasAccCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
@@ -126,12 +131,20 @@ Optimisation::Optimisation()
         throw std::runtime_error("Unrecognised isam2 optimisation method " + optimization);
     }
     isam2_params.setRelinearizeThreshold(nh.param<double>("isam2/relinearize_threshold", 0.1));
+    isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    nh.param<int>("isam2/relinearize_skip", isam2_params.relinearizeSkip, 10);
+    nh.param<bool>("isam2/enable_relinearization", isam2_params.enableRelinearization, true);
+    nh.param<bool>("isam2/evaluate_nonlinear_error", isam2_params.evaluateNonlinearError, false);
+    nh.param<bool>("isam2/cache_linearized_factors", isam2_params.cacheLinearizedFactors, true);
+    if (isam2_params.evaluateNonlinearError) {
+#else
     isam2_params.setRelinearizeSkip(nh.param<int>("isam2/relinearize_skip", 10));
     isam2_params.setEnableRelinearization(nh.param<bool>("isam2/enable_relinearization", true));
     isam2_params.setEvaluateNonlinearError(nh.param<bool>("isam2/evaluate_nonlinear_error", false));
-    isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
     isam2_params.setCacheLinearizedFactors(nh.param<bool>("isam2/cache_linearized_factors", true));
     if (isam2_params.isEvaluateNonlinearError()) {
+#endif
         ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error = "
                  "true). This incurs a computational cost, so should only be used while debugging.");
     }
@@ -271,7 +284,11 @@ void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& f
         }
         auto K = boost::make_shared<gtsam::Cal3_S2Stereo>(fx, fy, skew, cx, cy, baseline);
         gm->set_stereo_calibration(K);
+#if GTSAM_VERSION_NUMERIC >= 40200
+        ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->K());
+#else
         ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->matrix());
+#endif
     }
 
     // Generate stereo factors and values

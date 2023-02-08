@@ -235,9 +235,13 @@ void GraphManager::print_errors(const double min_error) const {
 void GraphManager::save(const std::string& file_prefix, const gtsam::GraphvizFormatting& formatting) const {
     const gtsam::NonlinearFactorGraph all_factors_ = all_factors();
     // Saving graph to file was only introduced in GTSAM 4.1.1 so we need to set up the file.
+#if GTSAM_VERSION_NUMERIC >= 40200
+    all_factors_.saveGraph(file_prefix + ".gv", values(), gtsam::DefaultKeyFormatter, formatting);
+#else
     std::ofstream of{file_prefix + ".gv"};
     all_factors_.saveGraph(of, values(), formatting);
     of.close();
+#endif
 }
 
 RobotState GraphManager::state(const int key_) const {
@@ -379,7 +383,7 @@ void GraphManager::update_from_values(const gtsam::Values& updated_values_) {
 
 void add_values(gtsam::Values& extracted_values, const gtsam::Values& values_, const gtsam::Key first,
         const gtsam::Key last) {
-    gtsam::Values::const_iterator it = values_.lower_bound(first);
+    auto it = values_.lower_bound(first);
     while (it->key >= first && it->key <= last) {
         extracted_values.insert(it->key, it->value);
         ++it;
