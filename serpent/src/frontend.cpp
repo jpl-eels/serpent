@@ -71,7 +71,7 @@ Frontend::Frontend()
     nh.param<bool>("mdc/rotation", deskew_rotation, true);
     nh.param<bool>("stereo_tracking/only_graph_frames", only_graph_frames, false);
 
-    // Stereo data
+    // Stereo
     nh.param<bool>("optimisation/factors/stereo", stereo_enabled, true);
     if (stereo_enabled) {
         // MDC must be enabled
@@ -114,19 +114,71 @@ Frontend::Frontend()
     preintegration_params->setBiasOmegaCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope_bias", 1.0e-3), 2.0));
     if (overwrite_imu_covariance) {
-        overwrite_accelerometer_covariance =
+        accelerometer_covariance =
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer", 1.0e-3), 2.0);
-        overwrite_gyroscope_covariance =
+        gyroscope_covariance =
                 Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/gyroscope", 1.0e-3), 2.0);
         ROS_INFO_STREAM("IMU accelerometer and gyroscope covariances will be overwritten.");
-        ROS_INFO_STREAM("Accelerometer covariance:\n" << overwrite_accelerometer_covariance);
-        ROS_INFO_STREAM("Gyroscope covariance:\n" << overwrite_gyroscope_covariance);
-        update_preintegration_params(*preintegration_params, overwrite_accelerometer_covariance,
-                overwrite_gyroscope_covariance);
+        ROS_INFO_STREAM("Accelerometer covariance:\n" << accelerometer_covariance);
+        ROS_INFO_STREAM("Gyroscope covariance:\n" << gyroscope_covariance);
+        update_preintegration_params(*preintegration_params, accelerometer_covariance, gyroscope_covariance);
     }
     // pose of the sensor in the body frame
     const gtsam::Pose3 body_to_imu = eigen_gtsam::to_gtsam<gtsam::Pose3>(body_frames.body_to_frame("imu"));
     preintegration_params->setBodyPSensor(body_to_imu);
+
+    // Barometer
+    nh.param<bool>("optimisation/factors/barometer", barometer_enabled, true);
+    if (barometer_enabled) {
+        barometer_publisher = nh.advertise<sensor_msgs::FluidPressure>("frontend/barometer", 1);
+        barometer_subscriber =
+                nh.subscribe<sensor_msgs::FluidPressure>("input/barometer", 100, &Frontend::barometer_callback, this);
+    }
+    nh.param<bool>("barometer/noise/overwrite", overwrite_barometer_variance, false);
+    if (overwrite_barometer_variance) {
+        barometer_variance = std::pow(nh.param<double>("barometer/noise/barometer", 0.01), 2.0);
+        if (barometer_variance <= 0.0) {
+            throw std::runtime_error("Barometer noise should be >= zero with overwrite set to true.");
+        }
+    }
+}
+
+void Frontend::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure) {
+    std::lock_guard<std::mutex> guard{barometer_data_mutex};
+    if (overwrite_barometer_variance) {
+        auto pressure_ = boost::make_shared<sensor_msgs::FluidPressure>(*pressure);
+        pressure_->variance = barometer_variance;
+        barometer_buffer.push_back(pressure_);
+    } else {
+        barometer_buffer.push_back(pressure);
+    }
+    barometer_try_publish();
+}
+
+void Frontend::barometer_try_publish() {
+    if (!barometer_timestamp_buffer.empty()) {
+        // Special case (first measurement) where barometer data might not preceded first state timestamp
+        if (barometer_buffer.front()->header.stamp > barometer_timestamp_buffer.front()) {
+            ROS_WARN_STREAM("No barometer measurement prior to new state timestamp. Approximating with measurement "
+                            << (barometer_buffer.front()->header.stamp - barometer_timestamp_buffer.front()).toSec()
+                            << "s ahead of state timestamp.");
+            auto pressure = boost::make_shared<sensor_msgs::FluidPressure>(*barometer_buffer.front());
+            pressure->header.stamp = barometer_timestamp_buffer.front();
+            barometer_publisher.publish(pressure);
+            barometer_timestamp_buffer.pop_front();
+        } else if (barometer_buffer.size() >= 2 &&
+                   barometer_buffer.back()->header.stamp > barometer_timestamp_buffer.front()) {
+            // Remove old barometer messages until front is the first measurement before the state time
+            while (barometer_buffer.at(1)->header.stamp < barometer_timestamp_buffer.front()) {
+                barometer_buffer.pop_front();
+            }
+
+            // Interpolate and publish
+            barometer_publisher.publish(interpolate_pressure(*barometer_buffer.front(), *barometer_buffer.at(1),
+                    barometer_timestamp_buffer.front()));
+            barometer_timestamp_buffer.pop_front();
+        }
+    }
 }
 
 Eigen::Quaterniond Frontend::body_frame_orientation(const eigen_ros::Imu& imu) const {
@@ -149,8 +201,8 @@ void Frontend::imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
     // Convert IMU to pointcloud frame using extrinsics
     eigen_ros::Imu imu = eigen_ros::from_ros<eigen_ros::Imu>(*msg);
     if (overwrite_imu_covariance) {
-        imu.linear_acceleration_covariance = overwrite_accelerometer_covariance;
-        imu.angular_velocity_covariance = overwrite_gyroscope_covariance;
+        imu.linear_acceleration_covariance = accelerometer_covariance;
+        imu.angular_velocity_covariance = gyroscope_covariance;
     }
 
     // Save transformed IMU message to buffer for mdc
@@ -454,11 +506,18 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
         ROS_INFO_STREAM(
                 "Deskewed pointcloud to " << new_state_time << " in " << (ros::WallTime::now() - tic).toSec() << " s.");
 
-        // Update previous_state_time
-        previous_state_time = new_state_time;
-
         // Publish deskewed pointcloud
         deskewed_pointcloud_publisher.publish(deskewed_pointcloud);
+
+        // Save timestamp for barometer interpolation
+        if (barometer_enabled) {
+            std::lock_guard<std::mutex> guard{barometer_data_mutex};
+            barometer_timestamp_buffer.push_back(new_state_time);
+            barometer_try_publish();
+        }
+
+        // Update previous_state_time
+        previous_state_time = new_state_time;
 
         // Initialisation complete
         initialised = true;
