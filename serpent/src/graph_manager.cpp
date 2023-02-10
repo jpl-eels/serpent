@@ -155,7 +155,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
         auto ids_emplace_it = stereo_landmark_ids.emplace(key_, std::vector<int>{});
         auto new_ids_emplace_it = new_stereo_landmark_ids.emplace(key_, std::vector<int>{});
         auto& ids = ids_emplace_it.first->second;
-        auto& new_ids = ids_emplace_it.first->second;
+        auto& new_ids = new_ids_emplace_it.first->second;
         for (const auto& [id, feature] : features_i->second) {
             if (features_im1->second.find(id) != features_im1->second.end()) {
                 // Add feature and previous state factor if feature is tracked for the first time (not in i-2, in i-1)
