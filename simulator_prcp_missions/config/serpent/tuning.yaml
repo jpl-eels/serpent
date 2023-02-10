@@ -5,6 +5,7 @@ prior_noise:
   linear_velocity: 0.001
   accelerometer_bias: 1.0e-4
   gyroscope_bias: 1.0e-4
+  barometer_bias: 1.0e-6
 
 # IMU
 imu:
@@ -17,6 +18,13 @@ imu:
     overwrite: true # These imu noise values will only be used if overwrite set to true
     accelerometer: 4.0e-04
     gyroscope: 2.424e-05
+
+# Barometer
+barometer:
+  noise:
+    barometer_bias: 1.0e-6
+    overwrite: true # If true, the barometer variance will be overridden as the square of the barometer noise.
+    barometer: 1.0e-2
 
 # Motion Distortion Correction
 mdc:
@@ -43,6 +51,7 @@ isam2:
 # Optimisation
 optimisation:
   factors:
+    barometer: false
     imu: true
     registration: true
     stereo: false
