@@ -64,10 +64,10 @@
     <node pkg="serpent" type="stereo_pipeline_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
         <!-- Topics -->
-        <remap from="serpent/input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
-        <remap from="serpent/input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
-        <remap from="serpent/input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
-        <remap from="serpent/input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
+        <remap from="serpent/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="serpent/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="serpent/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="serpent/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
     </node>
 
     <!-- Rosbag -->

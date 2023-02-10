@@ -243,9 +243,11 @@ stereo_tracking:
       flags: 0
       min_eig_threshold: 1.0e-4
   stereo_keypoint_matcher:
-    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, NNCC
+    cost_function: "SSD" # Options: SAD, SSD, ZMSAD, LSSAD, NNCC
     window_size:
-      width: 3
-      height: 3
+      width: 7
+      height: 7
     cost_threshold: 1.0e+9
     vertical_pixel_threshold: 25.0
+    matching_filter: "RATIO_TEST" # Options: UNIDIRECTIONAL, BIDIRECTIONAL, RATIO_TEST
+    ratio: 0.1

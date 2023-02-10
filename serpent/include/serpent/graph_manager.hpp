@@ -134,6 +134,9 @@ public:
     /**
      * @brief Create the stereo factors and values for a specified key. Requires that:
      *  - the pose has been set for the specified key
+     *  - stereo features are not reacquired with the same id if lost
+     *
+     * Does not require that every consecutive key hold stereo features, i.e. handles missed keys.
      *
      * Throws std::runtime_error otherwise.
      *
@@ -293,6 +296,10 @@ public:
     void set_velocity(const std::string& key, const gtsam::Velocity3& velocity, const int offset = 0);
 
     gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
+
+    gtsam::StereoCamera stereo_camera(const std::string& key, const int offset = 0) const;
+
+    gtsam::StereoCamera stereo_camera(const int key) const;
 
     gtsam::Point3 stereo_landmark(const int id) const;
 

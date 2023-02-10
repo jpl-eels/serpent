@@ -380,9 +380,9 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     // Wait for imu bias to be optimised (when optimisation has run)
     graph_mutex.lock();
     ROS_WARN_STREAM_COND(gm->opt_key() != gm->key("imu"),
-            "Waiting for optimisation (key =" << gm->opt_key() << ", t = " << gm->timestamp(gm->opt_key())
-                                              << ")  to catch up (key = " << gm->key("imu")
-                                              << ", t = " << gm->timestamp("imu") << "). SERPENT may be running slow.");
+            "Waiting for optimisation (key = " << gm->opt_key() << ", t = " << gm->timestamp(gm->opt_key())
+                                               << ")  to catch up (key = " << gm->key("imu") << ", t = "
+                                               << gm->timestamp("imu") << "). SERPENT may be running slow.");
     if (!protected_sleep(graph_mutex, 0.01, true, true, [this]() { return gm->opt_key() != gm->key("imu"); })) {
         return;
     };
@@ -632,12 +632,42 @@ void Optimisation::print_information_at_key(const gtsam::Key key) {
     ROS_INFO_STREAM(ss.str());
     value.print();
     const gtsam::NonlinearFactorGraph connected_factors = gm->factors_for_key(key);
-    ROS_INFO_STREAM("Connected factors:\n");
-    int factor_counter{0};
     const gtsam::Values& values = gm->values();
+    ROS_INFO_STREAM("Connected factors (unnormalised error = " << connected_factors.error(values)
+                                                               << ", unnormalised probability = "
+                                                               << connected_factors.probPrime(values) << "):\n");
+    int factor_counter{0};
     for (const auto& factor : connected_factors) {
         factor->print("Factor " + std::to_string(factor_counter++) + ": ");
-        std::cerr << "error: " << factor->error(values) << "\n\n";
+        std::cerr << "error (typically log-likelihood): " << factor->error(values) << "\n";
+        const gtsam::NoiseModelFactor* factor_ptr = dynamic_cast<const gtsam::NoiseModelFactor*>(factor.get());
+        if (factor_ptr != nullptr) {
+            std::cerr << "weight = " << factor_ptr->weight(values) << "\n";
+            std::cerr << "unwhitened error (without noise model, z - h(x)) = "
+                      << to_flat_string(factor_ptr->unwhitenedError(values)) << "\n";
+            std::cerr << "whitened error (with noise model) = " << to_flat_string(factor_ptr->whitenedError(values))
+                      << "\n";
+            std::cerr << "unweighted whitened error = " << to_flat_string(factor_ptr->unweightedWhitenedError(values))
+                      << "\n";
+        }
+        const gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>* stereo_factor_ptr =
+                dynamic_cast<const gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>*>(factor.get());
+        if (stereo_factor_ptr != nullptr) {
+            const gtsam::StereoPoint2 measured = stereo_factor_ptr->measured();
+            const gtsam::StereoCamera camera = gm->stereo_camera(stereo_factor_ptr->key1());
+            const gtsam::Point3 backprojected = camera.backproject(measured);
+            std::cerr << "z backprojected = " << to_flat_string(backprojected) << "\n";
+            try {
+                const gtsam::StereoPoint2 projected = camera.project(values.at<gtsam::Point3>(stereo_factor_ptr->key2()));
+                std::cerr << "stereo h(x) = " << to_flat_string(projected.vector()) << "\n";
+                std::cerr << "stereo    z = " << to_flat_string(measured.vector()) << "\n";
+                std::cerr << "   z - h(x) = " << to_flat_string(Eigen::Vector3d(measured.vector() - projected.vector()))
+                        << "\n";
+            } catch (gtsam::StereoCheiralityException& ex) {
+                std::cerr << "projection failed with StereoCheiralityException: point lies behind camera\n";
+            }
+        }
+        std::cerr << "\n";
     }
 }
 

@@ -197,7 +197,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         cv::drawMatches(images[0], new_filtered_keypoint_matches.keypoints[0], images[1],
                 new_filtered_keypoint_matches.keypoints[1], new_filtered_keypoint_matches.matches,
                 intermediate_images->get().new_matches, intermediate_images->get().new_match_colour,
-                intermediate_images->get().negative_match_colour, std::vector<char>(),
+                intermediate_images->get().negative_match_colour, std::vector<char>{},
                 intermediate_images->get().match_draw_flags);
     }
 
