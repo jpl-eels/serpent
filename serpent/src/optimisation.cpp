@@ -65,10 +65,12 @@ Optimisation::Optimisation()
     nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
     nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
-    ROS_INFO_STREAM("Factors:\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
-                                                << (registration_factors_enabled ? "ENABLED" : "DISABLED")
-                                                << "\nStereo         "
-                                                << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
+    nh.param<bool>("optimisation/factors/barometer", barometer_factors_enabled, true);
+    ROS_INFO_STREAM("Factors:\n-----------------------"
+                    << "\n|IMU          " << (imu_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Registration "
+                    << (registration_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Stereo       "
+                    << (stereo_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Barometer    "
+                    << (barometer_factors_enabled ? " ENABLED" : "DISABLED") << "|\n-----------------------");
 
     // Map frame
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
@@ -81,6 +83,10 @@ Optimisation::Optimisation()
     if (stereo_factors_enabled) {
         stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>("stereo/features", 10,
                 &Optimisation::stereo_features_callback, this);
+    }
+    if (barometer_factors_enabled) {
+        barometer_subscriber = nh.subscribe<sensor_msgs::FluidPressure>("frontend/barometer", 10,
+                &Optimisation::barometer_callback, this);
     }
 
     // Debugging
@@ -222,6 +228,17 @@ Optimisation::Optimisation()
         }
         gm->set_stereo_noise_model(stereo_noise_model);
     }
+    if (barometer_factors_enabled) {
+        // Barometer has priority 1, so is not required for optimisation.
+        gm->set_named_key("barometer", 0, 1);
+
+        // Bias Noise
+        const double barometer_bias_noise_sigma = nh.param<double>("barometer/noise/barometer_bias", 1.0e-6);
+        if (barometer_bias_noise_sigma == 0.0) {
+            throw std::runtime_error("Prior barometer bias noise should not be zero.");
+        }
+        barometer_bias_noise = gtsam::noiseModel::Isotropic::Sigma(1, barometer_bias_noise_sigma);
+    }
 }
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -299,6 +316,59 @@ void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& f
                              << gm->key("stereo") << ", timestamp = " << gm->timestamp("stereo") << ".");
 }
 
+void Optimisation::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure) {
+    // Wait for the state at the barometer time to be set before adding factors.
+    graph_mutex.lock();
+    int next_barometer_key = gm->key("barometer");
+    if (!protected_sleep(graph_mutex, 0.01, true, true, [this, pressure]() {
+            while (gm->has_pose("barometer") && gm->timestamp("barometer") < pressure->header.stamp) {
+                gm->increment("barometer");
+            }
+            return !gm->has_pose("barometer") || gm->timestamp("barometer") < pressure->header.stamp;
+        })) {
+        return;
+    };
+    if (gm->timestamp("barometer") != pressure->header.stamp) {
+        throw std::runtime_error("A time synchronisation error occurred while adding barometer measurements.");
+    }
+
+    // Catch zero variance
+    if (pressure->variance <= 0.0) {
+        throw std::runtime_error("Barometer variance mut be greater than zero.");
+    }
+
+    // Create the barometer factor
+    const double height = gm->create_barometric_factor(gm->key("barometer"), pressure->fluid_pressure * 1.0e-3,
+            gtsam::noiseModel::Isotropic::Variance(1, pressure->variance));
+    ROS_INFO_STREAM("Create barometer factor: P(" << gm->key("barometer") << ")");
+
+    // For first barometer key, create prior (on the current state)
+    if (next_barometer_key == 0) {
+        // Set first barometer bias value using first measurement, which will get propagated up to current state.
+        gm->set_barometer_bias(0, height);
+
+        // Prior barometer bias factor
+        const double prior_barometer_noise = nh.param<double>("prior_noise/barometer_bias", 1.0e-6);
+        if (prior_barometer_noise == 0.0) {
+            throw std::runtime_error("Prior barometer bias noise should not be zero.");
+        }
+        gm->create_prior_barometer_bias_factor(gm->key("barometer"), height,
+                gtsam::noiseModel::Isotropic::Sigma(1, prior_barometer_noise));
+        ROS_INFO_STREAM("Created prior factor: P(" << gm->key("barometer") << ") with height = " << height << " m");
+    }
+
+    // Create barometer bias factors up to the current key
+    for (int key = std::max(1, next_barometer_key); key <= gm->key("barometer"); ++key) {
+        gm->create_barometric_bias_factor(key, barometer_bias_noise);
+        ROS_INFO_STREAM("Created barometer bias between factor: P(" << key - 1 << ") to P(" << key << ")");
+        gm->set_barometer_bias(key, gm->barometer_bias(key - 1));
+    }
+
+    // Increment the barometer key
+    gm->increment("barometer");
+    graph_mutex.unlock();
+}
+
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     // Deserialise imu array
     std::deque<eigen_ros::Imu> imu_s2s;
@@ -374,7 +444,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
                                              << ")");
 
         // Optimise if not waiting on other factors
-        if (gm->minimum_key() == imu_key) {
+        if (gm->minimum_key(0) == imu_key) {
             optimise_and_publish(imu_key);
         }
     }
@@ -578,10 +648,10 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
     add_registration_factor(msg);
 
     // Optimise and publish
-    const int key = gm->key("reg");
-    if (gm->minimum_key() == key) {
+    const int reg_key = gm->key("reg");
+    if (gm->minimum_key(0) == reg_key) {
         // Optimise
-        const auto optimisation_result = optimise(key);
+        const auto optimisation_result = optimise(reg_key);
 
         // Update values that weren't optimised
         if (!imu_factors_enabled) {
@@ -589,7 +659,7 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
         }
 
         // Publish
-        publish(key, optimisation_result);
+        publish(reg_key, optimisation_result);
     }
 }
 
@@ -622,7 +692,7 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
             }
 
             // Optimise and publish
-            if (gm->minimum_key() == gm->key("stereo") && gm->key("stereo") > 0) {
+            if (gm->minimum_key(0) == gm->key("stereo") && gm->key("stereo") > 0) {
                 optimise_and_publish(gm->key("stereo"));
 
                 // Update velocity if no IMU factors

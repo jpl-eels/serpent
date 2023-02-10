@@ -7,6 +7,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/ros.h>
+#include <sensor_msgs/FluidPressure.h>
 
 #include <eigen_ros/body_frames.hpp>
 #include <memory>
@@ -44,6 +45,13 @@ private:
      * @param features
      */
     void add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features);
+
+    /**
+     * @brief Integrate barometer measurement into the factor graph.
+     *
+     * @param pressure
+     */
+    void barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure);
 
     /**
      * @brief Integrate IMU measurements between current and next graph node, add preintegrated IMU factor to the graph
@@ -128,6 +136,7 @@ private:
     ros::Publisher path_publisher;
     ros::Publisher path_changes_publisher;
     ros::Publisher stereo_points_publisher;
+    ros::Subscriber barometer_subscriber;
     ros::Subscriber imu_s2s_subscriber;
     ros::Subscriber initial_odometry_subscriber;
     ros::Subscriber registration_subscriber;
@@ -145,12 +154,17 @@ private:
     bool imu_factors_enabled;
     bool registration_factors_enabled;
     bool stereo_factors_enabled;
+    bool barometer_factors_enabled;
 
     //// IMU Preintegration
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
 
     // Graph manager (tracks states, keys, factors, optimisation)
     std::unique_ptr<ISAM2GraphManager> gm;
+
+    //// Barometer
+    // Bias noise
+    gtsam::SharedNoiseModel barometer_bias_noise;
 
     //// Debugging
     bool publish_stereo_points;
