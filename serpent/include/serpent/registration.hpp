@@ -18,7 +18,7 @@
 #include <eigen_ros/body_frames.hpp>
 #include <eigen_ros/eigen_ros.hpp>
 
-#include "serpent/registration_covariance_estimator.hpp"
+#include "serpent/registration_covariance.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {
@@ -30,6 +30,11 @@ public:
 private:
     enum CovarianceEstimationMethod {
         CONSTANT,
+        CENSI,
+        LLS
+    };
+
+    enum CovarianceEstimationModel {
         POINT_TO_POINT_LINEARISED,
         POINT_TO_POINT_NONLINEAR,
         POINT_TO_PLANE_LINEARISED,
@@ -71,14 +76,24 @@ private:
     void s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& msg);
 
     /**
-     * @brief Convert string to covariance estimation method enum.
+     * @brief Convert string to covariance estimation method.
      *
      * @param string
-     * @return CovarianceEstimationMethod
+     * @return CovarianceEstimationModel
      */
     CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string) const;
 
     std::string to_string(const CovarianceEstimationMethod method) const;
+
+    /**
+     * @brief Convert string to covariance estimation model.
+     *
+     * @param string
+     * @return CovarianceEstimationModel
+     */
+    CovarianceEstimationModel to_covariance_estimation_model(const std::string& string) const;
+
+    std::string to_string(const CovarianceEstimationModel model) const;
 
     //// ROS Communication
     ros::NodeHandle nh;
@@ -108,10 +123,13 @@ private:
     bool s2m_enabled;
     // Covariance estimation method
     CovarianceEstimationMethod covariance_estimation_method;
+    // Covariance estimation model (for method = <CENSI, LLS>)
+    CovarianceEstimationModel covariance_estimation_model;
     // Constant point variance
     float point_variance;
 
     //// Debug Configuration
+    bool check_normals;
     bool publish_registration_clouds;
     bool publish_registration_clouds_alt;
 
@@ -129,29 +147,40 @@ private:
     std::deque<Eigen::Isometry3d> s2s_registrations;
 
     //// Covariance estimation
-    // Covariance estimator
-    std::unique_ptr<RegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>> covariance_estimator;
+    //  Constant covariance (for method = <CONSTANT>)
+    std::unique_ptr<ConstantCovariance> constant_covariance;
+    // Covariance estimator (for method = <CENSI, LLS>)
+    std::unique_ptr<CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>>
+            covariance_estimator;
 };
 
 template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
         pcl::Registration<PointSource, PointTarget, Scalar>& registration) {
     ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
-    if (!covariance_estimator) {
-        throw std::runtime_error("covariance estimator not created");
-    }
 
     // Covariance estimation
     ros::WallTime tic = ros::WallTime::now();
-    Eigen::Matrix<double, 6, 6> covariance = covariance_estimator->estimate_covariance(registration, point_variance);
+    Eigen::Matrix<double, 6, 6> covariance;
+    switch (covariance_estimation_method) {
+        case CONSTANT:
+            covariance = constant_covariance->covariance();
+            break;
+        case CENSI:
+            covariance = covariance_estimator->censi_covariance(registration, point_variance);
+            break;
+        case LLS:
+            covariance = covariance_estimator->lls_covariance(registration, point_variance);
+            break;
+        default:
+            throw std::runtime_error("Covariance estimation method not handled.");
+    }
     ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute covariance.");
 
     // Print additional information
-    const CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>* corr_cov_est =
-            dynamic_cast<const CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>*>(
-                    covariance_estimator.get());
-    if (corr_cov_est != nullptr) {
-        ROS_INFO_STREAM(corr_cov_est->correspondence_count() << " correspondences were used in covariance estimation");
+    if (covariance_estimator != nullptr) {
+        ROS_INFO_STREAM(
+                covariance_estimator->correspondence_count() << " correspondences were used in covariance estimation");
     }
     return covariance;
 }

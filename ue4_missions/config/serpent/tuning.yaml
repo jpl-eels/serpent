@@ -59,13 +59,14 @@ optimisation:
 # Registration
 s2s:
   covariance:
-    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
-    #   POINT_TO_PLANE_NONLINEAR
-    method: "POINT_TO_PLANE_LINEARISED"
-    constant:
+    method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
+    # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
+    #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
+    model: "POINT_TO_PLANE_LINEARISED" 
+    constant: # For method = <CONSTANT>
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <linearised, NONLINEAR>
+    point_covariance: # For method = <CENSI, LLS>
       method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
       constant: 0.01
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
@@ -104,13 +105,14 @@ s2s:
     
 s2m:
   covariance:
-    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
-    #   POINT_TO_PLANE_NONLINEAR
-    method: "POINT_TO_PLANE_LINEARISED"
-    constant:
+    method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
+    # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
+    #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
+    model: "POINT_TO_PLANE_LINEARISED" 
+    constant: # For method = <CONSTANT>
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <linearised, NONLINEAR>
+    point_covariance: # For method = <CENSI, LLS>
       method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
       constant: 0.01
   enabled: true

@@ -1,5 +1,6 @@
 debug:
   registration:
+    check_normals: false
     publish_clouds: false
     publish_clouds_alt: false
 

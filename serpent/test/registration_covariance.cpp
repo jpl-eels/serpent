@@ -1,4 +1,4 @@
-#include "serpent/registration_covariance_estimator.hpp"
+#include "serpent/registration_covariance.hpp"
 
 #include <gtest/gtest.h>
 

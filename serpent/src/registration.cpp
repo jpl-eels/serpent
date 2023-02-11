@@ -38,36 +38,47 @@ Registration::Registration()
     }
 
     // Covariance estimation configuration
-    const double rotation_noise = nh.param<double>(scan_label + "/covariance/constant/rotation", 0.00174533);
-    const double translation_noise = nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-3);
     covariance_estimation_method =
-            to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CONSTANT"));
-    // Create covariance estimator
+            to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CENSI"));
+    ROS_INFO_STREAM("Using registration covariance estimation method: " << to_string(covariance_estimation_method));
     switch (covariance_estimation_method) {
         case CONSTANT:
-            covariance_estimator = std::make_unique<ConstantCovariance<pcl::PointNormal, pcl::PointNormal, float>>(
-                    rotation_noise, translation_noise);
+            constant_covariance = std::make_unique<ConstantCovariance>(
+                    nh.param<double>(scan_label + "/covariance/constant/rotation", 0.0174533),
+                    nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-2));
             break;
-        case POINT_TO_POINT_LINEARISED:
-            covariance_estimator =
-                    std::make_unique<PointToPointIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
-            break;
-        case POINT_TO_POINT_NONLINEAR:
-            covariance_estimator =
-                    std::make_unique<PointToPointIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
-            break;
-        case POINT_TO_PLANE_LINEARISED:
-            covariance_estimator =
-                    std::make_unique<PointToPlaneIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
-            break;
-        case POINT_TO_PLANE_NONLINEAR:
-            covariance_estimator =
-                    std::make_unique<PointToPlaneIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
+        case CENSI:  // Fallthrough
+        case LLS:
+            covariance_estimation_model = to_covariance_estimation_model(
+                    nh.param<std::string>(scan_label + "/covariance/model", "POINT_TO_PLANE_LINEARISED"));
+            // Create covariance estimator
+            switch (covariance_estimation_model) {
+                case POINT_TO_POINT_LINEARISED:
+                    covariance_estimator =
+                            std::make_unique<PointToPointIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
+                    break;
+                case POINT_TO_POINT_NONLINEAR:
+                    covariance_estimator =
+                            std::make_unique<PointToPointIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
+                    break;
+                case POINT_TO_PLANE_LINEARISED:
+                    covariance_estimator =
+                            std::make_unique<PointToPlaneIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
+                    break;
+                case POINT_TO_PLANE_NONLINEAR:
+                    covariance_estimator =
+                            std::make_unique<PointToPlaneIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
+                    break;
+                default:
+                    throw std::runtime_error(
+                            "CovarianceEstimationModel not handled. Cannot create covariance estimator");
+            }
+            ROS_INFO_STREAM(
+                    "Using registration covariance estimation model: " << to_string(covariance_estimation_model));
             break;
         default:
             throw std::runtime_error("CovarianceEstimationMethod not handled. Cannot create covariance estimator");
     }
-    ROS_INFO_STREAM("Using registration covariance estimation method: " << to_string(covariance_estimation_method));
 
     // Point covariance method
     const std::string point_covariance_method =
@@ -90,6 +101,7 @@ Registration::Registration()
     body_lidar_transform_adjoint = eigen_ext::transform_adjoint(body_frames.body_to_frame("lidar"));
 
     // Debugging
+    nh.param<bool>("debug/registration/check_normals", check_normals, false);
     nh.param<bool>("debug/registration/publish_clouds", publish_registration_clouds, false);
     if (publish_registration_clouds) {
         debug_previous_cloud_publisher =
@@ -183,7 +195,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         ROS_DEBUG_STREAM("S2S final transform:\n" << s2s_transform);
         ROS_WARN_COND(!s2s->hasConverged(), "Scan to Scan did not converge.");
 
-        // Optionally publish registered pointcloud
+        // Debug: Publish registered pointcloud
         if (publish_registration_clouds) {
             debug_s2s_transformed_cloud_publisher.publish(registered_pointcloud);
 
@@ -198,9 +210,11 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             }
         }
 
-        // Check normals of target cloud if using a point-to-plane method
-        if (covariance_estimation_method == CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED ||
-                covariance_estimation_method == CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR) {
+        // Debug: Check normals of target cloud if using a point-to-plane method
+        if (check_normals && (covariance_estimation_method == CovarianceEstimationMethod::CENSI ||
+                    covariance_estimation_method == CovarianceEstimationMethod::LLS) &&
+                (covariance_estimation_model == CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED ||
+                        covariance_estimation_model == CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR)) {
             const int unnormalised_normals_target = pct::check_normals(*previous_pointcloud);
             if (unnormalised_normals_target > 0) {
                 throw std::runtime_error("Found " + std::to_string(unnormalised_normals_target) +
@@ -278,14 +292,10 @@ Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_
         const std::string& string) const {
     if (string == "CONSTANT") {
         return CovarianceEstimationMethod::CONSTANT;
-    } else if (string == "POINT_TO_POINT_LINEARISED") {
-        return CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED;
-    } else if (string == "POINT_TO_POINT_NONLINEAR") {
-        return CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR;
-    } else if (string == "POINT_TO_PLANE_LINEARISED") {
-        return CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED;
-    } else if (string == "POINT_TO_PLANE_NONLINEAR") {
-        return CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR;
+    } else if (string == "CENSI") {
+        return CovarianceEstimationMethod::CENSI;
+    } else if (string == "LLS") {
+        return CovarianceEstimationMethod::LLS;
     }
     throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationMethod");
 }
@@ -294,16 +304,40 @@ std::string Registration::to_string(const CovarianceEstimationMethod method) con
     switch (method) {
         case CovarianceEstimationMethod::CONSTANT:
             return "CONSTANT";
-        case CovarianceEstimationMethod::POINT_TO_POINT_LINEARISED:
-            return "POINT_TO_POINT_LINEARISED";
-        case CovarianceEstimationMethod::POINT_TO_POINT_NONLINEAR:
-            return "POINT_TO_POINT_NONLINEAR";
-        case CovarianceEstimationMethod::POINT_TO_PLANE_LINEARISED:
-            return "POINT_TO_PLANE_LINEARISED";
-        case CovarianceEstimationMethod::POINT_TO_PLANE_NONLINEAR:
-            return "POINT_TO_PLANE_NONLINEAR";
+        case CovarianceEstimationMethod::CENSI:
+            return "CENSI";
+        case CovarianceEstimationMethod::LLS:
+            return "LLS";
         default:
             throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
+    }
+}
+
+Registration::CovarianceEstimationModel Registration::to_covariance_estimation_model(const std::string& string) const {
+    if (string == "POINT_TO_POINT_LINEARISED") {
+        return CovarianceEstimationModel::POINT_TO_POINT_LINEARISED;
+    } else if (string == "POINT_TO_POINT_NONLINEAR") {
+        return CovarianceEstimationModel::POINT_TO_POINT_NONLINEAR;
+    } else if (string == "POINT_TO_PLANE_LINEARISED") {
+        return CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED;
+    } else if (string == "POINT_TO_PLANE_NONLINEAR") {
+        return CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR;
+    }
+    throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationModel");
+}
+
+std::string Registration::to_string(const CovarianceEstimationModel model) const {
+    switch (model) {
+        case CovarianceEstimationModel::POINT_TO_POINT_LINEARISED:
+            return "POINT_TO_POINT_LINEARISED";
+        case CovarianceEstimationModel::POINT_TO_POINT_NONLINEAR:
+            return "POINT_TO_POINT_NONLINEAR";
+        case CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED:
+            return "POINT_TO_PLANE_LINEARISED";
+        case CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR:
+            return "POINT_TO_PLANE_NONLINEAR";
+        default:
+            throw std::runtime_error("CovarianceEstimationModel could not be converted to string.");
     }
 }
 

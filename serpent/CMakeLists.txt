@@ -107,6 +107,7 @@ add_library(${LIBRARY} SHARED
     src/graph_manager.cpp
     src/mapping.cpp
     src/optimisation.cpp
+    src/registration_covariance.cpp
     src/registration_methods.cpp
     src/registration.cpp
     src/sensor_point_types.cpp
@@ -285,7 +286,7 @@ if(CATKIN_ENABLE_TESTING)
         src/utilities.cpp
         test/graph_manager.cpp
         test/DEPRECATED_registration_degeneracy.cpp
-        test/registration_covariance_estimator.cpp
+        test/registration_covariance.cpp
         test/serpent.cpp
         test/test_main.cpp
         test/src/read_data.cpp

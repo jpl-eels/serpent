@@ -1,5 +1,5 @@
-#ifndef SERPENT_REGISTRATION_COVARIANCE_ESTIMATOR_HPP
-#define SERPENT_REGISTRATION_COVARIANCE_ESTIMATOR_HPP
+#ifndef SERPENT_REGISTRATION_COVARIANCE_HPP
+#define SERPENT_REGISTRATION_COVARIANCE_HPP
 
 #include <pcl/common/distances.h>
 #include <pcl/registration/registration.h>
@@ -34,12 +34,76 @@ private:
     Scalar cosa_;
 };
 
-template<typename PointSource, typename PointTarget, typename Scalar = float>
-class RegistrationCovarianceEstimator {
+class ConstantCovariance {
 public:
-    virtual Eigen::Matrix<double, 6, 6> estimate_covariance(
-            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
-            const double point_variance) = 0;
+    ConstantCovariance(const Eigen::Matrix<double, 6, 6>& constant_covariance);
+
+    ConstantCovariance(const double rotation_noise, const double translation_noise);
+
+    Eigen::Matrix<double, 6, 6> covariance();
+
+protected:
+    Eigen::Matrix<double, 6, 6> constant_covariance;
+};
+
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class CorrespondenceRegistrationCovarianceEstimator {
+public:
+    /**
+     * @brief Compute the Censi covariance as per Eq (4) of An accurate closed-form estimate of ICP'S covariance (2007):
+     *
+     * \f[
+     *  \Sigma_x = \left(\frac{d^2F}{dx^2}\right)^{-1} \left(\frac{d^2F}{dzdx}\right) \Sigma_z
+     *      \left(\frac{d^2F}{dzdx}\right)^T \left(\frac{d^2F}{dx^2}\right)^{-1}
+     * \f]
+     *
+     * In the implementation it is often more efficient to compute:
+     *
+     * \f[
+     *  \Sigma_x = \left(\frac{1}{2}\frac{d^2F}{dx^2}\right)^{-1} \left(\frac{1}{2}\frac{d^2F}{dzdx}\right) \Sigma_z
+     *      \left(\frac{1}{2}\frac{d^2F}{dzdx}\right)^T \left(\frac{1}{2}\frac{d^2F}{dx^2}\right)^{-1}
+     * \f]
+     *
+     * Here \f$\Sigma_z\f$  is assumed to be a diagonal matrix with point_variance occupying the diagonal elements.
+     *
+     * @param registration
+     * @param point_variance
+     * @return Eigen::Matrix<double, 6, 6>
+     */
+    Eigen::Matrix<double, 6, 6> censi_covariance(
+            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance);
+
+    /**
+     * @brief Compute the covariance from the Hessian of the linearised system. This is the linear least squares
+     * covariance when the residuals are assumed to have i.i.d. Gaussian noise:
+     *
+     * \f[
+     *  \Sigma_x = \sigma_z^2 (\mathbf{A}^T\mathbf{A})^{-1} = \sigma_z^2 \left(\frac{1}{2}\frac{d^2F}{dx^2}\right)^-1
+     * \f]
+     *
+     * Here \f$\sigma_z^2\f$ is the point_variance.
+     *
+     * @param registration
+     * @param point_variance
+     * @return Eigen::Matrix<double, 6, 6>
+     */
+    Eigen::Matrix<double, 6, 6> lls_covariance(
+            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance);
+
+    /**
+     * @brief The number of correspondences used in the last covariance estimation.
+     *
+     * @return int
+     */
+    int correspondence_count() const;
+
+protected:
+    virtual bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
+            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& half_d2F_dx2,
+            Eigen::Matrix<double, 6, 6>& half_d2F_dzdx) const = 0;
+
+    virtual bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
+            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& half_d2F_dx2) const = 0;
 
 private:
     // Number of correspondences used in last covariance estimation
@@ -47,23 +111,7 @@ private:
 };
 
 template<typename PointSource, typename PointTarget, typename Scalar = float>
-class ConstantCovariance : public RegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
-public:
-    ConstantCovariance(const Eigen::Matrix<double, 6, 6>& constant_covariance);
-
-    ConstantCovariance(const double rotation_noise, const double translation_noise);
-
-    Eigen::Matrix<double, 6, 6> estimate_covariance(
-            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
-            const double point_variance) override;
-
-protected:
-    Eigen::Matrix<double, 6, 6> constant_covariance;
-};
-
-template<typename PointSource, typename PointTarget, typename Scalar = float>
-class CorrespondenceRegistrationCovarianceEstimator
-    : public RegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+class PointToPointIcp : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
     static_assert(std::is_floating_point<decltype(PointSource::x)>::value, "x is not a floating point type");
     static_assert(std::is_floating_point<decltype(PointSource::y)>::value, "y is not a floating point type");
     static_assert(std::is_floating_point<decltype(PointSource::z)>::value, "z is not a floating point type");
@@ -72,59 +120,29 @@ class CorrespondenceRegistrationCovarianceEstimator
     static_assert(std::is_floating_point<decltype(PointTarget::z)>::value, "z is not a floating point type");
 
 public:
-    Eigen::Matrix<double, 6, 6> estimate_covariance(
-            typename pcl::Registration<PointSource, PointTarget, Scalar>& registration,
-            const double point_variance) override;
+    virtual Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const = 0;
 
-    int correspondence_count() const;
+    virtual Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const = 0;
 
-protected:
-    virtual bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
-            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-            Eigen::Matrix<double, 6, 6>& d2F_dzdx) const = 0;
-
-private:
-    // Number of correspondences used in last covariance estimation
-    int correspondence_count_;
-};
-
-template<typename PointSource, typename PointTarget, typename Scalar = float>
-class PointToPointIcpNonlinear
-    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
 protected:
     bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
             const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
             Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
 
-public:
-    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
-            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const;
-
-    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
-            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const;
-};
-
-template<typename PointSource, typename PointTarget, typename Scalar = float>
-class PointToPointIcpLinearised
-    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
-protected:
     bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
-            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-            Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
-
-public:
-    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const Eigen::Matrix<double, 3, 1>& r,
-            const Eigen::Matrix<double, 3, 1>& t, const Eigen::Matrix<double, 3, 1>& p,
-            const Eigen::Matrix<double, 3, 1>& q) const;
-
-    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const Eigen::Matrix<double, 3, 1>& r,
-            const Eigen::Matrix<double, 3, 1>& t, const Eigen::Matrix<double, 3, 1>& p,
-            const Eigen::Matrix<double, 3, 1>& q) const;
+            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2) const override;
 };
 
 template<typename PointSource, typename PointTarget, typename Scalar = float>
-class PointToPlaneIcpNonlinear
-    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+class PointToPlaneIcp : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
+    static_assert(std::is_floating_point<decltype(PointSource::x)>::value, "x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointSource::y)>::value, "y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointSource::z)>::value, "z is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::x)>::value, "x is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::y)>::value, "y is not a floating point type");
+    static_assert(std::is_floating_point<decltype(PointTarget::z)>::value, "z is not a floating point type");
     static_assert(std::is_floating_point<decltype(PointTarget::normal_x)>::value,
             "normal_x is not a floating point type");
     static_assert(std::is_floating_point<decltype(PointTarget::normal_y)>::value,
@@ -132,44 +150,66 @@ class PointToPlaneIcpNonlinear
     static_assert(std::is_floating_point<decltype(PointTarget::normal_z)>::value,
             "normal_z is not a floating point type");
 
+public:
+    virtual Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const = 0;
+
+    virtual Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const = 0;
+
 protected:
     bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
-            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-            Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
+            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& half_d2F_dx2,
+            Eigen::Matrix<double, 6, 6>& half_d2F_dzdx) const override;
 
-public:
-    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
-            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
-            const Eigen::Matrix<double, 3, 1>& n) const;
-
-    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
-            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
-            const Eigen::Matrix<double, 3, 1>& n) const;
+    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
+            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& half_d2F_dx2) const override;
 };
 
 template<typename PointSource, typename PointTarget, typename Scalar = float>
-class PointToPlaneIcpLinearised
-    : public CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar> {
-    static_assert(std::is_floating_point<decltype(PointTarget::normal_x)>::value,
-            "normal_x is not a floating point type");
-    static_assert(std::is_floating_point<decltype(PointTarget::normal_y)>::value,
-            "normal_y is not a floating point type");
-    static_assert(std::is_floating_point<decltype(PointTarget::normal_z)>::value,
-            "normal_z is not a floating point type");
-
-protected:
-    bool process_correspondence(const PointSource& source_point, const PointTarget& target_point,
-            const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-            Eigen::Matrix<double, 6, 6>& d2F_dzdx) const override;
-
+class PointToPointIcpNonlinear : public PointToPointIcp<PointSource, PointTarget, Scalar> {
 public:
-    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const Eigen::Matrix<double, 3, 1>& r,
-            const Eigen::Matrix<double, 3, 1>& t, const Eigen::Matrix<double, 3, 1>& p,
-            const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const;
+    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const override;
 
-    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const Eigen::Matrix<double, 3, 1>& r,
-            const Eigen::Matrix<double, 3, 1>& t, const Eigen::Matrix<double, 3, 1>& p,
-            const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const;
+    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const override;
+};
+
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPointIcpLinearised : public PointToPointIcp<PointSource, PointTarget, Scalar> {
+public:
+    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const override;
+
+    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const override;
+};
+
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPlaneIcpNonlinear : public PointToPlaneIcp<PointSource, PointTarget, Scalar> {
+public:
+    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const override;
+
+    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const override;
+};
+
+template<typename PointSource, typename PointTarget, typename Scalar = float>
+class PointToPlaneIcpLinearised : public PointToPlaneIcp<PointSource, PointTarget, Scalar> {
+public:
+    Eigen::Matrix<double, 6, 6> compute_d2F_dx2(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const override;
+
+    Eigen::Matrix<double, 6, 6> compute_d2F_dzdx(const PrecomputedTransformComponents<double>& tf,
+            const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
+            const Eigen::Matrix<double, 3, 1>& n) const override;
 };
 
 /** Implementation */
@@ -235,27 +275,40 @@ inline const Scalar PrecomputedTransformComponents<Scalar>::cosa() const {
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
-ConstantCovariance<PointSource, PointTarget, Scalar>::ConstantCovariance(
-        const Eigen::Matrix<double, 6, 6>& constant_covariance)
-    : constant_covariance(constant_covariance) {}
+Eigen::Matrix<double, 6, 6>
+CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::censi_covariance(
+        typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance) {
+    // Setup
+    PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
+    const auto source_cloud = registration.getInputSource();
+    const auto target_cloud = registration.getInputTarget();
 
-template<typename PointSource, typename PointTarget, typename Scalar>
-ConstantCovariance<PointSource, PointTarget, Scalar>::ConstantCovariance(const double rotation_noise,
-        const double translation_noise) {
-    constant_covariance << Eigen::Matrix<double, 3, 3>::Identity() * rotation_noise * rotation_noise,
-            Eigen::Matrix<double, 3, 3>::Zero(), Eigen::Matrix<double, 3, 3>::Zero(),
-            Eigen::Matrix<double, 3, 3>::Identity() * translation_noise * translation_noise;
-}
+    // Compute correspondences
+    const auto correspondences = pct::compute_registration_correspondences(registration);
+    correspondence_count_ = correspondences->size();
 
-template<typename PointSource, typename PointTarget, typename Scalar>
-Eigen::Matrix<double, 6, 6> ConstantCovariance<PointSource, PointTarget, Scalar>::estimate_covariance(
-        typename pcl::Registration<PointSource, PointTarget, Scalar>&, const double) {
-    return constant_covariance;
+    // Interate over correspondences to build half d2F_dx2 (hessian) and d2F_dzdx
+    Eigen::Matrix<double, 6, 6> half_d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, Eigen::Dynamic> half_d2F_dzdx(6, 6 * correspondences->size());
+    for (std::size_t i = 0; i < correspondences->size(); ++i) {
+        const auto& correspondence = (*correspondences)[i];
+        const PointSource& source_point = source_cloud->at(correspondence.index_query);
+        const PointTarget& target_point = target_cloud->at(correspondence.index_match);
+        Eigen::Matrix<double, 6, 6> half_d2F_dx2_i, half_d2F_dzdx_i;
+        if (process_correspondence(source_point, target_point, tf, half_d2F_dx2_i, half_d2F_dzdx_i)) {
+            half_d2F_dx2 += half_d2F_dx2_i;
+            half_d2F_dzdx.block(0, 6 * i, 6, 6) = half_d2F_dzdx_i;
+        }
+    }
+    const Eigen::Matrix<double, 6, 6> half_d2F_dx2_inv = half_d2F_dx2.inverse();
+    // Use brackets to ensure that the Nx6K * 6KxN multiplication occurs first.
+    // The point_variance multiplication is also moved outside the centre, since it is a scalar product in this case.
+    return point_variance * half_d2F_dx2_inv * (half_d2F_dzdx * half_d2F_dzdx.transpose()) * half_d2F_dx2_inv;
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6>
-CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::estimate_covariance(
+CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>::lls_covariance(
         typename pcl::Registration<PointSource, PointTarget, Scalar>& registration, const double point_variance) {
     // Setup
     PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
@@ -267,24 +320,18 @@ CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scalar>:
     correspondence_count_ = correspondences->size();
 
     // Interate over correspondences to build hessian and d2F_dzdx
-    Eigen::Matrix<double, 6, 6> d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
-    Eigen::Matrix<double, 6, Eigen::Dynamic> d2F_dzdx(6, 6 * correspondences->size());
+    Eigen::Matrix<double, 6, 6> half_d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
     for (std::size_t i = 0; i < correspondences->size(); ++i) {
         const auto& correspondence = (*correspondences)[i];
         const PointSource& source_point = source_cloud->at(correspondence.index_query);
         const PointTarget& target_point = target_cloud->at(correspondence.index_match);
-        Eigen::Matrix<double, 6, 6> d2F_dx2_i, d2F_dzdx_i;
-        if (process_correspondence(source_point, target_point, tf, d2F_dx2_i, d2F_dzdx_i)) {
-            const double d2F_dx2_i_max_coeff = d2F_dx2_i.maxCoeff();
-            const double d2F_dzdx_i_max_coeff = d2F_dzdx_i.maxCoeff();
-            d2F_dx2 += d2F_dx2_i;
-            d2F_dzdx.block(0, 6 * i, 6, 6) = d2F_dzdx_i;
+        Eigen::Matrix<double, 6, 6> half_d2F_dx2_i;
+        if (process_correspondence(source_point, target_point, tf, half_d2F_dx2_i)) {
+            half_d2F_dx2 += half_d2F_dx2_i;
         }
     }
-    const Eigen::Matrix<double, 6, 6> d2F_dx2_inv = d2F_dx2.inverse();
-    // Use brackets to ensure that the Nx6K * 6KxN multiplication occurs first.
-    // The point_variance multiplication is also moved outside the centre, since it is a scalar product in this case.
-    return point_variance * d2F_dx2_inv * (d2F_dzdx * d2F_dzdx.transpose()) * d2F_dx2_inv;
+    const Eigen::Matrix<double, 6, 6> half_d2F_dx2_inv = half_d2F_dx2.inverse();
+    return point_variance * half_d2F_dx2_inv;
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
@@ -293,13 +340,48 @@ int CorrespondenceRegistrationCovarianceEstimator<PointSource, PointTarget, Scal
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
-bool PointToPointIcpNonlinear<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+bool PointToPointIcp<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
         const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
-        Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
+        Eigen::Matrix<double, 6, 6>& half_d2F_dx2, Eigen::Matrix<double, 6, 6>& half_d2F_dzdx) const {
     const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
     const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
-    d2F_dx2 = compute_d2F_dx2(tf, p, q);
-    d2F_dzdx = compute_d2F_dzdx(tf, p, q);
+    half_d2F_dx2 = 0.5 * compute_d2F_dx2(tf, p, q);
+    half_d2F_dzdx = 0.5 * compute_d2F_dzdx(tf, p, q);
+    return true;
+}
+
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPointIcp<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
+        Eigen::Matrix<double, 6, 6>& half_d2F_dx2) const {
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
+    half_d2F_dx2 = 0.5 * compute_d2F_dx2(tf, p, q);
+    return true;
+}
+
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPlaneIcp<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
+        Eigen::Matrix<double, 6, 6>& half_d2F_dx2, Eigen::Matrix<double, 6, 6>& half_d2F_dzdx) const {
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
+    const Eigen::Vector3d n =
+            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
+    half_d2F_dx2 = 0.5 * compute_d2F_dx2(tf, p, q, n);
+    half_d2F_dzdx = 0.5 * compute_d2F_dzdx(tf, p, q, n);
+    return true;
+}
+
+template<typename PointSource, typename PointTarget, typename Scalar>
+bool PointToPlaneIcp<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
+        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
+        Eigen::Matrix<double, 6, 6>& half_d2F_dx2) const {
+    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
+    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
+    const Eigen::Vector3d n =
+            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
+    half_d2F_dx2 = 0.5 * compute_d2F_dx2(tf, p, q, n);
     return true;
 }
 
@@ -1607,22 +1689,12 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpNonlinear<PointSource, PointTarget, S
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
-bool PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::process_correspondence(
-        const PointSource& source_point, const PointTarget& target_point,
-        const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-        Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
-    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
-    d2F_dx2 = compute_d2F_dx2(tf.r(), tf.t(), p, q);
-    d2F_dzdx = compute_d2F_dzdx(tf.r(), tf.t(), p, q);
-    return true;
-}
-
-template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
-        const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
-        const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const {
+        const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
+        const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
+    const Eigen::Matrix<double, 3, 1>& r = tf.r();
+    const Eigen::Matrix<double, 3, 1>& t = tf.t();
     const double rx{r[0]};
     const double ry{r[1]};
     const double rz{r[2]};
@@ -1682,9 +1754,11 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, 
 
 template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
-        const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
-        const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q) const {
+        const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
+        const Eigen::Matrix<double, 3, 1>& q) const {
     // Aliases
+    const Eigen::Matrix<double, 3, 1>& r = tf.r();
+    const Eigen::Matrix<double, 3, 1>& t = tf.t();
     const double rx{r[0]};
     const double ry{r[1]};
     const double rz{r[2]};
@@ -1737,19 +1811,6 @@ Eigen::Matrix<double, 6, 6> PointToPointIcpLinearised<PointSource, PointTarget, 
     d2F_dzdx(5, 4) = 0;
     d2F_dzdx(5, 5) = -2;
     return d2F_dzdx;
-}
-
-template<typename PointSource, typename PointTarget, typename Scalar>
-bool PointToPlaneIcpNonlinear<PointSource, PointTarget, Scalar>::process_correspondence(const PointSource& source_point,
-        const PointTarget& target_point, const PrecomputedTransformComponents<double>& tf,
-        Eigen::Matrix<double, 6, 6>& d2F_dx2, Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
-    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
-    const Eigen::Vector3d n =
-            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
-    d2F_dx2 = compute_d2F_dx2(tf, p, q, n);
-    d2F_dzdx = compute_d2F_dzdx(tf, p, q, n);
-    return true;
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
@@ -3500,25 +3561,12 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpNonlinear<PointSource, PointTarget, S
 }
 
 template<typename PointSource, typename PointTarget, typename Scalar>
-bool PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::process_correspondence(
-        const PointSource& source_point, const PointTarget& target_point,
-        const PrecomputedTransformComponents<double>& tf, Eigen::Matrix<double, 6, 6>& d2F_dx2,
-        Eigen::Matrix<double, 6, 6>& d2F_dzdx) const {
-    const Eigen::Vector3d p = Eigen::Vector3f{source_point.x, source_point.y, source_point.z}.cast<double>();
-    const Eigen::Vector3d q = Eigen::Vector3f{target_point.x, target_point.y, target_point.z}.cast<double>();
-    const Eigen::Vector3d n =
-            Eigen::Vector3f{target_point.normal_x, target_point.normal_y, target_point.normal_z}.cast<double>();
-    d2F_dx2 = compute_d2F_dx2(tf.r(), tf.t(), p, q, n);
-    d2F_dzdx = compute_d2F_dzdx(tf.r(), tf.t(), p, q, n);
-    return true;
-}
-
-template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dx2(
-        const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
-        const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
-        const Eigen::Matrix<double, 3, 1>& n) const {
+        const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
+        const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const {
     // Aliases
+    const Eigen::Matrix<double, 3, 1>& r = tf.r();
+    const Eigen::Matrix<double, 3, 1>& t = tf.t();
     const double rx{r[0]};
     const double ry{r[1]};
     const double rz{r[2]};
@@ -3581,10 +3629,11 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointSource, PointTarget, 
 
 template<typename PointSource, typename PointTarget, typename Scalar>
 Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearised<PointSource, PointTarget, Scalar>::compute_d2F_dzdx(
-        const Eigen::Matrix<double, 3, 1>& r, const Eigen::Matrix<double, 3, 1>& t,
-        const Eigen::Matrix<double, 3, 1>& p, const Eigen::Matrix<double, 3, 1>& q,
-        const Eigen::Matrix<double, 3, 1>& n) const {
+        const PrecomputedTransformComponents<double>& tf, const Eigen::Matrix<double, 3, 1>& p,
+        const Eigen::Matrix<double, 3, 1>& q, const Eigen::Matrix<double, 3, 1>& n) const {
     // Aliases
+    const Eigen::Matrix<double, 3, 1>& r = tf.r();
+    const Eigen::Matrix<double, 3, 1>& t = tf.t();
     const double rx{r[0]};
     const double ry{r[1]};
     const double rz{r[2]};
