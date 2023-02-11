@@ -86,23 +86,24 @@ void GraphManager::create_prior_velocity_factor(const int key_, const gtsam::Vel
 void GraphManager::create_stereo_factors_and_values(const int key_,
         const std::map<int, gtsam::StereoPoint2>& features) {
     // Save the stereo features
-    auto feat_emplace_it = stereo_features.emplace(key_, features);
-    if (!feat_emplace_it.second) {
+    if (!stereo_features.emplace(key_, features).second) {
         throw std::runtime_error(
                 "Failed to set stereo features for key " + std::to_string(key_) + ". Possible duplicate key.");
     }
 
-    // Stereo features
-    const auto features_im2 = stereo_features.find(key_ - 2);
-    const auto features_im1 = stereo_features.find(key_ - 1);
-    const auto features_i = feat_emplace_it.first;
+    // Stereo features for frame and previous (use next because key values are ordered but might not differ by 1)
+    const auto features_i = stereo_features.rbegin();
+    const auto features_im1 = std::next(features_i);
 
     // Stereo factors
     auto factors_emplace_it = factors_.emplace(key_, gtsam::NonlinearFactorGraph{});
     auto& factors__ = factors_emplace_it.first->second;
 
     // Factors can only be created if the previous frame features were set
-    if (features_im1 != stereo_features.end()) {
+    if (features_im1 != stereo_features.rend()) {
+        // Stereo features for frame before previous
+        const auto features_im2 = std::next(features_im1);
+
         // Error handling
         if (!has_pose(key_)) {
             throw std::runtime_error(
@@ -110,8 +111,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
         }
 
         // Stereo Camera (pose corresponds to current feature set)
-        const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
-        const gtsam::StereoCamera camera{world_to_stereo_left_cam, K};
+        const gtsam::StereoCamera camera = stereo_camera(key_);
 
         // Stereo feature ids
         auto ids_emplace_it = stereo_landmark_ids.emplace(key_, std::vector<int>{});
@@ -119,7 +119,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
         for (const auto& [id, feature] : features_i->second) {
             if (features_im1->second.find(id) != features_im1->second.end()) {
                 // Add feature and previous state factor if feature is tracked for the first time (not in i-2, in i-1)
-                if (features_im2 == stereo_features.end() ||
+                if (features_im2 == stereo_features.rend() ||
                         features_im2->second.find(id) == features_im2->second.end()) {
                     // Previous state factor
                     factors__.emplace_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
@@ -288,12 +288,12 @@ void GraphManager::set_pose(const std::string& key_, const gtsam::Pose3& pose, c
     set_pose(key(key_, offset), pose);
 }
 
-void GraphManager::set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration) {
-    K = stereo_calibration;
+void GraphManager::set_stereo_calibration(gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration_) {
+    K = stereo_calibration_;
 }
 
-void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration) {
-    K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration);
+void GraphManager::set_stereo_calibration(const gtsam::Cal3_S2Stereo& stereo_calibration_) {
+    K = boost::make_shared<gtsam::Cal3_S2Stereo>(stereo_calibration_);
 }
 
 void GraphManager::set_stereo_noise_model(gtsam::SharedNoiseModel noise_model) {
@@ -320,6 +320,15 @@ void GraphManager::set_velocity(const std::string& key_, const gtsam::Velocity3&
 
 gtsam::Cal3_S2Stereo::shared_ptr GraphManager::stereo_calibration() {
     return K;
+}
+
+gtsam::StereoCamera GraphManager::stereo_camera(const std::string& key_, const int offset) const {
+    return stereo_camera(key(key_, offset));
+}
+
+gtsam::StereoCamera GraphManager::stereo_camera(const int key_) const {
+    const gtsam::Pose3 world_to_stereo_left_cam = pose(key_) * body_to_stereo_left_cam.value();
+    return gtsam::StereoCamera{world_to_stereo_left_cam, K};
 }
 
 gtsam::Point3 GraphManager::stereo_landmark(const int id) const {

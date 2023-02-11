@@ -12,12 +12,33 @@ namespace serpent {
 /**
  * @brief Match features from one stereo frame to the other using a windowed stereo cost match function.
  *
- * TODO: implement for the basic case of querying an integer point.
- *
  */
 class StereoKeyPointMatcher {
 public:
-    explicit StereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    /**
+     * @brief Matching filter configuration.
+     *  * UNIDIRECTIONAL = one-way matching, where a keypoint is matched to the min-cost of valid keypoints.
+     *  * BIDIRECTIONAL = two-way matching, where a keypoint is matched if left-to-right and right-to-left yield the
+     * same match.
+     *  * RATIO_TEST = one-way matching, where a keypoint is matched to the min-cost of valid keypoints if the ratio of
+     * its cost to the cost of the second-best keypoint is less than a ratio, or there is only one valid keypoint.
+     */
+    enum class MatchingFilter {
+        UNIDIRECTIONAL,
+        BIDIRECTIONAL,
+        RATIO_TEST
+    };
+
+    /**
+     * @brief Construct a stereo key point matcher.
+     *
+     * @param window dimensions of the stereo matching window
+     * @param vertical_pixel_threshold number of pixels above or below the epipolar line to accept a keypoint match.
+     * @param matching_filter matching filter (see MatchingFilter)
+     * @param ratio ratio for the RATIO_TEST matching_filter
+     */
+    explicit StereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Scan along the epipolar line (left or right of the horizontal coordinate) in the other image, and return
@@ -31,7 +52,7 @@ public:
      * @return cv::KeyPoint
      */
     virtual cv::KeyPoint keypoint_in_other_image(const cv::KeyPoint& image_keypoint, const cv::Mat& left_image,
-            const cv::Mat& right_image, const bool find_in_right, double& cost) const;
+            const cv::Mat& right_image, const bool find_in_right, double& cost, bool& matched) const;
 
     /**
      * @brief  Iterate over a set of image keypoints, and return the index of the keypoint in the other image that has
@@ -40,6 +61,9 @@ public:
      *
      * Complexity is O(m*C), where m is the number of image keypoints, C is the complexity of the matching cost
      * function.
+     *
+     * UNIDIRECTIONAL and RATIO_TEST matching filters are handled in this function. BIDIRECTIONAL can only be handled in
+     * keypoint_indices_in_other_image().
      *
      * @param image_keypoint left image keypoint if find_in_right is true, otherwise right image keypoints
      * @param left_image
@@ -62,17 +86,20 @@ public:
      * @param right_image
      * @param find_in_right
      * @param costs
+     * @param matched for each keypoint in image_keypoints, true if matched, false otherwise
      * @return std::vector<cv::KeyPoint>
      */
     std::vector<cv::KeyPoint> keypoints_in_other_image(const std::vector<cv::KeyPoint>& image_keypoints,
-            const cv::Mat& left_image, const cv::Mat& right_image, const bool find_in_right,
-            std::vector<double>& costs) const;
+            const cv::Mat& left_image, const cv::Mat& right_image, const bool find_in_right, std::vector<double>& costs,
+            std::vector<bool>& matched) const;
 
     /**
      * @brief Find the lowest cost match for a vector of image keypoints. See keypoint_index_in_other_image().
      *
      * Complexity is O(n*m*C), where n is the number of left image keypoints, m is the number of right image
      * keypoints, C is the complexity of the matching cost function.
+     *
+     * This function handles all matching filters: UNIDIRECTIONAL, BIDIRECTIONAL, and RATIO_TEST.
      *
      * @param left_image_keypoints
      * @param left_image
@@ -96,6 +123,8 @@ protected:
     //// Configuration
     cv::Size window;
     float vertical_pixel_threshold;
+    MatchingFilter matching_filter;
+    double ratio;
 
     // Pre-compute the size of the half-window (rounded down) to avoid repetitive computation. Equals [(w-1)/2, (h-1)/2]
     cv::Size half_window_floor;
@@ -103,12 +132,21 @@ protected:
 };
 
 /**
+ * @brief Convert string to StereoKeyPointMatcher::MatchingFilter.
+ * 
+ * @param matching_filter 
+ * @return StereoKeyPointMatcher::MatchingFilter 
+ */
+StereoKeyPointMatcher::MatchingFilter to_matching_filter(const std::string& matching_filter);
+
+/**
  * @brief Stereo keypoint matcher using the sum of absolute differences (SAD) cost function.
  *
  */
 class SADStereoKeyPointMatcher : public StereoKeyPointMatcher {
 public:
-    explicit SADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    explicit SADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Create an instance of the class in the OpenCV style.
@@ -117,7 +155,8 @@ public:
      * @param window
      * @return cv::Ptr<SADStereoKeyPointMatcher>
      */
-    static cv::Ptr<SADStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    static cv::Ptr<SADStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
 protected:
     /**
@@ -137,7 +176,8 @@ protected:
  */
 class SSDStereoKeyPointMatcher : public StereoKeyPointMatcher {
 public:
-    explicit SSDStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    explicit SSDStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Create an instance of the class in the OpenCV style.
@@ -146,7 +186,8 @@ public:
      * @param window
      * @return cv::Ptr<SSDStereoKeyPointMatcher>
      */
-    static cv::Ptr<SSDStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    static cv::Ptr<SSDStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
 protected:
     /**
@@ -166,7 +207,8 @@ protected:
  */
 class ZeroMeanSADStereoKeyPointMatcher : public StereoKeyPointMatcher {
 public:
-    explicit ZeroMeanSADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    explicit ZeroMeanSADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Create an instance of the class in the OpenCV style.
@@ -176,7 +218,8 @@ public:
      * @return cv::Ptr<ZeroMeanSADStereoKeyPointMatcher>
      */
     static cv::Ptr<ZeroMeanSADStereoKeyPointMatcher> create(const cv::Size& window,
-            const float vertical_pixel_threshold = 1.0);
+            const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
 protected:
     /**
@@ -196,7 +239,8 @@ protected:
  */
 class LocallyScaledSADStereoKeyPointMatcher : public StereoKeyPointMatcher {
 public:
-    explicit LocallyScaledSADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    explicit LocallyScaledSADStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Create an instance of the class in the OpenCV style.
@@ -206,7 +250,8 @@ public:
      * @return cv::Ptr<LocallyScaledSADStereoKeyPointMatcher>
      */
     static cv::Ptr<LocallyScaledSADStereoKeyPointMatcher> create(const cv::Size& window,
-            const float vertical_pixel_threshold = 1.0);
+            const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
 protected:
     /**
@@ -227,7 +272,8 @@ protected:
  */
 class NCCStereoKeyPointMatcher : public StereoKeyPointMatcher {
 public:
-    explicit NCCStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    explicit NCCStereoKeyPointMatcher(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
     /**
      * @brief Create an instance of the class in the OpenCV style.
@@ -236,7 +282,8 @@ public:
      * @param window
      * @return cv::Ptr<NCCStereoKeyPointMatcher>
      */
-    static cv::Ptr<NCCStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0);
+    static cv::Ptr<NCCStereoKeyPointMatcher> create(const cv::Size& window, const float vertical_pixel_threshold = 1.0,
+            const MatchingFilter matching_filter = MatchingFilter::UNIDIRECTIONAL, const double ratio = 0.5);
 
 protected:
     /**

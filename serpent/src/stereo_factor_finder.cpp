@@ -269,21 +269,26 @@ StereoFactorFinder::StereoFactorFinder()
             nh.param<int>("stereo_tracking/stereo_keypoint_matcher/window_size/height", 3)};
     const std::string stereo_matcher_cost_function_str =
             nh.param<std::string>("stereo_tracking/stereo_keypoint_matcher/cost_function", "SAD");
+    const float vertical_pixel_threshold =
+            nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0);
+    const StereoKeyPointMatcher::MatchingFilter matching_filter = to_matching_filter(
+            nh.param<std::string>("stereo_tracking/stereo_keypoint_matcher/matching_filter", "RATIO_TEST"));
+    const double ratio = nh.param<double>("stereo_tracking/stereo_keypoint_matcher/ratio", 0.5);
     if (stereo_matcher_cost_function_str == "SAD") {
-        stereo_matcher = SADStereoKeyPointMatcher::create(stereo_matcher_window,
-                nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+        stereo_matcher = SADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "SSD") {
-        stereo_matcher = SSDStereoKeyPointMatcher::create(stereo_matcher_window,
-                nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+        stereo_matcher = SSDStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "ZMSAD") {
-        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(stereo_matcher_window,
-                nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "LSSAD") {
-        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(stereo_matcher_window,
-                nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "NNCC") {
-        stereo_matcher = NCCStereoKeyPointMatcher::create(stereo_matcher_window,
-                nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
+        stereo_matcher = NCCStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else {
         throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
     }
