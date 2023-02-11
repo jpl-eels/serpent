@@ -9,6 +9,7 @@
 #include <pcl/PCLPointCloud2.h>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/FluidPressure.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -51,6 +52,22 @@ public:
     explicit Frontend();
 
 private:
+    /**
+     * @brief Barometer data callback.
+     * 
+     * @param pressure
+     */
+    void barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure);
+
+    /**
+     * @brief Check if barometer data can be interpolated and published. Called when new barometer data arrives or a new
+     * state timestamp is set.
+     *
+     * Assumes barometer data mutex is already acquired.
+     *
+     */
+    void barometer_try_publish();
+
     /**
      * @brief Obtain the orientation from an IMU measurement in the body frame. Performs the required IMU reference
      * frame change (e.g. NED to NWU), and sensor to body transformation. Returns identity rotation if imu rotation is
@@ -118,11 +135,13 @@ private:
 
     //// ROS Communication
     ros::NodeHandle nh;
+    ros::Publisher barometer_publisher;
     ros::Publisher deskewed_pointcloud_publisher;
     ros::Publisher imu_s2s_publisher;
     ros::Publisher initial_odometry_publisher;
     ros::Publisher odometry_publisher;
     ros::Publisher pose_publisher;
+    ros::Subscriber barometer_subscriber;
     ros::Subscriber imu_subscriber;
     ros::Subscriber pointcloud_subscriber;
     message_filters::Subscriber<serpent::ImuBiases> imu_biases_subscriber;
@@ -150,8 +169,10 @@ private:
     // Protect last_preint_imu_timestamp, preintegration_params, world_odometry, world_state, preintegrated_imu,
     //  imu_biases, imu_bias_timestamp
     mutable std::mutex preintegration_mutex;
-    // Protect stereo_data
+    // Protect stereo_buffer
     mutable std::mutex stereo_data_mutex;
+    // Protect barometer_buffer, barometer_timestamp_buffer
+    mutable std::mutex barometer_data_mutex;
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
@@ -162,9 +183,13 @@ private:
     // Overwrite IMU covariance flag
     bool overwrite_imu_covariance;
     // Overwrite IMU accelerometer covariance
-    Eigen::Matrix3d overwrite_accelerometer_covariance;
+    Eigen::Matrix3d accelerometer_covariance;
     // Overwrite IMU accelerometer covariance
-    Eigen::Matrix3d overwrite_gyroscope_covariance;
+    Eigen::Matrix3d gyroscope_covariance;
+    // Overwrite barometer variance flag
+    bool overwrite_barometer_variance;
+    // Overwrite barometer variance
+    double barometer_variance;
     // Deskew translation
     bool deskew_translation;
     // Deskew rotation
@@ -173,6 +198,8 @@ private:
     bool stereo_enabled;
     // Only republish graph stereo frames
     bool only_graph_frames;
+    // Barometer enabled
+    bool barometer_enabled;
 
     //// IMU data
     // IMU FIFO buffer
@@ -205,6 +232,12 @@ private:
     //// Stereo data
     // Stereo FIFO buffer
     std::deque<StereoData> stereo_buffer;
+
+    //// Barometer data
+    // Barometer FIFO buffer
+    std::deque<sensor_msgs::FluidPressure::ConstPtr> barometer_buffer;
+    // Barometer timestamp buffer holds the state timestamps for interpolation
+    std::deque<ros::Time> barometer_timestamp_buffer;
 };
 
 }
