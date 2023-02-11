@@ -72,6 +72,14 @@ Optimisation::Optimisation()
                     << (stereo_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Barometer    "
                     << (barometer_factors_enabled ? " ENABLED" : "DISABLED") << "|\n-----------------------");
 
+    // Warn about CombinedIMUFactor bug
+#if GTSAM_VERSION_NUMERIC < 40200
+    if (imu_factors_enabled) {
+        ROS_WARN("gtsam::CombinedImuFactor is used however has a covariance propagation bug in GTSAM versions prior to "
+                 "4.2.0. Consider upgrading GTSAM to version >= 4.2.0.")
+    }
+#endif
+
     // Map frame
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
 
@@ -658,11 +666,12 @@ void Optimisation::print_information_at_key(const gtsam::Key key) {
             const gtsam::Point3 backprojected = camera.backproject(measured);
             std::cerr << "z backprojected = " << to_flat_string(backprojected) << "\n";
             try {
-                const gtsam::StereoPoint2 projected = camera.project(values.at<gtsam::Point3>(stereo_factor_ptr->key2()));
+                const gtsam::StereoPoint2 projected =
+                        camera.project(values.at<gtsam::Point3>(stereo_factor_ptr->key2()));
                 std::cerr << "stereo h(x) = " << to_flat_string(projected.vector()) << "\n";
                 std::cerr << "stereo    z = " << to_flat_string(measured.vector()) << "\n";
                 std::cerr << "   z - h(x) = " << to_flat_string(Eigen::Vector3d(measured.vector() - projected.vector()))
-                        << "\n";
+                          << "\n";
             } catch (gtsam::StereoCheiralityException& ex) {
                 std::cerr << "projection failed with StereoCheiralityException: point lies behind camera\n";
             }
