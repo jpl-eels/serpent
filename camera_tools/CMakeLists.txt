@@ -5,6 +5,7 @@ project(camera_tools)
 find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     image_transport
+    message_filters
     roscpp
     sensor_msgs
 )
@@ -16,6 +17,7 @@ catkin_package(
     CATKIN_DEPENDS
         cv_bridge
         image_transport
+        message_filters
         roscpp
         sensor_msgs
     DEPENDS
@@ -55,5 +57,20 @@ target_include_directories(publish_info PUBLIC
 )
 
 target_link_libraries(publish_info
+    ${catkin_LIBRARIES}
+)
+
+# change frame_id
+add_executable(change_frame_id
+    src/change_frame_id_main.cpp
+    src/change_frame_id.cpp
+)
+
+target_include_directories(change_frame_id PUBLIC
+    include
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_link_libraries(change_frame_id
     ${catkin_LIBRARIES}
 )

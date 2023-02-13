@@ -22,11 +22,11 @@ function statistics_data = stereo_statistics_plot_and_save(data, plot_opts)
                 "match_id_statistics"], ""), filetype);
             fprintf("Finished saving figures as .%s\n", filetype);
         end
-        if plot_opts.close_after_save
-            close(fig_core_stats);
-            close(fig_extra_stats);
-            close(fig_match_id_stats);
-        end
+    end
+    if plot_opts.close_figures
+        close(fig_core_stats);
+        close(fig_extra_stats);
+        close(fig_match_id_stats);
     end
 
     fmt_str = ['%30s: %.', num2str(plot_opts.summary_decimal_places), 'f'];

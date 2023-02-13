@@ -12,6 +12,16 @@ namespace pct {
 // TODO: generalise this function to other types
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
 
+/**
+ * @brief Return a count of the number of normals which have a norm different from 1 by a threshold. Therefore it is
+ * desirable for this number to be 0. It will always be less than or equal to the number of points in the cloud.
+ *
+ * @param pointcloud
+ * @param threshold
+ * @return int
+ */
+int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold = 0.000001f);
+
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field);
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name);
@@ -32,6 +42,8 @@ void change_field_name(pcl::PCLPointCloud2& pointcloud, const std::string& from,
 bool empty(const pcl::PCLPointCloud2& pointcloud);
 
 std::string field_string(const pcl::PCLPointField& field);
+
+std::string field_type_to_string(const std::uint8_t field_type);
 
 template<typename T>
 void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const pcl::PCLPointField& field,
@@ -120,6 +132,8 @@ void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& nam
 std::uint32_t size_bytes(const pcl::PCLPointCloud2& pointcloud);
 
 std::uint32_t size_points(const pcl::PCLPointCloud2& pointcloud);
+
+std::string to_string(const pcl::PCLPointField::PointFieldTypes field_type);
 
 }
 

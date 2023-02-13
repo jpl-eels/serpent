@@ -98,6 +98,14 @@ catkin build serpent
 roslaunch serpent serpent.launch <arg>:=<value> ...
 ```
 
+### Frames
+
+SERPENT uses the `eigen_ros::BodyFrames` abstraction layer in its handling of robot reference frames, which is compatible with the ROS TF tree architecture. It is important to keep in mind that frame and frame_id are two separate concepts, where `eigen_ros::BodyFrames` defines frames, with which frame_ids can be associated, e.g. for when messages are published to ROS or transforms must be looked up via the TF2 api. In order for SERPENT to operate correctly, it requires the following configuration parameters:
+
+* `map_frame_id` which resides in the tuning config file (e.g. `tuning_default.yaml`), and defaults to `"map"` if not set explicitly.
+* A `body_frames` block which defines the robot body frames in a way that is consistent with the documentation in `eigen_ros/body_frames.hpp`. The top-level frame (`body_frame_name` in the documentation) defined in this block is used by SERPENT as the body frame reference of all sensors during optimisation. There must also be a `base_link` frame somewhere in the hierarchy, or as a dynamic link. A typical use case will have the top-level frame `body_frame_name` set to `base_link` (note the `frame_id` can be set by the user to be different from `base_link`), but the `base_link` frame can in fact exist anywhere in the hierarchy, or as a `dynamic` link. SERPENT will produce map_frame -> base_link transforms and poses (with covariance), which may differ from the poses of the underlying optimisation (map_frame -> body_frame). Additionally the `body_frames` block must have an `imu` and `lidar` frame (with their `frame_id` each set to the frame_id of the sensor for your robot).
+* If stereo factors are enabled, the frame of the left camera (note the frame_id) has to be specified in the `stereo_factors` block in the `left_cam_frame` parameter.
+
 ## Debugging
 
 ### gprof

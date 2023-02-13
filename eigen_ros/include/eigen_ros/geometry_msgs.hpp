@@ -22,28 +22,36 @@ void from_ros(const geometry_msgs::Point& msg, Eigen::Vector3d& v);
 
 void to_ros(geometry_msgs::Point& msg, const Eigen::Vector3d& v);
 
+// Warning: frame_id is lost
 void from_ros(const geometry_msgs::PoseWithCovarianceStamped& msg, PoseStamped& pose);
 
+// Warning: frame_id is not set
 void to_ros(geometry_msgs::PoseWithCovarianceStamped& msg, const PoseStamped& pose);
 
 void from_ros(const geometry_msgs::PoseWithCovariance& msg, Pose& pose);
 
 void to_ros(geometry_msgs::PoseWithCovariance& msg, const Pose& pose);
 
+// Warning: frame_id is lost, covariance is not set
 void from_ros(const geometry_msgs::PoseStamped& msg, PoseStamped& pose);
 
+// Warning: frame_id is not set, covariance is lost
 void to_ros(geometry_msgs::PoseStamped& msg, const PoseStamped& pose);
 
+// Warning: covariance is not set
 void from_ros(const geometry_msgs::Pose& msg, Pose& pose);
 
+// Warning: covariance is lost
 void to_ros(geometry_msgs::Pose& msg, const Pose& pose);
 
 void from_ros(const geometry_msgs::Pose& msg, Eigen::Matrix4d& matrix);
 
 void to_ros(geometry_msgs::Pose& msg, const Eigen::Matrix4d& matrix);
 
+// Warning: frame_id, child_frame_id is lost
 void from_ros(const geometry_msgs::TransformStamped& msg, PoseStamped& pose);
 
+// Warning: frame_id, child_frame_id is not set
 void to_ros(geometry_msgs::TransformStamped& msg, const PoseStamped& pose);
 
 void from_ros(const geometry_msgs::Transform& msg, Pose& pose);

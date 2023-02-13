@@ -15,6 +15,10 @@ class Odometry {
 public:
     Odometry(const Pose& pose = Pose(), const Twist& twist = Twist(), const ros::Time& timestamp = ros::Time(0.0),
             const std::string& frame = std::string(), const std::string& child_frame = std::string());
+    
+    PoseStamped pose_stamped() const;
+
+    TwistStamped twist_stamped() const;
 
     // Pose in frame
     Pose pose;
@@ -33,7 +37,7 @@ public:
  * current odometry child frame, and B_i is the next odometry child frame).
  *
  * TODO FIX: Currently twist is copied across from current odometry, i.e. assumed no change in body twist. Also the
- * child frame name is not changed.
+ * child frame name is not changed. Also the covariance is not handled properly.
  *
  * @param current_odometry
  * @param transform

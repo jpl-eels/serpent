@@ -18,6 +18,14 @@ function twist_data = compute_twist_data(data)
         twists = extract_twists(odometry);
         entry = struct;
         entry.timestamps = extract_timestamps(odometry);
+        
+        % Filtering
+        gt_bounds_filter = ...
+            entry.timestamps <= twist_data.gt.timestamps(end) & ...
+            entry.timestamps >= twist_data.gt.timestamps(1);
+        entry.timestamps = entry.timestamps(gt_bounds_filter);
+        twists = twists(gt_bounds_filter);
+
         entry.linear_velocities = extract_linear_velocities(twists);
         entry.linear_speeds = vecnorm(entry.linear_velocities, 2, 2);
         entry.angular_velocities = extract_angular_velocities(twists);
