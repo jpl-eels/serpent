@@ -8,6 +8,12 @@
 
 namespace eigen_ext {
 
+template<typename Scalar>
+Eigen::Matrix<Scalar, 3, 1> cartesian_to_polar(const Scalar x, const Scalar y, const Scalar z);
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 3, 1> cartesian_to_polar(const Eigen::Matrix<Scalar, 3, 1>& cartesian_point);
+
 /**
  * @brief Change the reference frame of a transform covariance matrix from frame A to frame B:
  *      Cov_B = Adj_{T_B^A} Cov_A (Adj_{T_B^A})^T
@@ -161,6 +167,25 @@ template<typename Scalar>
 Eigen::Matrix<Scalar, 6, 6> transform_adjoint(const Eigen::Transform<Scalar, 3, Eigen::Isometry>& transform);
 
 /* Implementation */
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 3, 1> cartesian_to_polar(const Scalar x, const Scalar y, const Scalar z) {
+    static_assert(std::is_floating_point<Scalar>::value, "Scalar is not a floating point type");
+    const Scalar x2_plus_y2 = x * x + y * y;
+    const Scalar r = std::sqrt(x2_plus_y2 + z * z);
+    if (x2_plus_y2 == 0.0) {
+        throw std::runtime_error("Failed to convert from cartesian to polar coordinates. x and y are zero.");
+    }
+    const Scalar a_ = std::acos(x / x2_plus_y2);
+    const Scalar a = y >= 0.0 ? a_ : 2.0 * M_PI - a_;
+    const Scalar e = std::acos(z / r);
+    return Eigen::Matrix<Scalar, 3, 1>{r, a, e};
+}
+
+template<typename Scalar>
+inline Eigen::Matrix<Scalar, 3, 1> cartesian_to_polar(const Eigen::Matrix<Scalar, 3, 1>& cartesian_point) {
+    return cartesian_to_polar<Scalar>(cartesian_point[0], cartesian_point[1], cartesian_point[2]);
+}
 
 template<typename Scalar>
 Eigen::Matrix<Scalar, 6, 6> change_covariance_frame(const typename Eigen::Matrix<Scalar, 6, 6>& covariance_A,
