@@ -64,6 +64,7 @@ set(LIBRARIES
 
 # Library
 add_library(${LIBRARY_NAME}
+    src/pclpointcloud2_covariance.cpp
     src/pclpointcloud2_utilities.cpp
 )
 

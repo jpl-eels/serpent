@@ -9,6 +9,28 @@
 
 namespace pct {
 
+pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string& name,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count) {
+    pcl::PCLPointCloud2 dest;
+    dest.header = src.header;
+    dest.height = src.height;
+    dest.width = src.width;
+    dest.fields = src.fields;
+    dest.fields.emplace_back(pcl::PCLPointField{.name = name,
+            .offset = point_step(dest.fields.back()),
+            .datatype = datatype,
+            .count = count});
+    dest.is_bigendian = src.is_bigendian;
+    dest.point_step = point_step(dest.fields.back());
+    dest.row_step = dest.point_step * dest.width;
+    dest.data.resize(size_bytes(dest));
+    dest.is_dense = src.is_dense;
+    for (std::size_t i = 0, j = 0; i < dest.data.size(); i += dest.point_step, j += src.point_step) {
+        std::memcpy(&dest.data[i], &src.data[j], src.point_step);
+    }
+    return dest;
+}
+
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
     pcl::PCLPointField& field = get_field(pointcloud, name);
     if (field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
@@ -288,6 +310,10 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_fie
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name) {
     ns_to_s(pointcloud, get_field(pointcloud, time_field_name));
+}
+
+std::uint32_t point_step(const pcl::PCLPointField& last_field) {
+    return last_field.offset + pcl::getFieldSize(last_field.datatype) * last_field.count;
 }
 
 void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale) {

@@ -7,9 +7,25 @@
 #include <statistics_msgs/SummaryStatisticsArray.h>
 
 #include <Eigen/Geometry>
+#include <eigen_ext/geometry.hpp>
 #include <string>
 
 namespace pct {
+
+/**
+ * @brief Create a new pointcloud with an additional field appended.
+ *
+ * This function copies all the src data and modifies the pointcloud and field metadata to account for the new field.
+ * The bytes corresponding to the new data fields are uninitialised.
+ *
+ * @param src
+ * @param name
+ * @param field_type
+ * @param count
+ * @return pcl::PCLPointCloud2
+ */
+pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string& name,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count = 1);
 
 // TODO: generalise this function to other types
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
@@ -101,6 +117,11 @@ void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_fie
 
 void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name);
 
+std::uint32_t point_step(const pcl::PCLPointField& last_field);
+
+template<typename T = float>
+std::vector<Eigen::Matrix<T, 3, 1>> polar_coordinates(const pcl::PCLPointCloud2& pointcloud);
+
 // TODO: generalise to other types
 void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale);
 
@@ -129,6 +150,9 @@ T sum(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field);
 
 template<typename T>
 T sum(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name);
+
+template<typename T = float>
+Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors(const pcl::PCLPointCloud2& pointcloud);
 
 template<typename T = double>
 T variance(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const double mean);
@@ -245,6 +269,22 @@ inline T min(const pcl::PCLPointCloud2& pointcloud, const std::string& field_nam
     return min<T>(pointcloud, get_field(pointcloud, field_name));
 }
 
+template<typename T = float>
+Eigen::Matrix<T, 3, Eigen::Dynamic> polar_coordinates(const pcl::PCLPointCloud2& pointcloud) {
+    const pcl::PCLPointField& x_field = get_field(pointcloud, "x");
+    const pcl::PCLPointField& y_field = get_field(pointcloud, "y");
+    const pcl::PCLPointField& z_field = get_field(pointcloud, "z");
+    Eigen::Matrix<T, 3, Eigen::Dynamic> polar_points;
+    polar_points.resize(Eigen::NoChange, size_points(pointcloud));
+    for (std::size_t i = 0, j = 0; i < pointcloud.data.size(); i += pointcloud.point_step, ++j) {
+        polar_points.col(j) = eigen_ext::cartesian_to_polar<T>(
+                field_data<T>(&pointcloud.data[i + x_field.offset], x_field.datatype),
+                field_data<T>(&pointcloud.data[i + y_field.offset], y_field.datatype),
+                field_data<T>(&pointcloud.data[i + z_field.offset], z_field.datatype));
+    }
+    return polar_points;
+}
+
 template<typename T = double>
 T standard_deviation(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const double mean) {
     return static_cast<T>(std::sqrt(variance<double>(pointcloud, field, mean)));
@@ -277,6 +317,22 @@ T sum(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
 template<typename T>
 inline T sum(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name) {
     return sum<T>(pointcloud, get_field(pointcloud, field_name));
+}
+
+template<typename T = float>
+Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors(const pcl::PCLPointCloud2& pointcloud) {
+    const pcl::PCLPointField& x_field = get_field(pointcloud, "x");
+    const pcl::PCLPointField& y_field = get_field(pointcloud, "y");
+    const pcl::PCLPointField& z_field = get_field(pointcloud, "z");
+    Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors;
+    unit_vectors.resize(Eigen::NoChange, size_points(pointcloud));
+    for (std::size_t i = 0, j = 0; i < pointcloud.data.size(); i += pointcloud.point_step, ++j) {
+        unit_vectors.col(j) = eigen_ext::safe_normalise<T>(
+                field_data<T>(&pointcloud.data[i + x_field.offset], x_field.datatype),
+                field_data<T>(&pointcloud.data[i + y_field.offset], y_field.datatype),
+                field_data<T>(&pointcloud.data[i + z_field.offset], z_field.datatype));
+    }
+    return unit_vectors;
 }
 
 template<typename T = double>
