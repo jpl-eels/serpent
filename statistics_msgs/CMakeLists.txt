@@ -9,6 +9,10 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
     DIRECTORY msg
     FILES
+        Covariance.msg
+        CovarianceFloat32.msg
+        CovarianceFloat32Stamped.msg
+        CovarianceStamped.msg
         SummaryStatistics.msg
         SummaryStatisticsStamped.msg
         SummaryStatisticsArray.msg
