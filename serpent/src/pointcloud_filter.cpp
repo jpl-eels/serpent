@@ -5,6 +5,8 @@
 
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
+#include "serpent/pointcloud_covariance_estimator.hpp"
+
 namespace serpent {
 
 PointcloudFilter::PointcloudFilter()
@@ -13,17 +15,32 @@ PointcloudFilter::PointcloudFilter()
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", false);
     const bool sor_enabled = nh.param<bool>("statistical_outlier_removal/enabled", false);
+    const bool random_sample_enabled = nh.param<bool>("random_sample_filter/enabled", false);
+    ROS_INFO_STREAM("Filtering operations (in order):"
+                    << "\nVOXEL_GRID    " << (voxel_grid_enabled ? " ENABLED" : "DISABLED") << "\nBODY_FILTER   "
+                    << (body_filter_enabled ? " ENABLED" : "DISABLED") << "\nRANGE_FILTER  "
+                    << (range_filter_enabled ? " ENABLED" : "DISABLED") << "\nSOR REMOVAL   "
+                    << (sor_enabled ? " ENABLED" : "DISABLED") << "\nRANDOM SAMPLE "
+                    << (random_sample_enabled ? " ENABLED" : "DISABLED"));
 
     // Trace input topic for next filter
-    std::string input_topic{"frontend/deskewed_pointcloud"};
+    const bool covariance_estimator_enabled = nh.param<bool>("covariance_estimation/enabled", false);
+    const bool point_field_method = is_point_field_method(
+            to_pointcloud_covariance_estimation_method(nh.param<std::string>("covariance_estimation/method", "RANGE")));
+    std::string input_topic = covariance_estimator_enabled && point_field_method ? "covariance_estimator/pointcloud"
+                                                                                 : "frontend/deskewed_pointcloud";
     const std::string final_output_topic{"filter/filtered_pointcloud"};
 
     // Voxel grid
     voxel_grid_filter.setDownsampleAllData(true);  // Necessary to keep all fields
-    std::string output_topic = (sor_enabled || range_filter_enabled || body_filter_enabled)
+    std::string output_topic = (random_sample_enabled || sor_enabled || range_filter_enabled || body_filter_enabled)
                                        ? "filter/voxel_filtered_pointcloud"
                                        : final_output_topic;
-    if (nh.param<bool>("voxel_grid_filter/enabled", true)) {
+    if (voxel_grid_enabled) {
+        if (covariance_estimator_enabled && point_field_method) {
+            ROS_ERROR("VoxelGrid downsampling enabled with covariance as a point field in the point cloud. The "
+                      "covariance will be invalid following the downsampling operation.");
+        }
         const double leaf_size = nh.param<double>("voxel_grid_filter/leaf_size", 0.1);
         voxel_grid_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
         voxel_grid_filter.setMinimumPointsNumberPerVoxel(
@@ -35,7 +52,8 @@ PointcloudFilter::PointcloudFilter()
     }
 
     // Body filter
-    output_topic = (sor_enabled || range_filter_enabled) ? "filter/body_filtered_pointcloud" : final_output_topic;
+    output_topic = (random_sample_enabled || sor_enabled || range_filter_enabled) ? "filter/body_filtered_pointcloud"
+                                                                                  : final_output_topic;
     if (body_filter_enabled) {
         body_filter.setMin(Eigen::Vector4f(nh.param<float>("body_filter/min/x", 0.f),
                 nh.param<float>("body_filter/min/y", 0.f), nh.param<float>("body_filter/min/z", 0.f), 1.f));
@@ -52,7 +70,7 @@ PointcloudFilter::PointcloudFilter()
     }
 
     // Range filter
-    output_topic = sor_enabled ? "filter/range_filtered_pointcloud" : final_output_topic;
+    output_topic = (random_sample_enabled || sor_enabled) ? "filter/range_filtered_pointcloud" : final_output_topic;
     if (range_filter_enabled) {
         range_filter.setFilterFieldName("range");
         range_filter.setFilterLimits(nh.param<double>("range_filter/min", 0.0),
@@ -64,7 +82,7 @@ PointcloudFilter::PointcloudFilter()
     }
 
     // Statistical Outlier Removal filter
-    output_topic = final_output_topic;
+    output_topic = random_sample_enabled ? "filter/sor_filtered_pointcloud" : final_output_topic;
     if (sor_enabled) {
         sor_filter.setMeanK(nh.param<int>("statistical_outlier_removal_filter/mean_k", 1));
         sor_filter.setStddevMulThresh(nh.param<double>("statistical_outlier_removal_filter/stddev_mul_thresh", 0.0));
@@ -72,6 +90,25 @@ PointcloudFilter::PointcloudFilter()
         statistical_outlier_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
                 &PointcloudFilter::statistical_outlier_callback, this);
         input_topic = statistical_outlier_pointcloud_publisher.getTopic();
+    }
+
+    // Random sample filter
+    output_topic = final_output_topic;
+    if (random_sample_enabled) {
+        const int sample_size = nh.param<int>("random_sample_filter/sample_size", 3000);
+        if (sample_size < 0) {
+            throw std::runtime_error("RandomSample sample_size must be >= 0.");
+        }
+        const int seed = nh.param<int>("random_sample_filter/random_seed", 0);
+        if (seed < 0) {
+            throw std::runtime_error("RandomSample random_seed must be >= 0.");
+        }
+        random_sample_filter.setSample(static_cast<unsigned int>(sample_size));
+        random_sample_filter.setSeed(static_cast<unsigned int>(seed));
+        random_sample_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>(output_topic, 1);
+        random_sample_pointcloud_subscriber =
+                nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudFilter::random_sample_callback, this);
+        input_topic = random_sample_pointcloud_publisher.getTopic();
     }
 }
 
@@ -86,11 +123,14 @@ void PointcloudFilter::body_filter_callback(const pcl::PCLPointCloud2::ConstPtr&
     body_pointcloud_publisher.publish(filter(msg, body_filter));
 }
 
+void PointcloudFilter::random_sample_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
+    random_sample_pointcloud_publisher.publish(filter(msg, random_sample_filter));
+}
+
 void PointcloudFilter::range_filter_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
     if (!pct::has_field(*msg, "range")) {
-        throw std::runtime_error(
-                "Point cloud has no field \'range\' but range filter was enabled. Disable range filter"
-                " or add \'range\' field to input point cloud.");
+        throw std::runtime_error("Point cloud has no field \'range\' but range filter was enabled. Disable range filter"
+                                 " or add \'range\' field to input point cloud.");
     }
     range_pointcloud_publisher.publish(filter(msg, range_filter));
 }

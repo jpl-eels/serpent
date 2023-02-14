@@ -27,6 +27,11 @@ body_filter:
     ry: 0.0
     rz: 0.0
 
+random_sample_filter:
+  enabled: false
+  sample_size: 3000
+  random_seed: 0
+
 range_filter:
   enabled: false
   min: 0.0

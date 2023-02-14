@@ -101,6 +101,7 @@ set(SYSTEM_LIBRARIES
 add_library(${LIBRARY} SHARED
     src/frontend.cpp
     src/match_filters.cpp
+    src/pointcloud_covariance_estimator.cpp
     src/pointcloud_filter.cpp
     src/pointcloud_formatter.cpp
     src/pointcloud_normal_estimation.cpp

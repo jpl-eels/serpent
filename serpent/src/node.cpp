@@ -6,6 +6,7 @@
 #include "serpent/frontend.hpp"
 #include "serpent/mapping.hpp"
 #include "serpent/optimisation.hpp"
+#include "serpent/pointcloud_covariance_estimator.hpp"
 #include "serpent/pointcloud_filter.hpp"
 #include "serpent/pointcloud_formatter.hpp"
 #include "serpent/pointcloud_normal_estimation.hpp"
@@ -25,6 +26,10 @@ int main(int argc, char** argv) {
     serpent::PointcloudFilter pointcloud_filter;
     serpent::PointcloudFormatter pointcloud_formatter;
     serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
+    std::unique_ptr<serpent::PointcloudCovarianceEstimator> pointcloud_covariance_estimator;
+    if (nh.param<bool>("covariance_estimation/enabled", false)) {
+        pointcloud_covariance_estimator = std::make_unique<serpent::PointcloudCovarianceEstimator>();
+    }
     std::unique_ptr<serpent::Registration> registration;
     if (nh.param<bool>("optimisation/factors/registration", true)) {
         registration = std::make_unique<serpent::Registration>();
