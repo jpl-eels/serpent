@@ -76,7 +76,7 @@ Optimisation::Optimisation()
 #if GTSAM_VERSION_NUMERIC < 40200
     if (imu_factors_enabled) {
         ROS_WARN("gtsam::CombinedImuFactor is used however has a covariance propagation bug in GTSAM versions prior to "
-                 "4.2.0. Consider upgrading GTSAM to version >= 4.2.0.")
+                 "4.2.0. Consider upgrading GTSAM to version >= 4.2.0.");
     }
 #endif
 
