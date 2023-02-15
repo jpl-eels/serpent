@@ -32,6 +32,13 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
+# OpenMP required to compile fast_gicp for PointNormalCovariance point type.
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 catkin_python_setup()
 
 add_message_files(
@@ -109,6 +116,7 @@ add_library(${LIBRARY} SHARED
     src/mapping.cpp
     src/optimisation.cpp
     src/registration_covariance.cpp
+    src/point_types.cpp
     src/registration_methods.cpp
     src/registration.cpp
     src/sensor_point_types.cpp
@@ -275,6 +283,7 @@ set_target_properties(${STEREO_PIPELINE_NODE}
 )
 
 # Required (before PCL headers) from PCL 1.7 onwards when using custom point types to include templated algorithms also
+target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${NODE} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${FRONTEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${BACKEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
