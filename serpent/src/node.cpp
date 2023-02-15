@@ -21,20 +21,40 @@ int main(int argc, char** argv) {
     // Initialise Modules
     eigen_ros::BodyFramesTf body_frames_tf("serpent");
     serpent::Frontend frontend;
-    serpent::Mapping mapping;
     serpent::Optimisation optimisation;
-    serpent::PointcloudFilter pointcloud_filter;
     serpent::PointcloudFormatter pointcloud_formatter;
-    serpent::PointcloudNormalEstimation pointcloud_normal_estimation;
+    std::unique_ptr<serpent::PointcloudFilter> pointcloud_filter;
     std::unique_ptr<serpent::PointcloudCovarianceEstimator> pointcloud_covariance_estimator;
-    if (nh.param<bool>("covariance_estimation/enabled", false)) {
-        pointcloud_covariance_estimator = std::make_unique<serpent::PointcloudCovarianceEstimator>();
-    }
-    std::unique_ptr<serpent::Registration> registration;
-    if (nh.param<bool>("optimisation/factors/registration", true)) {
-        registration = std::make_unique<serpent::Registration>();
-    }
+    std::unique_ptr<serpent::Mapping<pcl::PointNormal>> mapping;
+    std::unique_ptr<serpent::Mapping<PointNormalCovariance>> mapping_with_covariance;
+    std::unique_ptr<serpent::PointcloudNormalEstimation<pcl::PointXYZ, pcl::PointNormal>> normal_estimation;
+    std::unique_ptr<serpent::PointcloudNormalEstimation<PointCovariance, PointNormalCovariance>>
+            normal_estimation_with_covariance;
+    std::unique_ptr<serpent::Registration<pcl::PointNormal>> registration;
+    std::unique_ptr<serpent::Registration<PointNormalCovariance>> registration_with_covariance;
     std::unique_ptr<serpent::StereoFactorFinder> stereo_factor_finder;
+    if (nh.param<bool>("optimisation/factors/registration", true)) {
+        pointcloud_filter = std::make_unique<serpent::PointcloudFilter>();
+        const bool covariance_estimator_enabled = nh.param<bool>("covariance_estimation/enabled", false);
+        const bool point_field_method =
+                serpent::is_point_field_method(serpent::to_pointcloud_covariance_estimation_method(
+                        nh.param<std::string>("covariance_estimation/method", "RANGE")));
+        if (covariance_estimator_enabled) {
+            pointcloud_covariance_estimator = std::make_unique<serpent::PointcloudCovarianceEstimator>();
+        }
+        if (covariance_estimator_enabled && point_field_method) {
+            ROS_INFO_STREAM("POINT_FIELD covariance enabled. Building modules with PointNormalCovariance.");
+            normal_estimation_with_covariance =
+                    std::make_unique<serpent::PointcloudNormalEstimation<PointCovariance, PointNormalCovariance>>();
+            mapping_with_covariance = std::make_unique<serpent::Mapping<PointNormalCovariance>>();
+            registration_with_covariance = std::make_unique<serpent::Registration<PointNormalCovariance>>();
+        } else {
+            normal_estimation =
+                    std::make_unique<serpent::PointcloudNormalEstimation<pcl::PointXYZ, pcl::PointNormal>>();
+            mapping = std::make_unique<serpent::Mapping<pcl::PointNormal>>();
+            registration = std::make_unique<serpent::Registration<pcl::PointNormal>>();
+        }
+    }
     if (nh.param<bool>("optimisation/factors/stereo", true)) {
         stereo_factor_finder = std::make_unique<serpent::StereoFactorFinder>();
     }

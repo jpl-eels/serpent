@@ -5,8 +5,6 @@
 
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
-#include "serpent/pointcloud_covariance_estimator.hpp"
-
 namespace serpent {
 
 PointcloudFilter::PointcloudFilter()
@@ -24,11 +22,7 @@ PointcloudFilter::PointcloudFilter()
                     << (random_sample_enabled ? " ENABLED" : "DISABLED"));
 
     // Trace input topic for next filter
-    const bool covariance_estimator_enabled = nh.param<bool>("covariance_estimation/enabled", false);
-    const bool point_field_method = is_point_field_method(
-            to_pointcloud_covariance_estimation_method(nh.param<std::string>("covariance_estimation/method", "RANGE")));
-    std::string input_topic = covariance_estimator_enabled && point_field_method ? "covariance_estimator/pointcloud"
-                                                                                 : "frontend/deskewed_pointcloud";
+    std::string input_topic = "frontend/deskewed_pointcloud";
     const std::string final_output_topic{"filter/filtered_pointcloud"};
 
     // Voxel grid
@@ -37,10 +31,6 @@ PointcloudFilter::PointcloudFilter()
                                        ? "filter/voxel_filtered_pointcloud"
                                        : final_output_topic;
     if (voxel_grid_enabled) {
-        if (covariance_estimator_enabled && point_field_method) {
-            ROS_ERROR("VoxelGrid downsampling enabled with covariance as a point field in the point cloud. The "
-                      "covariance will be invalid following the downsampling operation.");
-        }
         const double leaf_size = nh.param<double>("voxel_grid_filter/leaf_size", 0.1);
         voxel_grid_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
         voxel_grid_filter.setMinimumPointsNumberPerVoxel(

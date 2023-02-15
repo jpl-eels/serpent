@@ -1,5 +1,3 @@
-#include "serpent/registration.hpp"
-
 #include <pcl/common/transforms.h>
 
 #include <eigen_ext/covariance.hpp>
@@ -7,12 +5,65 @@
 #include <eigen_ros/eigen_ros.hpp>
 #include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
+#include "serpent/registration.hpp"
 #include "serpent/registration_methods.hpp"
+#include "serpent/transform_pointcloud.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {
 
-Registration::Registration()
+template<typename PointT>
+template<typename Model>
+void Registration<PointT>::create_covariance_function_bindings(
+        const CovarianceEstimationMethod covariance_estimation_method) {
+    if (covariance_estimation_method == CovarianceEstimationMethod::CENSI) {
+        point_variance_covariance = &censi_covariance<Model, float>;
+        point_field_covariance = &censi_covariance<Model, float>;
+    } else if (covariance_estimation_method == CovarianceEstimationMethod::LLS) {
+        point_variance_covariance = &lls_covariance<Model, float>;
+        point_field_covariance = nullptr;
+    } else {
+        throw std::runtime_error("No bindings can be created for covariance_estimation_method.");
+    }
+}
+
+template<typename PointT>
+Eigen::Matrix<double, 6, 6> Registration<PointT>::covariance_from_registration(PCLRegistration& registration) {
+    ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
+
+    // Covariance estimation
+    ros::WallTime tic = ros::WallTime::now();
+    Eigen::Matrix<double, 6, 6> covariance;
+    if (covariance_estimation_method == CovarianceEstimationMethod::CONSTANT) {
+        covariance = constant_covariance;
+    } else {
+        int correspondence_count;
+        if (covariance_estimation_method == CovarianceEstimationMethod::CENSI ||
+                covariance_estimation_method == CovarianceEstimationMethod::LLS) {
+            switch (point_covariance_method) {
+                case PointCovarianceMethod::CONSTANT:  // fallthrough
+                case PointCovarianceMethod::VOXEL_SIZE:
+                    covariance = point_variance_covariance(registration, point_variance, correspondence_count);
+                    break;
+                case PointCovarianceMethod::POINT_FIELD:
+                    covariance = point_field_covariance(registration, correspondence_count);
+                    break;
+                case PointCovarianceMethod::MATRIX:
+                    throw std::runtime_error("MATRIX method not yet implemented.");
+                default:
+                    throw std::runtime_error("Point covariance method not handled.");
+            }
+        } else {
+            throw std::runtime_error("Covariance estimation method not handled.");
+        }
+        ROS_INFO_STREAM(correspondence_count << " correspondences were used in covariance estimation.");
+    }
+    ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute covariance.");
+    return covariance;
+}
+
+template<typename PointT>
+Registration<PointT>::Registration()
     : nh("serpent"),
       s2s_sync(10),
       body_frames("serpent") {
@@ -23,79 +74,83 @@ Registration::Registration()
     pointcloud_subscriber.subscribe(nh, "normal_estimation/pointcloud", 10);
     transform_subscriber.subscribe(nh, "optimisation/imu_transform", 10);
     s2s_sync.connectInput(pointcloud_subscriber, transform_subscriber);
-    s2s_sync.registerCallback(boost::bind(&Registration::s2s_callback, this, _1, _2));
-    map_subscriber =
-            nh.subscribe<pcl::PointCloud<pcl::PointNormal>>("mapping/local_map", 10, &Registration::s2m_callback, this);
+    s2s_sync.registerCallback(boost::bind(&Registration<PointT>::s2s_callback, this, _1, _2));
+    map_subscriber = nh.subscribe<PointCloud>("mapping/local_map", 10, &Registration<PointT>::s2m_callback, this);
 
     // Configuration
     nh.param<bool>("s2m/enabled", s2m_enabled, true);
     const std::string scan_label = s2m_enabled ? "s2m" : "s2s";
 
     // Create registration methods
-    s2s = registration_method<pcl::PointNormal, pcl::PointNormal>(nh, "s2s/");
+    s2s = registration_method<PointT, PointT>(nh, "s2s/");
     if (s2m_enabled) {
-        s2m = registration_method<pcl::PointNormal, pcl::PointNormal>(nh, "s2m/");
+        s2m = registration_method<PointT, PointT>(nh, "s2m/");
     }
 
     // Covariance estimation configuration
     covariance_estimation_method =
             to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CENSI"));
     ROS_INFO_STREAM("Using registration covariance estimation method: " << to_string(covariance_estimation_method));
-    switch (covariance_estimation_method) {
-        case CONSTANT:
-            constant_covariance = std::make_unique<ConstantCovariance>(
-                    nh.param<double>(scan_label + "/covariance/constant/rotation", 0.0174533),
-                    nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-2));
-            break;
-        case CENSI:  // Fallthrough
-        case LLS:
-            covariance_estimation_model = to_covariance_estimation_model(
-                    nh.param<std::string>(scan_label + "/covariance/model", "POINT_TO_PLANE_LINEARISED"));
-            // Create covariance estimator
-            switch (covariance_estimation_model) {
-                case POINT_TO_POINT_LINEARISED:
-                    covariance_estimator =
-                            std::make_unique<PointToPointIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
-                    break;
-                case POINT_TO_POINT_NONLINEAR:
-                    covariance_estimator =
-                            std::make_unique<PointToPointIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
-                    break;
-                case POINT_TO_PLANE_LINEARISED:
-                    covariance_estimator =
-                            std::make_unique<PointToPlaneIcpLinearised<pcl::PointNormal, pcl::PointNormal, float>>();
-                    break;
-                case POINT_TO_PLANE_NONLINEAR:
-                    covariance_estimator =
-                            std::make_unique<PointToPlaneIcpNonlinear<pcl::PointNormal, pcl::PointNormal, float>>();
-                    break;
-                default:
-                    throw std::runtime_error(
-                            "CovarianceEstimationModel not handled. Cannot create covariance estimator");
-            }
-            ROS_INFO_STREAM(
-                    "Using registration covariance estimation model: " << to_string(covariance_estimation_model));
-            break;
-        default:
-            throw std::runtime_error("CovarianceEstimationMethod not handled. Cannot create covariance estimator");
-    }
-
-    // Point covariance method
-    const std::string point_covariance_method =
-            nh.param<std::string>(scan_label + "/covariance/point_covariance/method", "VOXEL_SIZE");
-    float point_noise;
-    if (point_covariance_method == "CONSTANT") {
-        nh.param<float>(scan_label + "/covariance/point_covariance/constant", point_noise, 0.01f);
-    } else if (point_covariance_method == "VOXEL_SIZE") {
-        if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {
-            throw std::runtime_error("point_covariance/method \"" + point_covariance_method +
-                                     "\" selected but voxel_grid_filter/enabled was false");
-        }
-        nh.param<float>("voxel_grid_filter/leaf_size", point_noise, 0.1f);
+    if (covariance_estimation_method == CovarianceEstimationMethod::CONSTANT) {
+        const double rotation_noise = nh.param<double>(scan_label + "/covariance/constant/rotation", 0.0174533);
+        const double translation_noise = nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-2);
+        constant_covariance << Eigen::Matrix<double, 3, 3>::Identity() * rotation_noise * rotation_noise,
+                Eigen::Matrix<double, 3, 3>::Zero(), Eigen::Matrix<double, 3, 3>::Zero(),
+                Eigen::Matrix<double, 3, 3>::Identity() * translation_noise * translation_noise;
     } else {
-        throw std::runtime_error("Unrecognised point_covariance/method \"" + point_covariance_method + "\"");
+        covariance_estimation_model = to_covariance_estimation_model(
+                nh.param<std::string>(scan_label + "/covariance/model", "POINT_TO_PLANE_LINEARISED"));
+        ROS_INFO_STREAM("Using registration covariance estimation model: " << to_string(covariance_estimation_model));
+        // Create covariance estimation functions
+        switch (covariance_estimation_model) {
+            case CovarianceEstimationModel::POINT_TO_POINT_LINEARISED:
+                create_covariance_function_bindings<PointToPointIcpLinearisedModel<PointT, PointT>>(
+                        covariance_estimation_method);
+                break;
+            case CovarianceEstimationModel::POINT_TO_POINT_NONLINEAR:
+                create_covariance_function_bindings<PointToPointIcpNonlinearModel<PointT, PointT>>(
+                        covariance_estimation_method);
+                break;
+            case CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED:
+                create_covariance_function_bindings<PointToPlaneIcpLinearisedModel<PointT, PointT>>(
+                        covariance_estimation_method);
+                break;
+            case CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR:
+                create_covariance_function_bindings<PointToPlaneIcpNonlinearModel<PointT, PointT>>(
+                        covariance_estimation_method);
+                break;
+            default:
+                throw std::runtime_error("CovarianceEstimationModel not handled. Cannot create covariance estimator");
+        }
+
+        // Point covariance method
+        point_covariance_method = to_point_covariance_method(
+                nh.param<std::string>(scan_label + "/covariance/point_covariance/method", "VOXEL_SIZE"));
+        ROS_INFO_STREAM("Using point covariance model: " << to_string(point_covariance_method));
+        float point_noise;
+        switch (point_covariance_method) {
+            case PointCovarianceMethod::CONSTANT:
+                point_variance =
+                        std::pow(nh.param<float>(scan_label + "/covariance/point_covariance/constant", 0.01f), 2.f);
+                break;
+            case PointCovarianceMethod::VOXEL_SIZE:
+                if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {
+                    throw std::runtime_error(
+                            "point_covariance/method VOXEL_SIZE selected but voxel_grid_filter/enabled was false");
+                }
+                point_variance = std::pow(nh.param<float>("voxel_grid_filter/leaf_size", 0.1f), 2.f);
+                break;
+            case PointCovarianceMethod::POINT_FIELD:
+                if (covariance_estimation_method == CovarianceEstimationMethod::LLS) {
+                    throw std::runtime_error("PointCovarianceMethod::POINT_FIELD not yet supported for LLS Covariance");
+                }
+                break;
+            case PointCovarianceMethod::MATRIX:
+                throw std::runtime_error("MATRIX method not yet implemented");
+            default:
+                throw std::runtime_error("Unrecognised point_covariance_method.");
+        }
     }
-    point_variance = std::pow(point_noise, 2.f);
 
     // Compute body-lidar transform adjoint for covariance transformation
     body_lidar_transform_adjoint = eigen_ext::transform_adjoint(body_frames.body_to_frame("lidar"));
@@ -104,26 +159,27 @@ Registration::Registration()
     nh.param<bool>("debug/registration/check_normals", check_normals, false);
     nh.param<bool>("debug/registration/publish_clouds", publish_registration_clouds, false);
     if (publish_registration_clouds) {
-        debug_previous_cloud_publisher =
-                nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/previous_pointcloud", 1);
-        debug_current_cloud_publisher = nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/current_pointcloud", 1);
-        debug_imu_guess_cloud_publisher =
-                nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/imu_guess_pointcloud", 1);
-        debug_s2s_transformed_cloud_publisher =
-                nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2s_transformed_pointcloud", 1);
-        debug_s2m_transformed_cloud_publisher =
-                nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2m_transformed_pointcloud", 1);
+        ROS_WARN("The debug/s2s_transformed_pointcloud and debug/s2m_transformed_pointcloud will have untransformed "
+                 "normals (and covariances if applicable) if using gicp, fast_gicp, fast_gicp_st, fast_vgicp or ndt. "
+                 "Use debug/s2s_transformed_pointcloud_alt and debug/s2m_transformed_pointcloud_alt for correct "
+                 "normals and covariances.");
+        debug_previous_cloud_publisher = nh.advertise<PointCloud>("debug/previous_pointcloud", 1);
+        debug_current_cloud_publisher = nh.advertise<PointCloud>("debug/current_pointcloud", 1);
+        debug_imu_guess_cloud_publisher = nh.advertise<PointCloud>("debug/imu_guess_pointcloud", 1);
+        debug_s2s_transformed_cloud_publisher = nh.advertise<PointCloud>("debug/s2s_transformed_pointcloud", 1);
+        debug_s2m_transformed_cloud_publisher = nh.advertise<PointCloud>("debug/s2m_transformed_pointcloud", 1);
         nh.param<bool>("debug/registration/publish_clouds_alt", publish_registration_clouds_alt, false);
         if (publish_registration_clouds_alt) {
             debug_s2s_transformed_cloud_alt_publisher =
-                    nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2s_transformed_pointcloud_alt", 1);
+                    nh.advertise<PointCloud>("debug/s2s_transformed_pointcloud_alt", 1);
             debug_s2m_transformed_cloud_alt_publisher =
-                    nh.advertise<pcl::PointCloud<pcl::PointNormal>>("debug/s2m_transformed_pointcloud_alt", 1);
+                    nh.advertise<PointCloud>("debug/s2m_transformed_pointcloud_alt", 1);
         }
     }
 }
 
-void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
+template<typename PointT>
+void Registration<PointT>::publish_refined_transform(const Eigen::Matrix4d transform,
         const Eigen::Matrix<double, 6, 6> covariance, const ros::Time& timestamp) {
     // Convert transform to body frame
     const Eigen::Isometry3d transform_lidar{transform};
@@ -144,7 +200,8 @@ void Registration::publish_refined_transform(const Eigen::Matrix4d transform,
     refined_transform_publisher.publish(transform_msg);
 }
 
-void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& current_pointcloud,
+template<typename PointT>
+void Registration<PointT>::s2s_callback(const PointCloudConstPtr& current_pointcloud,
         const geometry_msgs::TransformStamped::ConstPtr& transform_msg) {
     // Perform registration after first scan
     if (previous_pointcloud) {
@@ -157,21 +214,21 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         const std::string frame_id = body_frames.frame_id("lidar");
         if (publish_registration_clouds) {
             // Current pointcloud untransformed (must change timestamp for visualisation)
-            auto current_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*current_pointcloud);
+            auto current_pointcloud_ = boost::make_shared<PointCloud>(*current_pointcloud);
             current_pointcloud_->header.stamp = previous_pointcloud->header.stamp;
             current_pointcloud_->header.frame_id = frame_id;
             debug_current_cloud_publisher.publish(current_pointcloud_);
 
             // Publish previous cloud (unfortunately a copy is required to correct the frame id)
-            auto previous_pointcloud_ = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(*previous_pointcloud);
+            auto previous_pointcloud_ = boost::make_shared<PointCloud>(*previous_pointcloud);
             previous_pointcloud_->header.frame_id = frame_id;
             debug_previous_cloud_publisher.publish(previous_pointcloud_);
 
             // Transform current scan to previous frame and publish (must change timestamp for visualisation)
             // By applying the T_{L_i-1}^{L_i} transform, the reference frame of the points change from {L_i} to {L_i-1}
             // as p_{L_i-1} = T_{L_i-1}^{L_i} * p_{L_i}.
-            auto imu_guess_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-            pcl::transformPointCloudWithNormals(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
+            auto imu_guess_pointcloud = boost::make_shared<PointCloud>();
+            transform_pointcloud(*current_pointcloud, *imu_guess_pointcloud, tf_mat_float);
             imu_guess_pointcloud->header.stamp = previous_pointcloud->header.stamp;
             imu_guess_pointcloud->header.frame_id = frame_id;
             debug_imu_guess_cloud_publisher.publish(imu_guess_pointcloud);
@@ -180,7 +237,7 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         // Refine registration with scan to scan matching (must change timestamp for visualisation)
         s2s->setInputSource(current_pointcloud);
         s2s->setInputTarget(previous_pointcloud);
-        auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+        auto registered_pointcloud = boost::make_shared<PointCloud>();
         const ros::WallTime tic = ros::WallTime::now();
         s2s->align(*registered_pointcloud, tf_mat_float);
         registered_pointcloud->header.stamp = previous_pointcloud->header.stamp;
@@ -201,9 +258,8 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
 
             if (publish_registration_clouds_alt) {
                 // Alt: transform and publish (must change timestamp for visualisation)
-                auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-                pcl::transformPointCloudWithNormals(*current_pointcloud, *registered_pointcloud_alt,
-                        s2s_transform_float);
+                auto registered_pointcloud_alt = boost::make_shared<PointCloud>();
+                transform_pointcloud(*current_pointcloud, *registered_pointcloud_alt, s2s_transform_float);
                 registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
                 registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
                 debug_s2s_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);
@@ -211,8 +267,9 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
         }
 
         // Debug: Check normals of target cloud if using a point-to-plane method
-        if (check_normals && (covariance_estimation_method == CovarianceEstimationMethod::CENSI ||
-                    covariance_estimation_method == CovarianceEstimationMethod::LLS) &&
+        if (check_normals &&
+                (covariance_estimation_method == CovarianceEstimationMethod::CENSI ||
+                        covariance_estimation_method == CovarianceEstimationMethod::LLS) &&
                 (covariance_estimation_model == CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED ||
                         covariance_estimation_model == CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR)) {
             const int unnormalised_normals_target = pct::check_normals(*previous_pointcloud);
@@ -237,7 +294,8 @@ void Registration::s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     previous_pointcloud = current_pointcloud;
 }
 
-void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& map) {
+template<typename PointT>
+void Registration<PointT>::s2m_callback(const PointCloudConstPtr& map) {
     // Wait for S2S transform and pointcloud
     if (!protected_sleep(s2s_mutex, 0.01, false, true,
                 [this]() { return s2s_registrations.empty() || s2m_pointclouds.empty(); })) {
@@ -245,7 +303,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     };
 
     // Pop pointcloud and s2s registration from queues
-    pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud = s2m_pointclouds.front();
+    PointCloudConstPtr pointcloud = s2m_pointclouds.front();
     s2m_pointclouds.pop_front();
     Eigen::Isometry3d s2s_transform = s2s_registrations.front();  // T_{L_i-1}^{L_i}
     s2s_registrations.pop_front();
@@ -255,7 +313,7 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
     Eigen::Matrix4f s2s_tf_mat_float = s2s_transform.matrix().cast<float>();
     s2m->setInputSource(pointcloud);
     s2m->setInputTarget(map);
-    auto registered_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
+    auto registered_pointcloud = boost::make_shared<PointCloud>();
     const ros::WallTime tic = ros::WallTime::now();
     s2m->align(*registered_pointcloud, s2s_tf_mat_float);
     registered_pointcloud->header.stamp = map->header.stamp;
@@ -275,8 +333,8 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
 
         if (publish_registration_clouds_alt) {
             // Alt: transform and publish (must change timestamp for visualisation)
-            auto registered_pointcloud_alt = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-            pcl::transformPointCloudWithNormals(*pointcloud, *registered_pointcloud_alt, s2m_transform_float);
+            auto registered_pointcloud_alt = boost::make_shared<PointCloud>();
+            transform_pointcloud(*pointcloud, *registered_pointcloud_alt, s2m_transform_float);
             registered_pointcloud_alt->header.stamp = registered_pointcloud->header.stamp;
             registered_pointcloud_alt->header.frame_id = registered_pointcloud->header.frame_id;
             debug_s2m_transformed_cloud_alt_publisher.publish(registered_pointcloud_alt);
@@ -288,7 +346,8 @@ void Registration::s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPt
             pcl_conversions::fromPCL(pointcloud->header.stamp));
 }
 
-Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_method(
+template<typename PointT>
+typename Registration<PointT>::CovarianceEstimationMethod Registration<PointT>::to_covariance_estimation_method(
         const std::string& string) const {
     if (string == "CONSTANT") {
         return CovarianceEstimationMethod::CONSTANT;
@@ -300,20 +359,9 @@ Registration::CovarianceEstimationMethod Registration::to_covariance_estimation_
     throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationMethod");
 }
 
-std::string Registration::to_string(const CovarianceEstimationMethod method) const {
-    switch (method) {
-        case CovarianceEstimationMethod::CONSTANT:
-            return "CONSTANT";
-        case CovarianceEstimationMethod::CENSI:
-            return "CENSI";
-        case CovarianceEstimationMethod::LLS:
-            return "LLS";
-        default:
-            throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
-    }
-}
-
-Registration::CovarianceEstimationModel Registration::to_covariance_estimation_model(const std::string& string) const {
+template<typename PointT>
+typename Registration<PointT>::CovarianceEstimationModel Registration<PointT>::to_covariance_estimation_model(
+        const std::string& string) const {
     if (string == "POINT_TO_POINT_LINEARISED") {
         return CovarianceEstimationModel::POINT_TO_POINT_LINEARISED;
     } else if (string == "POINT_TO_POINT_NONLINEAR") {
@@ -326,7 +374,37 @@ Registration::CovarianceEstimationModel Registration::to_covariance_estimation_m
     throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationModel");
 }
 
-std::string Registration::to_string(const CovarianceEstimationModel model) const {
+template<typename PointT>
+typename Registration<PointT>::PointCovarianceMethod Registration<PointT>::to_point_covariance_method(
+        const std::string& string) const {
+    if (string == "CONSTANT") {
+        return PointCovarianceMethod::CONSTANT;
+    } else if (string == "VOXEL_SIZE") {
+        return PointCovarianceMethod::VOXEL_SIZE;
+    } else if (string == "POINT_FIELD") {
+        return PointCovarianceMethod::POINT_FIELD;
+    } else if (string == "MATRIX") {
+        return PointCovarianceMethod::MATRIX;
+    }
+    throw std::runtime_error("Could not convert from string \"" + string + "\" to PointCovarianceMethod");
+}
+
+template<typename PointT>
+std::string Registration<PointT>::to_string(const CovarianceEstimationMethod method) const {
+    switch (method) {
+        case CovarianceEstimationMethod::CONSTANT:
+            return "CONSTANT";
+        case CovarianceEstimationMethod::CENSI:
+            return "CENSI";
+        case CovarianceEstimationMethod::LLS:
+            return "LLS";
+        default:
+            throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
+    }
+}
+
+template<typename PointT>
+std::string Registration<PointT>::to_string(const CovarianceEstimationModel model) const {
     switch (model) {
         case CovarianceEstimationModel::POINT_TO_POINT_LINEARISED:
             return "POINT_TO_POINT_LINEARISED";
@@ -338,6 +416,22 @@ std::string Registration::to_string(const CovarianceEstimationModel model) const
             return "POINT_TO_PLANE_NONLINEAR";
         default:
             throw std::runtime_error("CovarianceEstimationModel could not be converted to string.");
+    }
+}
+
+template<typename PointT>
+std::string Registration<PointT>::to_string(const PointCovarianceMethod method) const {
+    switch (method) {
+        case PointCovarianceMethod::CONSTANT:
+            return "CONSTANT";
+        case PointCovarianceMethod::VOXEL_SIZE:
+            return "VOXEL_SIZE";
+        case PointCovarianceMethod::POINT_FIELD:
+            return "POINT_FIELD";
+        case PointCovarianceMethod::MATRIX:
+            return "MATRIX";
+        default:
+            throw std::runtime_error("PointCovarianceMethod could not be converted to string.");
     }
 }
 

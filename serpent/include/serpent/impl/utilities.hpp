@@ -1,3 +1,5 @@
+namespace serpent {
+
 template<typename Scalar>
 Scalar interpolate(const Scalar value1, const Scalar value2, const ros::Time& time1, const ros::Time& time2,
         const ros::Time& interpolation_time) {
@@ -16,4 +18,6 @@ std::string to_flat_string(const typename Eigen::Matrix<Scalar, Size, 1>& vector
         ss << (i > 0 ? " " : "") << vector[i];
     }
     return ss.str();
+}
+
 }

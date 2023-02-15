@@ -48,9 +48,9 @@ TEST(point_to_point_nonlinear, matrices) {
     const Eigen::Vector3d t{-4.5, 14.0, 8.9};
     const Eigen::Vector3d p{1.0, 2.0, 3.0};
     const Eigen::Vector3d q{5.5, 8.8, -4.0};
-    const serpent::PrecomputedTransformComponents<double> tf{r, t};
+    const eigen_ext::PrecomputedTransformComponents<double> tf{r, t};
 
-    serpent::PointToPointIcpNonlinear<pcl::PointXYZ, pcl::PointXYZ, double> cov_est;
+    serpent::PointToPointIcpNonlinearModel<pcl::PointXYZ, pcl::PointXYZ> cov_est;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = 2.0 * cov_est.compute_half_d2F_dx2(tf, p, q);
     Eigen::Matrix<double, 6, 6> d2F_dzdx = 2.0 * cov_est.compute_half_d2F_dzdx(tf, p, q);
     Eigen::Matrix<double, 6, 6> matlab_d2F_dx2;matlab_d2F_dx2 <<
@@ -79,9 +79,9 @@ TEST(point_to_point_linear, matrices) {
     const Eigen::Vector3d t{-4.5, 14.0, 8.9};
     const Eigen::Vector3d p{1.0, 2.0, 3.0};
     const Eigen::Vector3d q{5.5, 8.8, -4.0};
-    const serpent::PrecomputedTransformComponents<double> tf{r, t};
+    const eigen_ext::PrecomputedTransformComponents<double> tf{r, t};
 
-    serpent::PointToPointIcpLinearised<pcl::PointXYZ, pcl::PointXYZ, double> cov_est;
+    serpent::PointToPointIcpLinearisedModel<pcl::PointXYZ, pcl::PointXYZ> cov_est;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = 2.0 * cov_est.compute_half_d2F_dx2(tf, p, q);
     Eigen::Matrix<double, 6, 6> d2F_dzdx = 2.0 * cov_est.compute_half_d2F_dzdx(tf, p, q);
     Eigen::Matrix<double, 6, 6> matlab_d2F_dx2;
@@ -112,9 +112,9 @@ TEST(point_to_plane_nonlinear, matrices) {
     const Eigen::Vector3d p{1.0, 2.0, 3.0};
     const Eigen::Vector3d q{5.5, 8.8, -4.0};
     const Eigen::Vector3d n{0.455842305838552, 0.683763458757828, 0.569802882298190};
-    const serpent::PrecomputedTransformComponents<double> tf{r, t};
+    const eigen_ext::PrecomputedTransformComponents<double> tf{r, t};
 
-    serpent::PointToPlaneIcpNonlinear<pcl::PointNormal, pcl::PointNormal, double> cov_est;
+    serpent::PointToPlaneIcpNonlinearModel<pcl::PointNormal, pcl::PointNormal> cov_est;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = 2.0 * cov_est.compute_half_d2F_dx2(tf, p, q, n);
     Eigen::Matrix<double, 6, 6> d2F_dzdx = 2.0 * cov_est.compute_half_d2F_dzdx(tf, p, q, n);
     Eigen::Matrix<double, 6, 6> matlab_d2F_dx2;
@@ -145,9 +145,9 @@ TEST(point_to_plane_linear, matrices) {
     const Eigen::Vector3d p{1.0, 2.0, 3.0};
     const Eigen::Vector3d q{5.5, 8.8, -4.0};
     const Eigen::Vector3d n{0.455842305838552, 0.683763458757828, 0.569802882298190};
-    const serpent::PrecomputedTransformComponents<double> tf{r, t};
+    const eigen_ext::PrecomputedTransformComponents<double> tf{r, t};
 
-    serpent::PointToPlaneIcpLinearised<pcl::PointNormal, pcl::PointNormal, double> cov_est;
+    serpent::PointToPlaneIcpLinearisedModel<pcl::PointNormal, pcl::PointNormal> cov_est;
     Eigen::Matrix<double, 6, 6> d2F_dx2 = 2.0 * cov_est.compute_half_d2F_dx2(tf, p, q, n);
     Eigen::Matrix<double, 6, 6> d2F_dzdx = 2.0 * cov_est.compute_half_d2F_dzdx(tf, p, q, n);
     Eigen::Matrix<double, 6, 6> matlab_d2F_dx2;

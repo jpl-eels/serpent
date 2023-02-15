@@ -23,27 +23,42 @@
 
 namespace serpent {
 
+template<typename PointT = pcl::PointNormal>
 class Registration {
 public:
+    using PointCloud = typename pcl::PointCloud<PointT>;
+    using PointCloudPtr = typename PointCloud::Ptr;
+    using PointCloudConstPtr = typename PointCloud::ConstPtr;
+    using PCLRegistration = typename pcl::Registration<PointT, PointT, float>;
+    using PCLRegistrationPtr = typename PCLRegistration::Ptr;
+
     explicit Registration();
 
 private:
-    enum CovarianceEstimationMethod {
+    enum class CovarianceEstimationMethod {
         CONSTANT,
         CENSI,
         LLS
     };
 
-    enum CovarianceEstimationModel {
+    enum class CovarianceEstimationModel {
         POINT_TO_POINT_LINEARISED,
         POINT_TO_POINT_NONLINEAR,
         POINT_TO_PLANE_LINEARISED,
         POINT_TO_PLANE_NONLINEAR
     };
 
-    template<typename PointSource, typename PointTarget, typename Scalar>
-    Eigen::Matrix<double, 6, 6> covariance_from_registration(
-            pcl::Registration<PointSource, PointTarget, Scalar>& registration);
+    enum class PointCovarianceMethod {
+        CONSTANT,
+        VOXEL_SIZE,
+        POINT_FIELD,
+        MATRIX
+    };
+
+    Eigen::Matrix<double, 6, 6> covariance_from_registration(PCLRegistration& registration);
+
+    template<typename Model>
+    void create_covariance_function_bindings(const CovarianceEstimationMethod covariance_estimation_method);
 
     /**
      * @brief Publish the registration-refined transform with covariance
@@ -63,7 +78,7 @@ private:
      * @param pointcloud_msg
      * @param transform_msg
      */
-    void s2s_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
+    void s2s_callback(const PointCloudConstPtr& pointcloud_msg,
             const geometry_msgs::TransformStamped::ConstPtr& transform_msg);
 
     /**
@@ -73,7 +88,7 @@ private:
      *
      * @param msg
      */
-    void s2m_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& msg);
+    void s2m_callback(const PointCloudConstPtr& msg);
 
     /**
      * @brief Convert string to covariance estimation method.
@@ -83,8 +98,6 @@ private:
      */
     CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string) const;
 
-    std::string to_string(const CovarianceEstimationMethod method) const;
-
     /**
      * @brief Convert string to covariance estimation model.
      *
@@ -93,7 +106,19 @@ private:
      */
     CovarianceEstimationModel to_covariance_estimation_model(const std::string& string) const;
 
+    /**
+     * @brief Convert string to point covariance method.
+     *
+     * @param string
+     * @return PointCovarianceMethod
+     */
+    PointCovarianceMethod to_point_covariance_method(const std::string& string) const;
+
+    std::string to_string(const CovarianceEstimationMethod method) const;
+
     std::string to_string(const CovarianceEstimationModel model) const;
+
+    std::string to_string(const PointCovarianceMethod method) const;
 
     //// ROS Communication
     ros::NodeHandle nh;
@@ -105,9 +130,9 @@ private:
     ros::Publisher debug_s2m_transformed_cloud_publisher;
     ros::Publisher debug_s2s_transformed_cloud_alt_publisher;
     ros::Publisher debug_s2m_transformed_cloud_alt_publisher;
-    message_filters::Subscriber<pcl::PointCloud<pcl::PointNormal>> pointcloud_subscriber;
+    message_filters::Subscriber<PointCloud> pointcloud_subscriber;
     message_filters::Subscriber<geometry_msgs::TransformStamped> transform_subscriber;
-    message_filters::TimeSynchronizer<pcl::PointCloud<pcl::PointNormal>, geometry_msgs::TransformStamped> s2s_sync;
+    message_filters::TimeSynchronizer<PointCloud, geometry_msgs::TransformStamped> s2s_sync;
     ros::Subscriber map_subscriber;
 
     // Body frames
@@ -125,6 +150,8 @@ private:
     CovarianceEstimationMethod covariance_estimation_method;
     // Covariance estimation model (for method = <CENSI, LLS>)
     CovarianceEstimationModel covariance_estimation_model;
+    // Point covariance method
+    PointCovarianceMethod point_covariance_method;
     // Constant point variance
     float point_variance;
 
@@ -135,56 +162,29 @@ private:
 
     //// Pointclouds
     // Previous pointcloud for S2S registration
-    pcl::PointCloud<pcl::PointNormal>::ConstPtr previous_pointcloud;
+    PointCloudConstPtr previous_pointcloud;
     // Pointcloud queue for S2M registration
-    std::deque<pcl::PointCloud<pcl::PointNormal>::ConstPtr> s2m_pointclouds;
+    std::deque<PointCloudConstPtr> s2m_pointclouds;
 
     // Scan-to-Scan Registration
-    pcl::Registration<pcl::PointNormal, pcl::PointNormal>::Ptr s2s;
+    PCLRegistrationPtr s2s;
     // Scan-to-Map Registration
-    pcl::Registration<pcl::PointNormal, pcl::PointNormal>::Ptr s2m;
+    PCLRegistrationPtr s2m;
     // Scan-to-Scan Registrations
     std::deque<Eigen::Isometry3d> s2s_registrations;
 
     //// Covariance estimation
-    //  Constant covariance (for method = <CONSTANT>)
-    std::unique_ptr<ConstantCovariance> constant_covariance;
-    // Covariance estimator (for method = <CENSI, LLS>)
-    std::unique_ptr<CorrespondenceRegistrationCovarianceEstimator<pcl::PointNormal, pcl::PointNormal>>
-            covariance_estimator;
+    // Constant covariance (for method = <CONSTANT>)
+    Eigen::Matrix<double, 6, 6> constant_covariance;
+    // // Covariance estimators (for method = <CENSI, LLS>)
+    typename Eigen::Matrix<double, 6, 6> (*point_variance_covariance)(PCLRegistration& registration,
+            const double point_variance, int& correspondence_count);
+    typename Eigen::Matrix<double, 6, 6> (
+            *point_field_covariance)(PCLRegistration& registration, int& correspondence_count);
 };
 
-template<typename PointSource, typename PointTarget, typename Scalar>
-Eigen::Matrix<double, 6, 6> Registration::covariance_from_registration(
-        pcl::Registration<PointSource, PointTarget, Scalar>& registration) {
-    ROS_WARN_ONCE("DESIGN DECISION: Could use registration.getFitnessScore() in registration covariance?");
-
-    // Covariance estimation
-    ros::WallTime tic = ros::WallTime::now();
-    Eigen::Matrix<double, 6, 6> covariance;
-    switch (covariance_estimation_method) {
-        case CONSTANT:
-            covariance = constant_covariance->covariance();
-            break;
-        case CENSI:
-            covariance = covariance_estimator->censi_covariance(registration, point_variance);
-            break;
-        case LLS:
-            covariance = covariance_estimator->lls_covariance(registration, point_variance);
-            break;
-        default:
-            throw std::runtime_error("Covariance estimation method not handled.");
-    }
-    ROS_INFO_STREAM("Took " << (ros::WallTime::now() - tic).toSec() << " seconds to compute covariance.");
-
-    // Print additional information
-    if (covariance_estimator != nullptr) {
-        ROS_INFO_STREAM(
-                covariance_estimator->correspondence_count() << " correspondences were used in covariance estimation");
-    }
-    return covariance;
 }
 
-}
+#include "serpent/impl/registration.hpp"
 
 #endif

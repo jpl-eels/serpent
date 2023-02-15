@@ -1,3 +1,5 @@
+namespace serpent {
+
 template<typename Scalar>
 Eigen::Matrix<Scalar, 3, 1> stereo_backproject(const Eigen::Matrix<Scalar, 3, 1>& stereo_coordinate,
         const Eigen::Matrix<Scalar, 3, 3>& intrinsic, const Scalar baseline) {
@@ -21,4 +23,6 @@ Eigen::Matrix<Scalar, 3, 1> stereo_project(const Eigen::Matrix<Scalar, 3, 1>& po
            Eigen::Matrix<Scalar, 3, 1>{intrinsic(0, 0) * point[0], intrinsic(0, 0) * (point[0] - baseline),
                    intrinsic(1, 1) * point[1]} /
                    point[3];
+}
+
 }

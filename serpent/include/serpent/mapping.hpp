@@ -19,17 +19,28 @@
 
 namespace serpent {
 
+template<typename PointT>
 struct MapFrame {
-    explicit MapFrame(const eigen_ros::PoseStamped& pose, const pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud);
+    using PointCloud = typename pcl::PointCloud<PointT>;
+    using PointCloudPtr = typename PointCloud::Ptr;
+    using PointCloudConstPtr = typename PointCloud::ConstPtr;
+
+    explicit MapFrame(const eigen_ros::PoseStamped& pose, const PointCloudConstPtr pointcloud);
 
     // Origin of pointcloud with respect to the map/world, i.e. T_W^{L_i} where the pointcloud origin is at the lidar
     // frame L_i of this frame
     eigen_ros::PoseStamped pose;
-    pcl::PointCloud<pcl::PointNormal>::ConstPtr pointcloud;
+    PointCloudConstPtr pointcloud;
 };
 
+template<typename PointT>
 class Mapping {
 public:
+    using PointCloud = typename pcl::PointCloud<PointT>;
+    using PointCloudPtr = typename PointCloud::Ptr;
+    using PointCloudConstPtr = typename PointCloud::ConstPtr;
+    using Frame = MapFrame<PointT>;
+
     explicit Mapping();
 
 private:
@@ -38,28 +49,27 @@ private:
      *
      * @param pose_stamped
      * @param pointcloud
-     * @return std::pair<std::map<ros::Time, MapFrame>::iterator, bool>
+     * @return std::pair<std::map<ros::Time, Frame>::iterator, bool>
      */
-    std::pair<std::map<ros::Time, MapFrame>::iterator, bool> add_to_map(const eigen_ros::PoseStamped& pose_stamped,
-            const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud);
+    std::pair<typename std::map<ros::Time, Frame>::iterator, bool> add_to_map(
+            const eigen_ros::PoseStamped& pose_stamped, const PointCloudConstPtr& pointcloud);
 
     /**
      * @brief Generate a concatenated pointcloud consisting of the n last frames in the body frame.
      *
      * @param n
      * @param body_frame
-     * @return pcl::PointCloud<pcl::PointNormal>::Ptr
+     * @return PointCloud::Ptr
      */
-    pcl::PointCloud<pcl::PointNormal>::Ptr extract_past_frames(const std::size_t n,
-            const eigen_ros::PoseStamped& body_frame);
+    PointCloudPtr extract_past_frames(const std::size_t n, const eigen_ros::PoseStamped& body_frame);
 
     /**
      * @brief Shortcut to get the last frame in the map. Assumes map is sorted by timestamp. Throws std::runtime_error
      * if map is empty.
      *
-     * @return const MapFrame&
+     * @return const Frame&
      */
-    const MapFrame& last_frame() const;
+    const Frame& last_frame() const;
 
     /**
      * @brief Correct the map according to a set of previous poses, then incorporate the new pointcloud into the map.
@@ -67,11 +77,11 @@ private:
      * @param pointcloud_msg
      * @param path_changes_msg
      */
-    void map_update_callback(const pcl::PointCloud<pcl::PointNormal>::ConstPtr& pointcloud_msg,
+    void map_update_callback(const PointCloudConstPtr& pointcloud_msg,
             const nav_msgs::Path::ConstPtr& path_changes_msg);
 
     bool publish_map_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
-    
+
     bool publish_pose_graph_service_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
     /**
@@ -90,9 +100,9 @@ private:
     ros::Publisher global_map_publisher;
     ros::Publisher pose_graph_publisher;
 
-    message_filters::Subscriber<pcl::PointCloud<pcl::PointNormal>> pointcloud_subscriber;
+    message_filters::Subscriber<PointCloud> pointcloud_subscriber;
     message_filters::Subscriber<nav_msgs::Path> path_changes_subscriber;
-    message_filters::TimeSynchronizer<pcl::PointCloud<pcl::PointNormal>, nav_msgs::Path> correct_map_sync;
+    message_filters::TimeSynchronizer<PointCloud, nav_msgs::Path> correct_map_sync;
     ros::ServiceServer publish_map_server;
     ros::ServiceServer publish_pose_graph_server;
 
@@ -113,9 +123,11 @@ private:
     std::size_t frame_extraction_number;
 
     // Map
-    std::map<ros::Time, MapFrame> map;
+    std::map<ros::Time, Frame> map;
 };
 
 }
+
+#include "serpent/impl/mapping.hpp"
 
 #endif

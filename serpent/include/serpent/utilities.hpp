@@ -107,8 +107,8 @@ void from_ros(const geometry_msgs::Pose& msg, gtsam::Pose3& pose);
 
 void to_ros(geometry_msgs::Pose& msg, const gtsam::Pose3& pose);
 
-#include "serpent/impl/utilities.hpp"
-
 }
+
+#include "serpent/impl/utilities.hpp"
 
 #endif

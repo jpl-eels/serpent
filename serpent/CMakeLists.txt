@@ -111,14 +111,10 @@ add_library(${LIBRARY} SHARED
     src/pointcloud_covariance_estimator.cpp
     src/pointcloud_filter.cpp
     src/pointcloud_formatter.cpp
-    src/pointcloud_normal_estimation.cpp
     src/graph_manager.cpp
-    src/mapping.cpp
     src/optimisation.cpp
-    src/registration_covariance.cpp
     src/point_types.cpp
     src/registration_methods.cpp
-    src/registration.cpp
     src/sensor_point_types.cpp
     src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp

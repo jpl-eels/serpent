@@ -67,7 +67,7 @@ s2s:
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
     point_covariance: # For method = <CENSI, LLS>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
+      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
       constant: 0.01
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
@@ -113,7 +113,7 @@ s2m:
       rotation: 0.0174533 # 1 deg
       translation: 1.0e-2  # 10 mm
     point_covariance: # For method = <CENSI, LLS>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
+      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
       constant: 0.01
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt

@@ -36,8 +36,8 @@ template<typename Scalar>
 Eigen::Matrix<Scalar, 3, 1> stereo_project(const Eigen::Matrix<Scalar, 3, 1>& point,
         const Eigen::Matrix<Scalar, 3, 3>& intrinsic, const Scalar baseline);
 
-#include "serpent/impl/stereo_equations.hpp"
-
 }
+
+#include "serpent/impl/stereo_equations.hpp"
 
 #endif

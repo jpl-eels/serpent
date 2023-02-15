@@ -1,3 +1,6 @@
+#ifndef SERPENT_POINTCLOUD_COVARIANCE_ESTIMATOR_HPP
+#define SERPENT_POINTCLOUD_COVARIANCE_ESTIMATOR_HPP
+
 #include <pcl/PCLPointCloud2.h>
 #include <ros/ros.h>
 
@@ -35,3 +38,5 @@ private:
 };
 
 }
+
+#endif
