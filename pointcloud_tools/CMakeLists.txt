@@ -27,7 +27,7 @@ generate_messages(
     # DEPENDENCIES
 )
 
-set(LIBRARY_NAME ${PROJECT_NAME})
+set(LIBRARY ${PROJECT_NAME})
 
 catkin_package(
     INCLUDE_DIRS
@@ -43,7 +43,7 @@ catkin_package(
         eigen_ext
         eigen_ros
         statistics_msgs
-    LIBRARIES ${LIBRARY_NAME}
+    LIBRARIES ${LIBRARY}
     DEPENDS
         PCL
 )
@@ -63,30 +63,33 @@ set(LIBRARIES
 )
 
 # Library
-add_library(${LIBRARY_NAME}
+add_library(${LIBRARY}
     src/pclpointcloud2_covariance.cpp
     src/pclpointcloud2_utilities.cpp
+    src/point_types.cpp
 )
 
-add_dependencies(${LIBRARY_NAME}
+add_dependencies(${LIBRARY}
     ${catkin_EXPORTED_TARGETS}
 )
 
-target_include_directories(${LIBRARY_NAME} PUBLIC SYSTEM
+target_include_directories(${LIBRARY} PUBLIC SYSTEM
     ${SYSTEM_INCLUDE_DIRS}
 )
 
-target_include_directories(${LIBRARY_NAME} PUBLIC
+target_include_directories(${LIBRARY} PUBLIC
     ${INCLUDE_DIRS}
 )
 
-target_link_libraries(${LIBRARY_NAME}
+target_link_libraries(${LIBRARY}
     ${LIBRARIES}
 )
 
 set(LIBRARIES ${LIBRARIES}
-    ${LIBRARY_NAME}
+    ${LIBRARY}
 )
+
+target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
 
 # File converter
 add_executable(pointcloud_file_converter
