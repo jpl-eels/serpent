@@ -79,7 +79,6 @@ Registration<PointT>::Registration()
 
     // Configuration
     nh.param<bool>("s2m/enabled", s2m_enabled, true);
-    const std::string scan_label = s2m_enabled ? "s2m" : "s2s";
 
     // Create registration methods
     s2s = registration_method<PointT, PointT>(nh, "s2s/");
@@ -89,17 +88,17 @@ Registration<PointT>::Registration()
 
     // Covariance estimation configuration
     covariance_estimation_method =
-            to_covariance_estimation_method(nh.param<std::string>(scan_label + "/covariance/method", "CENSI"));
+            to_covariance_estimation_method(nh.param<std::string>("registration_covariance/method", "CENSI"));
     ROS_INFO_STREAM("Using registration covariance estimation method: " << to_string(covariance_estimation_method));
     if (covariance_estimation_method == CovarianceEstimationMethod::CONSTANT) {
-        const double rotation_noise = nh.param<double>(scan_label + "/covariance/constant/rotation", 0.0174533);
-        const double translation_noise = nh.param<double>(scan_label + "/covariance/constant/translation", 1.0e-2);
+        const double rotation_noise = nh.param<double>("registration_covariance/constant/rotation", 0.0174533);
+        const double translation_noise = nh.param<double>("registration_covariance/constant/translation", 1.0e-2);
         constant_covariance << Eigen::Matrix<double, 3, 3>::Identity() * rotation_noise * rotation_noise,
                 Eigen::Matrix<double, 3, 3>::Zero(), Eigen::Matrix<double, 3, 3>::Zero(),
                 Eigen::Matrix<double, 3, 3>::Identity() * translation_noise * translation_noise;
     } else {
         covariance_estimation_model = to_covariance_estimation_model(
-                nh.param<std::string>(scan_label + "/covariance/model", "POINT_TO_PLANE_LINEARISED"));
+                nh.param<std::string>("registration_covariance/model", "POINT_TO_PLANE_LINEARISED"));
         ROS_INFO_STREAM("Using registration covariance estimation model: " << to_string(covariance_estimation_model));
         // Create covariance estimation functions
         switch (covariance_estimation_model) {
@@ -125,13 +124,13 @@ Registration<PointT>::Registration()
 
         // Point covariance method
         point_covariance_method = to_point_covariance_method(
-                nh.param<std::string>(scan_label + "/covariance/point_covariance/method", "VOXEL_SIZE"));
+                nh.param<std::string>("registration_covariance/point_covariance/method", "VOXEL_SIZE"));
         ROS_INFO_STREAM("Using point covariance model: " << to_string(point_covariance_method));
         float point_noise;
         switch (point_covariance_method) {
             case PointCovarianceMethod::CONSTANT:
                 point_variance =
-                        std::pow(nh.param<float>(scan_label + "/covariance/point_covariance/constant", 0.01f), 2.f);
+                        std::pow(nh.param<float>("registration_covariance/point_covariance/constant", 0.01f), 2.f);
                 break;
             case PointCovarianceMethod::VOXEL_SIZE:
                 if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {

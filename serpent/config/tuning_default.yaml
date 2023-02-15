@@ -56,18 +56,21 @@ optimisation:
     registration: true
     stereo: true
 
+# Registration Covariance
+registration_covariance:
+  method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
+  # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
+  #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
+  model: "POINT_TO_PLANE_LINEARISED" 
+  constant: # For method = <CONSTANT>
+    rotation: 0.0174533 # 1 deg
+    translation: 1.0e-2  # 10 mm
+  point_covariance: # For method = <CENSI, LLS>
+    method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
+    constant: 0.01 # For method = <CONSTANT>
+
 # Registration
 s2s:
-    method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
-    # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
-    #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
-    model: "POINT_TO_PLANE_LINEARISED" 
-    constant: # For method = <CONSTANT>
-      rotation: 0.0174533 # 1 deg
-      translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <CENSI, LLS>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
-      constant: 0.01
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
     maximum_iterations: 10
@@ -103,17 +106,6 @@ s2s:
     outlier_ratio: 0.55
 
 s2m:
-  covariance:
-    method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
-    # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
-    #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
-    model: "POINT_TO_PLANE_LINEARISED" 
-    constant: # For method = <CONSTANT>
-      rotation: 0.0174533 # 1 deg
-      translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <CENSI, LLS>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
-      constant: 0.01
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
