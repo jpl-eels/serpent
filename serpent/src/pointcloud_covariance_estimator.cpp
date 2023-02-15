@@ -37,17 +37,17 @@ PointcloudCovarianceEstimator::PointcloudCovarianceEstimator()
     nh.param<float>("covariance_estimation/range_bias_noise", range_bias_noise, 0.01f);
 
     // Check validity
-    if (is_point_field_method(method) && nh.param<bool>("voxel_grid_filter/enabled", true)) {
+    if (is_point_field_method(method) && nh.param<bool>("voxel_grid_filter/enabled", false)) {
         ROS_ERROR("VoxelGrid downsampling enabled with covariance as a point field in the point cloud. The covariance "
                   "will be invalid.");
     }
 
     // Input topic
-    const bool filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", true) ||
+    const bool filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", false) ||
                                 nh.param<bool>("body_filter/enabled", false) ||
-                                nh.param<bool>("range_filter/enabled", false) ||
+                                nh.param<bool>("range_filter/enabled", true) ||
                                 nh.param<bool>("statistical_outlier_removal/enabled", false) ||
-                                nh.param<bool>("random_sample_filter/enabled", false);
+                                nh.param<bool>("random_sample_filter/enabled", true);
     const std::string input_topic = filter_enabled ? "filter/filtered_pointcloud" : "frontend/deskewed_pointcloud";
 
     // Publisher and subscribers

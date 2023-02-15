@@ -18,11 +18,11 @@ PointcloudNormalEstimation<PointIn, PointOut>::PointcloudNormalEstimation()
     const bool covariance_pointcloud = nh.param<bool>("covariance_estimation/enabled", false) &&
                                        is_point_field_method(to_pointcloud_covariance_estimation_method(
                                                nh.param<std::string>("covariance_estimation/method", "RANGE")));
-    const bool filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", true) ||
+    const bool filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", false) ||
                                 nh.param<bool>("body_filter/enabled", false) ||
-                                nh.param<bool>("range_filter/enabled", false) ||
+                                nh.param<bool>("range_filter/enabled", true) ||
                                 nh.param<bool>("statistical_outlier_removal/enabled", false) ||
-                                nh.param<bool>("random_sample_filter/enabled", false);
+                                nh.param<bool>("random_sample_filter/enabled", true);
     const std::string input_topic =
             covariance_pointcloud ? "covariance_estimator/pointcloud"
                                   : (filter_enabled ? "filter/filtered_pointcloud" : "frontend/deskewed_pointcloud");
