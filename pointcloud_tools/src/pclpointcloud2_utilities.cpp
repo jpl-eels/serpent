@@ -11,15 +11,22 @@ namespace pct {
 
 pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string& name,
         const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count) {
+    return add_fields(src, {name}, datatype, count);
+}
+
+pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector<std::string>& names,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count) {
     pcl::PCLPointCloud2 dest;
     dest.header = src.header;
     dest.height = src.height;
     dest.width = src.width;
     dest.fields = src.fields;
-    dest.fields.emplace_back(pcl::PCLPointField{.name = name,
-            .offset = point_step(dest.fields.back()),
-            .datatype = datatype,
-            .count = count});
+    for (const auto& name : names) {
+        dest.fields.emplace_back(pcl::PCLPointField{.name = name,
+                .offset = point_step(dest.fields.back()),
+                .datatype = datatype,
+                .count = count});
+    }
     dest.is_bigendian = src.is_bigendian;
     dest.point_step = point_step(dest.fields.back());
     dest.row_step = dest.point_step * dest.width;

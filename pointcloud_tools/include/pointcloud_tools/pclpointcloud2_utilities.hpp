@@ -27,6 +27,9 @@ namespace pct {
 pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string& name,
         const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count = 1);
 
+pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector<std::string>& names,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count = 1);
+
 // TODO: generalise this function to other types
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
 
