@@ -28,10 +28,11 @@ int main(int argc, char** argv) {
                 serpent::is_point_field_method(serpent::to_pointcloud_covariance_estimation_method(
                         nh.param<std::string>("covariance_estimation/method", "RANGE")));
         if (covariance_estimator_enabled && point_field_method) {
-            ROS_INFO_STREAM("POINT_FIELD covariance enabled. Building modules with PointNormalCovariance.");
+            ROS_INFO_STREAM("Point field covariance enabled. Building modules with PointNormalCovariance point type.");
             mapping_with_covariance = std::make_unique<serpent::Mapping<PointNormalCovariance>>();
             registration_with_covariance = std::make_unique<serpent::Registration<PointNormalCovariance>>();
         } else {
+            ROS_INFO_STREAM("Point field covariance not enabled. Building modules with pcl::PointNormal point type.");
             mapping = std::make_unique<serpent::Mapping<pcl::PointNormal>>();
             registration = std::make_unique<serpent::Registration<pcl::PointNormal>>();
         }

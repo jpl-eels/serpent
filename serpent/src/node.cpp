@@ -43,12 +43,15 @@ int main(int argc, char** argv) {
             pointcloud_covariance_estimator = std::make_unique<serpent::PointcloudCovarianceEstimator>();
         }
         if (covariance_estimator_enabled && point_field_method) {
-            ROS_INFO_STREAM("POINT_FIELD covariance enabled. Building modules with PointNormalCovariance.");
+            ROS_INFO_STREAM("Point field covariance enabled. Building modules with PointCovariance and "
+                            "PointNormalCovariance point types.");
             normal_estimation_with_covariance =
                     std::make_unique<serpent::PointcloudNormalEstimation<PointCovariance, PointNormalCovariance>>();
             mapping_with_covariance = std::make_unique<serpent::Mapping<PointNormalCovariance>>();
             registration_with_covariance = std::make_unique<serpent::Registration<PointNormalCovariance>>();
         } else {
+            ROS_INFO_STREAM("Point field covariance not enabled. Building modules with pcl::PointXYZ and "
+                            "pcl::PointNormal point types.");
             normal_estimation =
                     std::make_unique<serpent::PointcloudNormalEstimation<pcl::PointXYZ, pcl::PointNormal>>();
             mapping = std::make_unique<serpent::Mapping<pcl::PointNormal>>();
