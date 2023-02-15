@@ -1,0 +1,32 @@
+<launch>
+    <arg name="robot_file"                      default="$(find serpent)/config/robot_default.yaml"/>
+    <arg name="mission_file"                    default="$(find serpent)/config/mission_default.yaml"/>
+    <arg name="filter_file"                     default="$(find serpent)/config/filter_default.yaml"/>
+    <arg name="format_file"                     default="$(find serpent)/config/format_default.yaml"/>
+    <arg name="normal_estimation_file"          default="$(find serpent)/config/normal_estimation_default.yaml"/>
+    <arg name="covariance_estimation_file"      default="$(find serpent)/config/covariance_estimation_default.yaml"/>
+    <arg name="tuning_file"                     default="$(find serpent)/config/tuning_default.yaml"/>
+    <arg name="debug_file"                      default="$(find serpent)/config/debug_default.yaml"/>
+    <arg name="threads"                         default="4"/>
+
+    <!-- Robot -->
+    <rosparam ns="serpent" if="$(eval robot_file != '')"                 file="$(arg robot_file)"/>
+    <!-- Mission -->
+    <rosparam ns="serpent" if="$(eval mission_file != '')"               file="$(arg mission_file)"/>
+    <!-- Filter -->
+    <rosparam ns="serpent" if="$(eval filter_file != '')"                file="$(arg filter_file)"/>
+    <!-- Format -->
+    <rosparam ns="serpent" if="$(eval format_file != '')"                file="$(arg format_file)"/>
+    <!-- Normal Estimation -->
+    <rosparam ns="serpent" if="$(eval normal_estimation_file != '')"     file="$(arg normal_estimation_file)"/>
+    <!-- Covariance Estimation -->
+    <rosparam ns="serpent" if="$(eval covariance_estimation_file != '')" file="$(arg covariance_estimation_file)"/>
+    <!-- Tuning -->
+    <rosparam ns="serpent" if="$(eval tuning_file != '')"                file="$(arg tuning_file)"/>
+    <!-- Debug -->
+    <rosparam ns="serpent" if="$(eval debug_file != '')"                 file="$(arg debug_file)"/>
+    <!-- Other Parameters -->
+    <rosparam ns="serpent" subst_value="true">
+        threads: $(arg threads)
+    </rosparam>
+</launch>
