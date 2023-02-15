@@ -156,3 +156,30 @@ target_include_directories(compute_distances PUBLIC
 target_link_libraries(compute_distances
     ${LIBRARIES}
 )
+
+# Testing
+if(CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(test_${PROJECT_NAME}
+        test/main.cpp
+        test/pclpointcloud2_utilities.cpp
+        test/src/test_instances.cpp
+    )
+    target_include_directories(test_${PROJECT_NAME} SYSTEM PUBLIC
+        ${SYSTEM_INCLUDE_DIRS}
+        ${catkin_INCLUDE_DIRS}
+    )
+    target_include_directories(test_${PROJECT_NAME} PUBLIC
+        include
+        test/include
+    )
+    target_link_libraries(test_${PROJECT_NAME}
+        ${SYSTEM_LIBRARIES}
+        ${catkin_LIBRARIES}
+        ${LIBRARY}
+    )
+    set_target_properties(test_${PROJECT_NAME}
+        PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+    )
+endif(CATKIN_ENABLE_TESTING)
