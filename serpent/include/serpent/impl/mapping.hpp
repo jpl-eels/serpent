@@ -73,7 +73,7 @@ typename Mapping<PointT>::PointCloudPtr Mapping<PointT>::extract_past_frames(con
         Eigen::Isometry3d transform = body_frame_inv * to_transform(it->second.pose.data);
         auto pointcloud_i = boost::make_shared<PointCloud>();
         // p_{L_{i-1}} = T_{L_{i-1}}^{L_j} * p_{L_j}
-        transform_pointcloud(*it->second.pointcloud, *pointcloud_i, transform.matrix());
+        transform_pointcloud(*it->second.pointcloud, *pointcloud_i, transform);
         *pointcloud += *pointcloud_i;
         if (++it == map.rend()) {
             break;
@@ -173,8 +173,7 @@ bool Mapping<PointT>::publish_map_service_callback(std_srvs::Empty::Request&, st
             const auto& map_frame = map_frame_pair.second;
             auto pointcloud_i = boost::make_shared<PointCloud>();
             // p_W = T_W^{L_i} * p_{L_i}
-            transform_pointcloud(*map_frame.pointcloud, *pointcloud_i,
-                    eigen_ros::to_transform(map_frame.pose.data).matrix());
+            transform_pointcloud(*map_frame.pointcloud, *pointcloud_i, eigen_ros::to_transform(map_frame.pose.data));
             *pointcloud += *pointcloud_i;
         }
     }
