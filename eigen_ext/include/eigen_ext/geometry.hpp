@@ -142,6 +142,33 @@ Eigen::Transform<Scalar, Dim, Eigen::Isometry> relative_transform(
         const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_1,
         const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_2);
 
+/**
+ * @brief Rotate the covariance of an R^3 point. Since points are simply vectors, the application of a rotation matrix
+ * means that the returned matrix is R*C*R^T, derived from the definition of variance.
+ * 
+ * @tparam Derived matrix type, e.g. Eigen::Matrix3d
+ * @param covariance point covariance before rotation
+ * @param rotation rotation to apply
+ * @return Derived point covariatnce after rotation
+ */
+template<typename Derived>
+Derived rotate_point_covariance(const Eigen::MatrixBase<Derived>& covariance,
+        const Eigen::MatrixBase<Derived>& rotation);
+
+/**
+ * @brief Convenience function for rotate_point_covariance(), where rotation can be any rotation type, such as a
+ * Quaternion or AngleAxis object.
+ * 
+ * @tparam Derived 
+ * @param covariance 
+ * @param rotation 
+ * @return Eigen::Matrix<typename Derived::Scalar, 3, 3> 
+ */
+template<typename Derived>
+Eigen::Matrix<typename Derived::Scalar, 3, 3> rotate_point_covariance(
+        const Eigen::Matrix<typename Derived::Scalar, 3, 3>& covariance,
+        const Eigen::RotationBase<Derived, 3>& rotation);
+
 template<typename Scalar, int Dim>
 Eigen::Transform<Scalar, Dim, Eigen::Isometry> to_transform(const Eigen::Translation<Scalar, Dim>& t,
         const Eigen::Quaternion<Scalar>& q);
@@ -245,6 +272,19 @@ Eigen::Transform<Scalar, Dim, Eigen::Isometry> relative_transform(
         const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_1,
         const typename Eigen::Transform<Scalar, Dim, Eigen::Isometry>& pose_2) {
     return pose_1.inverse() * pose_2;
+}
+
+template<typename Derived>
+Derived rotate_point_covariance(const Eigen::MatrixBase<Derived>& covariance,
+        const Eigen::MatrixBase<Derived>& rotation) {
+    return rotation * covariance * rotation.transpose();
+}
+
+template<typename Derived>
+Eigen::Matrix<typename Derived::Scalar, 3, 3> rotate_point_covariance(
+        const Eigen::Matrix<typename Derived::Scalar, 3, 3>& covariance,
+        const Eigen::RotationBase<Derived, 3>& rotation) {
+    return rotate_point_covariance(covariance, rotation.toRotationMatrix());
 }
 
 template<typename Scalar, int Dim>
