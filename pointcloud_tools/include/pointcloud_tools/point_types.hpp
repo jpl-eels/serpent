@@ -6,7 +6,7 @@
 
 #define ADD_COVARIANCE   \
     ADD_COVARIANCE_UNION \
-    ADD_EIGEN_MAPS_COVARIANCE
+    ADD_EIGEN_COVARIANCE_FUNCTIONS
 
 #define ADD_COVARIANCE_UNION     \
     union EIGEN_ALIGN16 {        \
@@ -21,8 +21,8 @@
         };                       \
     };
 
-#define ADD_EIGEN_MAPS_COVARIANCE                                                                               \
-    inline Eigen::Matrix3f getCovarianceMatrix() {                                                              \
+#define ADD_EIGEN_COVARIANCE_FUNCTIONS                                                                          \
+    inline Eigen::Matrix3f getCovarianceMatrix() const {                                                        \
         Eigen::Matrix3f covariance;                                                                             \
         covariance << covariance_xx, covariance_xy, covariance_xz, covariance_xy, covariance_yy, covariance_yz, \
                 covariance_xz, covariance_yz, covariance_zz;                                                    \
@@ -33,6 +33,14 @@
     }                                                                                                           \
     inline const Eigen::Map<const Eigen::Matrix<float, 6, 1>> getCovarianceVector6fMap() const {                \
         return (Eigen::Matrix<float, 6, 1>::Map(covariance));                                                   \
+    }                                                                                                           \
+    inline void setCovariance(const Eigen::Matrix3f& matrix) {                                                  \
+        covariance_xx = matrix(0, 0);                                                                           \
+        covariance_xy = matrix(0, 1);                                                                           \
+        covariance_xz = matrix(0, 2);                                                                           \
+        covariance_yy = matrix(1, 1);                                                                           \
+        covariance_yz = matrix(1, 2);                                                                           \
+        covariance_zz = matrix(2, 2);                                                                           \
     }
 
 // Follow the conventions of the point types as in pcl/point_types.hpp.
