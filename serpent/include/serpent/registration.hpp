@@ -35,6 +35,11 @@ public:
     explicit Registration();
 
 private:
+    using PointVarianceCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
+            const double point_variance, int& correspondence_count);
+    using PointFieldCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
+            int& correspondence_count);
+
     enum class CovarianceEstimationMethod {
         CONSTANT,
         CENSI,
@@ -176,11 +181,9 @@ private:
     //// Covariance estimation
     // Constant covariance (for method = <CONSTANT>)
     Eigen::Matrix<double, 6, 6> constant_covariance;
-    // // Covariance estimators (for method = <CENSI, LLS>)
-    typename Eigen::Matrix<double, 6, 6> (*point_variance_covariance)(PCLRegistration& registration,
-            const double point_variance, int& correspondence_count);
-    typename Eigen::Matrix<double, 6, 6> (
-            *point_field_covariance)(PCLRegistration& registration, int& correspondence_count);
+    // // Covariance estimation functions (for method = <CENSI, LLS>)
+    PointVarianceCovarianceFunction point_variance_covariance;
+    PointFieldCovarianceFunction point_field_covariance;
 };
 
 }

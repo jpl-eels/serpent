@@ -56,15 +56,15 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
  * pointcloud data.
  *
  * Only usable when PointSource == PointTarget == PointNormalCovariance in Model.
- *
- * @tparam Model
- * @tparam Scalar
- * @tparam Enable
- * @param registration
- * @param correspondence_count
- * @return Eigen::Matrix<double, 6, 6>
+ * 
+ * @tparam Model 
+ * @tparam Scalar 
+ * @tparam int anonymous parameter used for compile-time function selection based on Model point types
+ * @param registration 
+ * @param correspondence_count 
+ * @return Eigen::Matrix<double, 6, 6> 
  */
-template<typename Model, typename Scalar, typename Enable = void>
+template<typename Model, typename Scalar, int>
 Eigen::Matrix<double, 6, 6> censi_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         int& correspondence_count);

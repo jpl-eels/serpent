@@ -1,7 +1,8 @@
 namespace serpent {
 
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> censi_covariance(typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+Eigen::Matrix<double, 6, 6> censi_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count) {
     // Setup
     eigen_ext::PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
@@ -31,7 +32,9 @@ Eigen::Matrix<double, 6, 6> censi_covariance(typename pcl::Registration<typename
 }
 
 // template<typename Model, typename Scalar>
-template<typename Model, typename Scalar, typename Enable = void>
+template<typename Model, typename Scalar,
+        typename std::enable_if_t<!(std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
+                           std::is_same<typename Model::PointTarget, PointNormalCovariance>::value), int> = 0>
 Eigen::Matrix<double, 6, 6> censi_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         int& correspondence_count) {
@@ -41,8 +44,8 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
 
 // template<typename Model, typename Scalar>
 template<typename Model, typename Scalar,
-        typename std::enable_if<std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
-                                std::is_same<typename Model::PointTarget, PointNormalCovariance>::value>::type>
+        typename std::enable_if_t<std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
+                         std::is_same<typename Model::PointTarget, PointNormalCovariance>::value, int> = 0>
 Eigen::Matrix<double, 6, 6> censi_covariance(
         typename pcl::Registration<PointNormalCovariance, PointNormalCovariance, Scalar>& registration,
         int& correspondence_count) {
@@ -90,7 +93,8 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
 }
 
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> lls_covariance(typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+Eigen::Matrix<double, 6, 6> lls_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count) {
     // Setup
     eigen_ext::PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
