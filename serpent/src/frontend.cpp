@@ -394,7 +394,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             }
             delete_old_measurements(imu_s2s->measurements.front().header.stamp, imu_buffer);
             imu_s2s_publisher.publish(imu_s2s);
-            ROS_INFO_STREAM(
+            ROS_DEBUG_STREAM(
                     "Published IMU measurements from " << imu_s2s->start_timestamp << " to " << imu_s2s->end_timestamp);
         } else {
             // Wait for IMU message after deskew timestamp (for safety, as should already be received).
