@@ -66,7 +66,7 @@ registration_covariance:
     rotation: 0.0174533 # 1 deg
     translation: 1.0e-2  # 10 mm
   point_covariance: # For method = <CENSI, LLS>
-    method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default), POINT_FIELD, MATRIX
+    method: "POINT_FIELD" # Options: CONSTANT, VOXEL_SIZE, POINT_FIELD (default), MATRIX
     constant: 0.01 # For method = <CONSTANT>
 
 # Registration

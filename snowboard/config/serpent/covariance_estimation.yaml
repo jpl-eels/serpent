@@ -1,5 +1,5 @@
 covariance_estimation:
-  enabled: false
+  enabled: true
   method: "RANGE" # Options: RANGE (default), RANGE_BIAS
   range_noise: 0.05
   range_bias_noise: 0.05

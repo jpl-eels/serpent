@@ -124,7 +124,7 @@ Registration<PointT>::Registration()
 
         // Point covariance method
         point_covariance_method = to_point_covariance_method(
-                nh.param<std::string>("registration_covariance/point_covariance/method", "VOXEL_SIZE"));
+                nh.param<std::string>("registration_covariance/point_covariance/method", "POINT_FIELD"));
         ROS_INFO_STREAM("Using point covariance model: " << to_string(point_covariance_method));
         float point_noise;
         switch (point_covariance_method) {
