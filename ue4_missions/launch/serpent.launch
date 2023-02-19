@@ -39,7 +39,6 @@
         <arg name="filter_file"                     value="$(find ue4_missions)/config/serpent/filter.yaml"/>
         <arg name="format_file"                     value="$(find ue4_missions)/config/serpent/format.yaml"/>
         <arg name="normal_estimation_file"          value="$(find ue4_missions)/config/serpent/normal_estimation.yaml"/>
-        <arg name="covariance_estimation_file"      value="$(find ue4_missions)/config/serpent/covariance_estimation.yaml"/>
         <arg name="tuning_file"                     value="$(find ue4_missions)/config/serpent/tuning.yaml"/>
         <arg name="debug_file"                      value="$(find ue4_missions)/config/serpent/debug.yaml"/>
         <arg name="threads"                         value="$(arg threads)"/>

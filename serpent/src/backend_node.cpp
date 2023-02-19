@@ -5,7 +5,6 @@
 
 #include "serpent/mapping.hpp"
 #include "serpent/optimisation.hpp"
-#include "serpent/pointcloud_covariance_estimator.hpp"
 #include "serpent/registration.hpp"
 #include "serpent/stereo_factor_finder.hpp"
 
@@ -18,21 +17,20 @@ int main(int argc, char** argv) {
     eigen_ros::BodyFramesTf body_frames_tf("serpent");
     serpent::Optimisation optimisation;
     std::unique_ptr<serpent::Mapping<pcl::PointNormal>> mapping;
-    std::unique_ptr<serpent::Mapping<PointNormalCovariance>> mapping_with_covariance;
+    std::unique_ptr<serpent::Mapping<PointNormalUnit>> mapping_unit_vectors;
     std::unique_ptr<serpent::Registration<pcl::PointNormal>> registration;
-    std::unique_ptr<serpent::Registration<PointNormalCovariance>> registration_with_covariance;
+    std::unique_ptr<serpent::Registration<PointNormalUnit>> registration_unit_vectors;
     std::unique_ptr<serpent::StereoFactorFinder> stereo_factor_finder;
     if (nh.param<bool>("optimisation/factors/registration", true)) {
-        const bool covariance_estimator_enabled = nh.param<bool>("covariance_estimation/enabled", false);
-        const bool point_field_method =
-                serpent::is_point_field_method(serpent::to_pointcloud_covariance_estimation_method(
-                        nh.param<std::string>("covariance_estimation/method", "RANGE")));
-        if (covariance_estimator_enabled && point_field_method) {
-            ROS_INFO_STREAM("Point field covariance enabled. Building modules with PointNormalCovariance point type.");
-            mapping_with_covariance = std::make_unique<serpent::Mapping<PointNormalCovariance>>();
-            registration_with_covariance = std::make_unique<serpent::Registration<PointNormalCovariance>>();
+        const bool add_unit_vectors =
+                serpent::requires_unit_vectors(nh.param<std::string>("registration_covariance/method", "CENSI"),
+                        nh.param<std::string>("registration_covariance/point_covariance/method", "RANGE"));
+        if (add_unit_vectors) {
+            ROS_INFO_STREAM("Add unit vectors enabled. Building modules with PointNormalUnit type.");
+            mapping_unit_vectors = std::make_unique<serpent::Mapping<PointNormalUnit>>();
+            registration_unit_vectors = std::make_unique<serpent::Registration<PointNormalUnit>>();
         } else {
-            ROS_INFO_STREAM("Point field covariance not enabled. Building modules with pcl::PointNormal point type.");
+            ROS_INFO_STREAM("Add unit vectors not enabled. Building modules with pcl::PointNormal type.");
             mapping = std::make_unique<serpent::Mapping<pcl::PointNormal>>();
             registration = std::make_unique<serpent::Registration<pcl::PointNormal>>();
         }

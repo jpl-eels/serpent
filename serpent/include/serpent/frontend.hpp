@@ -51,6 +51,8 @@ class Frontend {
 public:
     explicit Frontend();
 
+    std::string output_pointcloud_topic() const;
+
 private:
     /**
      * @brief Barometer data callback.

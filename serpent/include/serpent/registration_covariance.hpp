@@ -20,6 +20,42 @@
 
 namespace serpent {
 
+enum class CovarianceEstimationMethod {
+    CONSTANT,
+    CENSI,
+    LLS
+};
+
+enum class CovarianceEstimationModel {
+    POINT_TO_POINT_LINEARISED,
+    POINT_TO_POINT_NONLINEAR,
+    POINT_TO_PLANE_LINEARISED,
+    POINT_TO_PLANE_NONLINEAR
+};
+
+enum class PointCovarianceMethod {
+    CONSTANT,
+    VOXEL_SIZE,
+    RANGE,
+    RANGE_BIAS
+};
+
+bool requires_unit_vectors(const CovarianceEstimationMethod cov_method, const PointCovarianceMethod point_method);
+
+bool requires_unit_vectors(const std::string& cov_method, const std::string& point_method);
+
+CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string);
+
+CovarianceEstimationModel to_covariance_estimation_model(const std::string& string);
+
+PointCovarianceMethod to_point_covariance_method(const std::string& string);
+
+std::string to_string(const CovarianceEstimationMethod method);
+
+std::string to_string(const CovarianceEstimationModel model);
+
+std::string to_string(const PointCovarianceMethod method);
+
 /**
  * @brief Compute the Censi covariance as in censi_covariance(typename pcl::Registration<PointSource, PointTarget,
  * Scalar>&, const std::string&), except here \f$\Sigma_z\f$ is assumed to be a diagonal matrix with point_variance
@@ -33,7 +69,7 @@ namespace serpent {
  * @return Eigen::Matrix<double, 6, 6>
  */
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> censi_covariance(
+Eigen::Matrix<double, 6, 6> censi_iid_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count);
 
@@ -52,29 +88,32 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
  *      \left(\frac{1}{2}\frac{d^2F}{dzdx}\right)^T \left(\frac{1}{2}\frac{d^2F}{dx^2}\right)^{-1}
  * \f]
  *
- * \f$\Sigma_z\f$ is assumed to be a block-diagonal where the 3x3 diagonal blocks are encoded per-point in the
- * pointcloud data.
+ * \f$\Sigma_z\f$ is block-diagonal where the 3x3 diagonal blocks are computed as (\mathbf{\hat{p}} are unit vectors
+ * from sensor origin or each point):
  *
- * Only usable when PointSource == PointTarget == PointNormalCovariance in Model.
- * 
- * @tparam Model 
- * @tparam Scalar 
+ * \f[
+ *  \Sigma_z = \sigma_r^2 \mathbf{\hat{p}}\mathbf{\hat{p}}^T
+ * \f]
+ *
+ * Only usable when Model's PointSource and PointTarget are PointNormalUnit.
+ *
+ * @tparam Model
+ * @tparam Scalar
  * @tparam int anonymous parameter used for compile-time function selection based on Model point types
- * @param registration 
- * @param correspondence_count 
- * @return Eigen::Matrix<double, 6, 6> 
+ * @param registration
+ * @param range_variance \f$\sigma_r^2\f$
+ * @param correspondence_count
+ * @return Eigen::Matrix<double, 6, 6>
  */
 template<typename Model, typename Scalar, int>
-Eigen::Matrix<double, 6, 6> censi_covariance(
+Eigen::Matrix<double, 6, 6> censi_range_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
-        int& correspondence_count);
+        const double range_variance, int& correspondence_count);
 
-template<typename Model, typename Scalar,
-        typename std::enable_if<std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
-                                std::is_same<typename Model::PointTarget, PointNormalCovariance>::value>::type>
-Eigen::Matrix<double, 6, 6> censi_covariance(
-        typename pcl::Registration<PointNormalCovariance, PointNormalCovariance, Scalar>& registration,
-        int& correspondence_count);
+template<typename Model, typename Scalar, int = 0>
+Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+        const double range_variance, const double range_bias_variance, int& correspondence_count);
 
 /**
  * @brief Compute the covariance from the Hessian of the linearised system. This is the linear least squares
@@ -94,7 +133,7 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
  * @return Eigen::Matrix<double, 6, 6>
  */
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> lls_covariance(
+Eigen::Matrix<double, 6, 6> lls_iid_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count);
 

@@ -23,7 +23,7 @@ public:
     using PointCloudIn = typename pcl::PointCloud<PointIn>;
     using PointCloudOut = typename pcl::PointCloud<PointOut>;
 
-    explicit PointcloudNormalEstimation();
+    explicit PointcloudNormalEstimation(const std::string& input_topic = "input/pointcloud");
 
 private:
     void normal_estimation_callback(const pcl::PCLPointCloud2::ConstPtr& msg);

@@ -36,7 +36,6 @@
         <arg name="normal_estimation_file"          value="$(find snowboard)/config/serpent/normal_estimation.yaml"/>
         <arg name="tuning_file"                     value="$(find snowboard)/config/serpent/tuning.yaml"/>
         <arg name="debug_file"                      value="$(find snowboard)/config/serpent/debug.yaml"/>
-        <arg name="covariance_estimation_file"      value="$(find snowboard)/config/serpent/covariance_estimation.yaml"/>
         <arg name="threads"                         value="$(arg threads)"/>
         <arg name="rviz"                            value="false"/>
         <arg name="rqt"                             value="true"/>

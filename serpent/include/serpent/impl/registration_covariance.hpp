@@ -1,7 +1,7 @@
 namespace serpent {
 
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> censi_covariance(
+Eigen::Matrix<double, 6, 6> censi_iid_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count) {
     // Setup
@@ -31,25 +31,27 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
     return point_variance * half_d2F_dx2_inv * (half_d2F_dzdx * half_d2F_dzdx.transpose()) * half_d2F_dx2_inv;
 }
 
-// template<typename Model, typename Scalar>
 template<typename Model, typename Scalar,
-        typename std::enable_if_t<!(std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
-                           std::is_same<typename Model::PointTarget, PointNormalCovariance>::value), int> = 0>
-Eigen::Matrix<double, 6, 6> censi_covariance(
+        std::enable_if_t<!(std::is_same<typename Model::PointSource, PointNormalUnit>::value &&
+                                 std::is_same<typename Model::PointTarget, PointNormalUnit>::value),
+                int> = 0>
+Eigen::Matrix<double, 6, 6> censi_range_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
-        int& correspondence_count) {
-    throw std::runtime_error(
-            "censi_covariance(registration) requires PointSource == PointTarget == serpent::PointNormalCovariance");
+        const double range_variance, int& correspondence_count) {
+    static_assert(std::is_same<typename Model::PointSource, typename Model::PointTarget>::value,
+            "Model point types must be the same.");
+    throw std::runtime_error("censi_range_covariance currently requires PointNormalUnit type.");
 }
 
-// template<typename Model, typename Scalar>
 template<typename Model, typename Scalar,
-        typename std::enable_if_t<std::is_same<typename Model::PointSource, PointNormalCovariance>::value &&
-                         std::is_same<typename Model::PointTarget, PointNormalCovariance>::value, int> = 0>
-Eigen::Matrix<double, 6, 6> censi_covariance(
-        typename pcl::Registration<PointNormalCovariance, PointNormalCovariance, Scalar>& registration,
-        int& correspondence_count) {
-    // Setup
+        std::enable_if_t<std::is_same<typename Model::PointSource, PointNormalUnit>::value &&
+                                 std::is_same<typename Model::PointTarget, PointNormalUnit>::value,
+                int> = 0>
+Eigen::Matrix<double, 6, 6> censi_range_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+        const double range_variance, int& correspondence_count) {
+    static_assert(std::is_same<typename Model::PointSource, typename Model::PointTarget>::value,
+            "Model point types must be the same.");
     eigen_ext::PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
     const auto source_cloud = registration.getInputSource();
     const auto target_cloud = registration.getInputTarget();
@@ -58,17 +60,19 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
     const auto correspondences = pct::compute_registration_correspondences(registration);
     correspondence_count = correspondences->size();
 
-    auto fill_sparse_matrix = [](Eigen::SparseMatrix<double>& matrix, const int index,
-                                      const PointNormalCovariance& point) {
-        matrix.insert(index, index) = point.covariance_xx;
-        matrix.insert(index, index + 1) = point.covariance_xy;
-        matrix.insert(index, index + 2) = point.covariance_xz;
-        matrix.insert(index + 1, index) = point.covariance_xy;
-        matrix.insert(index + 1, index + 1) = point.covariance_yy;
-        matrix.insert(index + 1, index + 2) = point.covariance_yz;
-        matrix.insert(index + 2, index) = point.covariance_xz;
-        matrix.insert(index + 2, index + 1) = point.covariance_yz;
-        matrix.insert(index + 2, index + 2) = point.covariance_zz;
+    // Helper functions
+    auto source_point_outer_product = [](const typename Model::PointSource& p) {
+        return p.getUnitVector3fMap() * p.getUnitVector3fMap().transpose();
+    };
+    auto target_point_outer_product = [](const typename Model::PointTarget& p) {
+        return p.getUnitVector3fMap() * p.getUnitVector3fMap().transpose();
+    };
+    auto fill_sparse_matrix = [](Eigen::SparseMatrix<double>& sm, const int index, const Eigen::Matrix3f& m) {
+        for (int r = 0; r < 3; ++r) {
+            for (int c = 0; c < 3; ++c) {
+                sm.insert(index + r, index + c) = m(r, c);
+            }
+        }
     };
 
     // Interate over correspondences to build half d2F_dx2 (hessian) and d2F_dzdx
@@ -78,22 +82,31 @@ Eigen::Matrix<double, 6, 6> censi_covariance(
     Sigma_z.reserve(Eigen::VectorXi::Constant(6 * correspondences->size(), 3));  // reserve 3 non-zero per column
     for (std::size_t i = 0; i < correspondences->size(); ++i) {
         const auto& correspondence = (*correspondences)[i];
-        const PointNormalCovariance& source_point = source_cloud->at(correspondence.index_query);
-        const PointNormalCovariance& target_point = target_cloud->at(correspondence.index_match);
+        const typename Model::PointSource& source_point = source_cloud->at(correspondence.index_query);
+        const typename Model::PointTarget& target_point = target_cloud->at(correspondence.index_match);
         Eigen::Matrix<double, 6, 6> half_d2F_dx2_i, half_d2F_dzdx_i;
         Model::process_correspondence(source_point, target_point, tf, half_d2F_dx2_i, half_d2F_dzdx_i);
         half_d2F_dx2 += half_d2F_dx2_i;
         half_d2F_dzdx.block(0, 6 * i, 6, 6) = half_d2F_dzdx_i;
-        fill_sparse_matrix(Sigma_z, i * 6, source_point);
-        fill_sparse_matrix(Sigma_z, i * 6 + 3, target_point);
+        const Eigen::Matrix3f source_point_cov = range_variance * source_point_outer_product(source_point);
+        const Eigen::Matrix3f target_point_cov = range_variance * target_point_outer_product(target_point);
+        fill_sparse_matrix(Sigma_z, i * 6, source_point_cov);
+        fill_sparse_matrix(Sigma_z, i * 6 + 3, target_point_cov);
     }
     const Eigen::Matrix<double, 6, 6> half_d2F_dx2_inv = half_d2F_dx2.inverse();
     // Use brackets to ensure that the (sparse) Nx6K * 6Kx6K * 6KxN multiplication occurs first.
     return half_d2F_dx2_inv * (half_d2F_dzdx * Sigma_z * half_d2F_dzdx.transpose()) * half_d2F_dx2_inv;
 }
 
+template<typename Model, typename Scalar, int = 0>
+Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+        const double range_variance, const double range_bias_variance, int& correspondence_count) {
+    throw std::runtime_error("censi_range_bias_covariance not implemented");
+}
+
 template<typename Model, typename Scalar>
-Eigen::Matrix<double, 6, 6> lls_covariance(
+Eigen::Matrix<double, 6, 6> lls_iid_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double point_variance, int& correspondence_count) {
     // Setup

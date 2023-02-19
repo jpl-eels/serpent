@@ -5,7 +5,6 @@
 #include <eigen_ros/eigen_ros.hpp>
 #include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
-#include "serpent/registration.hpp"
 #include "serpent/registration_methods.hpp"
 #include "serpent/transform_pointcloud.hpp"
 #include "serpent/utilities.hpp"
@@ -17,11 +16,13 @@ template<typename Model>
 void Registration<PointT>::create_covariance_function_bindings(
         const CovarianceEstimationMethod covariance_estimation_method) {
     if (covariance_estimation_method == CovarianceEstimationMethod::CENSI) {
-        point_variance_covariance = &censi_covariance<Model, float>;
-        point_field_covariance = &censi_covariance<Model, float>;
+        point_variance_covariance = &censi_iid_covariance<Model, float>;
+        range_covariance = &censi_range_covariance<Model, float>;
+        range_bias_covariance = &censi_range_bias_covariance<Model, float>;
     } else if (covariance_estimation_method == CovarianceEstimationMethod::LLS) {
-        point_variance_covariance = &lls_covariance<Model, float>;
-        point_field_covariance = nullptr;
+        point_variance_covariance = &lls_iid_covariance<Model, float>;
+        range_covariance = nullptr;
+        range_bias_covariance = nullptr;
     } else {
         throw std::runtime_error("No bindings can be created for covariance_estimation_method.");
     }
@@ -45,11 +46,12 @@ Eigen::Matrix<double, 6, 6> Registration<PointT>::covariance_from_registration(P
                 case PointCovarianceMethod::VOXEL_SIZE:
                     covariance = point_variance_covariance(registration, point_variance, correspondence_count);
                     break;
-                case PointCovarianceMethod::POINT_FIELD:
-                    covariance = point_field_covariance(registration, correspondence_count);
+                case PointCovarianceMethod::RANGE:
+                    covariance = range_covariance(registration, range_variance, correspondence_count);
                     break;
-                case PointCovarianceMethod::MATRIX:
-                    throw std::runtime_error("MATRIX method not yet implemented.");
+                case PointCovarianceMethod::RANGE_BIAS:
+                    covariance = range_bias_covariance(registration, range_variance, range_bias_variance,
+                            correspondence_count);
                 default:
                     throw std::runtime_error("Point covariance method not handled.");
             }
@@ -124,28 +126,45 @@ Registration<PointT>::Registration()
 
         // Point covariance method
         point_covariance_method = to_point_covariance_method(
-                nh.param<std::string>("registration_covariance/point_covariance/method", "POINT_FIELD"));
+                nh.param<std::string>("registration_covariance/point_covariance/method", "RANGE"));
         ROS_INFO_STREAM("Using point covariance model: " << to_string(point_covariance_method));
         float point_noise;
         switch (point_covariance_method) {
             case PointCovarianceMethod::CONSTANT:
                 point_variance =
-                        std::pow(nh.param<float>("registration_covariance/point_covariance/constant", 0.01f), 2.f);
+                        std::pow(nh.param<double>("registration_covariance/point_covariance/constant", 0.05), 2.0);
                 break;
             case PointCovarianceMethod::VOXEL_SIZE:
                 if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {
                     throw std::runtime_error(
                             "point_covariance/method VOXEL_SIZE selected but voxel_grid_filter/enabled was false");
                 }
-                point_variance = std::pow(nh.param<float>("voxel_grid_filter/leaf_size", 0.1f), 2.f);
+                point_variance = std::pow(nh.param<double>("voxel_grid_filter/leaf_size", 0.1), 2.0);
                 break;
-            case PointCovarianceMethod::POINT_FIELD:
+            case PointCovarianceMethod::RANGE_BIAS: {
                 if (covariance_estimation_method == CovarianceEstimationMethod::LLS) {
-                    throw std::runtime_error("PointCovarianceMethod::POINT_FIELD not yet supported for LLS Covariance");
+                    throw std::runtime_error("PointCovarianceMethod::RANGE_BIAS not yet supported for LLS Covariance");
                 }
+                const double range_bias_noise =
+                        nh.param<double>("registration_covariance/point_covariance/range_bias_noise", 0.02);
+                if (range_bias_noise <= 0.0) {
+                    throw std::runtime_error(
+                            "range_bias_noise cannot be <= 0.0. If 0.0 is desired, change method to RANGE.");
+                }
+                range_bias_variance = std::pow(range_bias_noise, 2.0);
+            }  // Fallthrough
+            case PointCovarianceMethod::RANGE: {
+                if (covariance_estimation_method == CovarianceEstimationMethod::LLS) {
+                    throw std::runtime_error("PointCovarianceMethod::RANGE not yet supported for LLS Covariance");
+                }
+                const double range_noise =
+                        nh.param<double>("registration_covariance/point_covariance/range_noise", 0.05);
+                if (range_noise <= 0.0) {
+                    throw std::runtime_error("range_noise cannot be <= 0.0.");
+                }
+                range_variance = std::pow(range_noise, 2.0);
                 break;
-            case PointCovarianceMethod::MATRIX:
-                throw std::runtime_error("MATRIX method not yet implemented");
+            }
             default:
                 throw std::runtime_error("Unrecognised point_covariance_method.");
         }
@@ -343,95 +362,6 @@ void Registration<PointT>::s2m_callback(const PointCloudConstPtr& map) {
     // Publish the refined transform
     publish_refined_transform(s2m_transform, covariance_from_registration(*s2m),
             pcl_conversions::fromPCL(pointcloud->header.stamp));
-}
-
-template<typename PointT>
-typename Registration<PointT>::CovarianceEstimationMethod Registration<PointT>::to_covariance_estimation_method(
-        const std::string& string) const {
-    if (string == "CONSTANT") {
-        return CovarianceEstimationMethod::CONSTANT;
-    } else if (string == "CENSI") {
-        return CovarianceEstimationMethod::CENSI;
-    } else if (string == "LLS") {
-        return CovarianceEstimationMethod::LLS;
-    }
-    throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationMethod");
-}
-
-template<typename PointT>
-typename Registration<PointT>::CovarianceEstimationModel Registration<PointT>::to_covariance_estimation_model(
-        const std::string& string) const {
-    if (string == "POINT_TO_POINT_LINEARISED") {
-        return CovarianceEstimationModel::POINT_TO_POINT_LINEARISED;
-    } else if (string == "POINT_TO_POINT_NONLINEAR") {
-        return CovarianceEstimationModel::POINT_TO_POINT_NONLINEAR;
-    } else if (string == "POINT_TO_PLANE_LINEARISED") {
-        return CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED;
-    } else if (string == "POINT_TO_PLANE_NONLINEAR") {
-        return CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR;
-    }
-    throw std::runtime_error("Could not convert from string \"" + string + "\" to CovarianceEstimationModel");
-}
-
-template<typename PointT>
-typename Registration<PointT>::PointCovarianceMethod Registration<PointT>::to_point_covariance_method(
-        const std::string& string) const {
-    if (string == "CONSTANT") {
-        return PointCovarianceMethod::CONSTANT;
-    } else if (string == "VOXEL_SIZE") {
-        return PointCovarianceMethod::VOXEL_SIZE;
-    } else if (string == "POINT_FIELD") {
-        return PointCovarianceMethod::POINT_FIELD;
-    } else if (string == "MATRIX") {
-        return PointCovarianceMethod::MATRIX;
-    }
-    throw std::runtime_error("Could not convert from string \"" + string + "\" to PointCovarianceMethod");
-}
-
-template<typename PointT>
-std::string Registration<PointT>::to_string(const CovarianceEstimationMethod method) const {
-    switch (method) {
-        case CovarianceEstimationMethod::CONSTANT:
-            return "CONSTANT";
-        case CovarianceEstimationMethod::CENSI:
-            return "CENSI";
-        case CovarianceEstimationMethod::LLS:
-            return "LLS";
-        default:
-            throw std::runtime_error("CovarianceEstimationMethod could not be converted to string.");
-    }
-}
-
-template<typename PointT>
-std::string Registration<PointT>::to_string(const CovarianceEstimationModel model) const {
-    switch (model) {
-        case CovarianceEstimationModel::POINT_TO_POINT_LINEARISED:
-            return "POINT_TO_POINT_LINEARISED";
-        case CovarianceEstimationModel::POINT_TO_POINT_NONLINEAR:
-            return "POINT_TO_POINT_NONLINEAR";
-        case CovarianceEstimationModel::POINT_TO_PLANE_LINEARISED:
-            return "POINT_TO_PLANE_LINEARISED";
-        case CovarianceEstimationModel::POINT_TO_PLANE_NONLINEAR:
-            return "POINT_TO_PLANE_NONLINEAR";
-        default:
-            throw std::runtime_error("CovarianceEstimationModel could not be converted to string.");
-    }
-}
-
-template<typename PointT>
-std::string Registration<PointT>::to_string(const PointCovarianceMethod method) const {
-    switch (method) {
-        case PointCovarianceMethod::CONSTANT:
-            return "CONSTANT";
-        case PointCovarianceMethod::VOXEL_SIZE:
-            return "VOXEL_SIZE";
-        case PointCovarianceMethod::POINT_FIELD:
-            return "POINT_FIELD";
-        case PointCovarianceMethod::MATRIX:
-            return "MATRIX";
-        default:
-            throw std::runtime_error("PointCovarianceMethod could not be converted to string.");
-    }
 }
 
 }

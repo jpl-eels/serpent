@@ -37,28 +37,10 @@ public:
 private:
     using PointVarianceCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
             const double point_variance, int& correspondence_count);
-    using PointFieldCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
-            int& correspondence_count);
-
-    enum class CovarianceEstimationMethod {
-        CONSTANT,
-        CENSI,
-        LLS
-    };
-
-    enum class CovarianceEstimationModel {
-        POINT_TO_POINT_LINEARISED,
-        POINT_TO_POINT_NONLINEAR,
-        POINT_TO_PLANE_LINEARISED,
-        POINT_TO_PLANE_NONLINEAR
-    };
-
-    enum class PointCovarianceMethod {
-        CONSTANT,
-        VOXEL_SIZE,
-        POINT_FIELD,
-        MATRIX
-    };
+    using RangeCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
+            const double range_variance, int& correspondence_count);
+    using RangeBiasCovarianceFunction = typename Eigen::Matrix<double, 6, 6> (*)(PCLRegistration& registration,
+            const double range_variance, const double range_bias_variance, int& correspondence_count);
 
     Eigen::Matrix<double, 6, 6> covariance_from_registration(PCLRegistration& registration);
 
@@ -95,36 +77,6 @@ private:
      */
     void s2m_callback(const PointCloudConstPtr& msg);
 
-    /**
-     * @brief Convert string to covariance estimation method.
-     *
-     * @param string
-     * @return CovarianceEstimationModel
-     */
-    CovarianceEstimationMethod to_covariance_estimation_method(const std::string& string) const;
-
-    /**
-     * @brief Convert string to covariance estimation model.
-     *
-     * @param string
-     * @return CovarianceEstimationModel
-     */
-    CovarianceEstimationModel to_covariance_estimation_model(const std::string& string) const;
-
-    /**
-     * @brief Convert string to point covariance method.
-     *
-     * @param string
-     * @return PointCovarianceMethod
-     */
-    PointCovarianceMethod to_point_covariance_method(const std::string& string) const;
-
-    std::string to_string(const CovarianceEstimationMethod method) const;
-
-    std::string to_string(const CovarianceEstimationModel model) const;
-
-    std::string to_string(const PointCovarianceMethod method) const;
-
     //// ROS Communication
     ros::NodeHandle nh;
     ros::Publisher refined_transform_publisher;
@@ -158,7 +110,11 @@ private:
     // Point covariance method
     PointCovarianceMethod point_covariance_method;
     // Constant point variance
-    float point_variance;
+    double point_variance;
+    // Range variance
+    double range_variance;
+    // Range bias variance
+    double range_bias_variance;
 
     //// Debug Configuration
     bool check_normals;
@@ -183,7 +139,8 @@ private:
     Eigen::Matrix<double, 6, 6> constant_covariance;
     // // Covariance estimation functions (for method = <CENSI, LLS>)
     PointVarianceCovarianceFunction point_variance_covariance;
-    PointFieldCovarianceFunction point_field_covariance;
+    RangeCovarianceFunction range_covariance;
+    RangeBiasCovarianceFunction range_bias_covariance;
 };
 
 }

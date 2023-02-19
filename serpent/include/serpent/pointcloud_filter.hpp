@@ -13,7 +13,9 @@ namespace serpent {
 
 class PointcloudFilter {
 public:
-    explicit PointcloudFilter();
+    explicit PointcloudFilter(std::string input_topic = "input/pointcloud");
+
+    std::string output_topic() const;
 
 private:
     void body_filter_callback(const pcl::PCLPointCloud2::ConstPtr& msg);
@@ -28,6 +30,7 @@ private:
 
     //// ROS Communications
     ros::NodeHandle nh;
+    std::string final_output_topic;
     ros::Publisher body_pointcloud_publisher;
     ros::Publisher random_sample_pointcloud_publisher;
     ros::Publisher range_pointcloud_publisher;

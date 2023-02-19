@@ -7,8 +7,9 @@
 
 namespace serpent {
 
-PointcloudFilter::PointcloudFilter()
-    : nh("serpent") {
+PointcloudFilter::PointcloudFilter(std::string input_topic)
+    : nh("serpent"),
+     final_output_topic("filter/filtered_pointcloud") {
     const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", false);
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", true);
@@ -20,10 +21,6 @@ PointcloudFilter::PointcloudFilter()
                     << (range_filter_enabled ? " ENABLED" : "DISABLED") << "\nSOR REMOVAL   "
                     << (sor_enabled ? " ENABLED" : "DISABLED") << "\nRANDOM SAMPLE "
                     << (random_sample_enabled ? " ENABLED" : "DISABLED"));
-
-    // Trace input topic for next filter
-    std::string input_topic = "frontend/deskewed_pointcloud";
-    const std::string final_output_topic{"filter/filtered_pointcloud"};
 
     // Voxel grid
     voxel_grid_filter.setDownsampleAllData(true);  // Necessary to keep all fields
@@ -100,6 +97,10 @@ PointcloudFilter::PointcloudFilter()
                 nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudFilter::random_sample_callback, this);
         input_topic = random_sample_pointcloud_publisher.getTopic();
     }
+}
+
+std::string PointcloudFilter::output_topic() const {
+    return final_output_topic;
 }
 
 pcl::PCLPointCloud2::Ptr filter(const pcl::PCLPointCloud2::ConstPtr& msg, pcl::Filter<pcl::PCLPointCloud2>& filter) {

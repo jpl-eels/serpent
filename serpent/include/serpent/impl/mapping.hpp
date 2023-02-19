@@ -5,7 +5,6 @@
 #include <eigen_ros/geometry_msgs.hpp>
 
 #include "serpent/PoseGraph.h"
-#include "serpent/mapping.hpp"
 #include "serpent/transform_pointcloud.hpp"
 
 namespace serpent {

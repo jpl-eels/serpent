@@ -1,31 +1,16 @@
-#include "serpent/pointcloud_normal_estimation.hpp"
-
 #include <pcl_ros/point_cloud.h>
 
 #include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
-#include "serpent/pointcloud_covariance_estimator.hpp"
+#include "serpent/registration_covariance.hpp"
 
 namespace serpent {
 
 template<typename PointIn, typename PointOut>
-PointcloudNormalEstimation<PointIn, PointOut>::PointcloudNormalEstimation()
+PointcloudNormalEstimation<PointIn, PointOut>::PointcloudNormalEstimation(const std::string& input_topic)
     : nh("serpent") {
     // Publisher
     normal_pointcloud_publisher = nh.advertise<PointCloudOut>("normal_estimation/pointcloud", 1);
-
-    // Input topic
-    const bool covariance_pointcloud = nh.param<bool>("covariance_estimation/enabled", false) &&
-                                       is_point_field_method(to_pointcloud_covariance_estimation_method(
-                                               nh.param<std::string>("covariance_estimation/method", "RANGE")));
-    const bool filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", false) ||
-                                nh.param<bool>("body_filter/enabled", false) ||
-                                nh.param<bool>("range_filter/enabled", true) ||
-                                nh.param<bool>("statistical_outlier_removal/enabled", false) ||
-                                nh.param<bool>("random_sample_filter/enabled", true);
-    const std::string input_topic =
-            covariance_pointcloud ? "covariance_estimator/pointcloud"
-                                  : (filter_enabled ? "filter/filtered_pointcloud" : "frontend/deskewed_pointcloud");
 
     // Subscriber
     normal_estimation_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
@@ -47,33 +32,35 @@ PointcloudNormalEstimation<PointIn, PointOut>::PointcloudNormalEstimation()
         throw std::runtime_error("Unknown normal estimation method " + ne_method);
     }
 }
+
 /**
  * @brief We are faced with one of two annoying choices here. When PCL converts from pcl::PCLPointCloud2 to
  * pcl::PointCloud<PointT>, it creates a mapping from every type (called a Tag) in PointT and finds a field with the
- * same name in the field list of pcl::PCLPointCloud2. Thus if we lack the normal and curvature fields in 
+ * same name in the field list of pcl::PCLPointCloud2. Thus if we lack the normal and curvature fields in
  * pcl::PCLPointCloud2, PCL will throw an warning every time for each missing field when creating this mapping.
- * 
+ *
  * One solution is to convert to pcl::PointCloud<PointT1> where PointT1 contains the fields in the pcl::PCLPointCloud2
  * that we need, and then compute the normals in a second cloud, pcl::PointCloud<PointT2> which is PointT1 with the
  * inclusion of normals. The disadvantage of this method is that we require PointT1 and PointT2 defined, which may
  * require custom types.
- * 
+ *
  * Another solution is to add more fields for the normals and curvature to the field list ("augmented_msg_fields" below)
  * of the received message and then call:
  *  pcl::MsgFieldMap field_map;
  *  createMapping(const std::vector<pcl::PCLPointField>& augmented_msg_fields, MsgFieldMap& field_map);
  *  fromPCLPointCloud2(const pcl::PCLPointCloud2& in, pcl::PointCloud<PointT>& out, const MsgFieldMap& field_map)
  * The effect of this would be to copy other data into the normal and curvature fields (e.g. the x, y, z, pad data).
- * 
+ *
  * Another solution would be to create a pcl::MsgFieldMap in another way that avoids the warning, however it ought to be
  * done well since pcl's current method does some optimisation for copying adjacent field data.
- * 
- * @tparam PointIn 
- * @tparam PointOut 
- * @param msg 
+ *
+ * @tparam PointIn
+ * @tparam PointOut
+ * @param msg
  */
 template<typename PointIn, typename PointOut>
-void PointcloudNormalEstimation<PointIn, PointOut>::normal_estimation_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
+void PointcloudNormalEstimation<PointIn, PointOut>::normal_estimation_callback(
+        const pcl::PCLPointCloud2::ConstPtr& msg) {
     // Extract fields for normal estimation
     auto pointcloud_in = boost::make_shared<PointCloudIn>();
     pcl::fromPCLPointCloud2(*msg, *pointcloud_in);

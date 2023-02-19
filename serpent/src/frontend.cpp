@@ -143,6 +143,10 @@ Frontend::Frontend()
     }
 }
 
+std::string Frontend::output_pointcloud_topic() const {
+    return deskewed_pointcloud_publisher.getTopic();
+}
+
 void Frontend::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure) {
     std::lock_guard<std::mutex> guard{barometer_data_mutex};
     if (overwrite_barometer_variance) {

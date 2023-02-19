@@ -108,12 +108,13 @@ set(SYSTEM_LIBRARIES
 add_library(${LIBRARY} SHARED
     src/frontend.cpp
     src/match_filters.cpp
-    src/pointcloud_covariance_estimator.cpp
+    src/pointcloud_add_unit_vectors.cpp
     src/pointcloud_filter.cpp
     src/pointcloud_formatter.cpp
     src/graph_manager.cpp
     src/optimisation.cpp
     src/point_types.cpp
+    src/registration_covariance.cpp
     src/registration_methods.cpp
     src/sensor_point_types.cpp
     src/stereo_cost_functions.cpp
