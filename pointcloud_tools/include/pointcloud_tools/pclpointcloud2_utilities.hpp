@@ -30,6 +30,8 @@ pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string&
 pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector<std::string>& names,
         const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count = 1);
 
+pcl::PCLPointCloud2 add_unit_vectors(const pcl::PCLPointCloud2& src);
+
 // TODO: generalise this function to other types
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
 
@@ -62,7 +64,7 @@ bool empty(const pcl::PCLPointCloud2& pointcloud);
 
 /**
  * @brief Given a pointer to the location of field data, and a field type, return the field data cast to a
- * user-specified type.
+ * user-specified type. If one plans to call field_data on many points with the same datatype, use field_data_func.
  *
  * @tparam T
  * @param field_ptr
@@ -71,6 +73,20 @@ bool empty(const pcl::PCLPointCloud2& pointcloud);
  */
 template<typename T>
 T field_data(const std::uint8_t* field_ptr, const std::uint8_t datatype);
+
+template<typename T>
+using FieldDataFunc = T (*)(const std::uint8_t*);
+
+/**
+ * @brief Get a function to convert field data to type T based on a datatype. Use this if you need to get the field data
+ * for many points.
+ *
+ * @tparam T
+ * @param datatype
+ * @return FieldDataFunc<T>
+ */
+template<typename T>
+FieldDataFunc<T> field_data_func(const std::uint8_t datatype);
 
 std::string field_string(const pcl::PCLPointField& field);
 
@@ -173,23 +189,42 @@ T variance(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name)
 
 template<typename T>
 T field_data(const std::uint8_t* field_ptr, const std::uint8_t datatype) {
+    return field_data_func<T>(datatype)(field_ptr);
+}
+
+template<typename T>
+FieldDataFunc<T> field_data_func(const std::uint8_t datatype) {
     switch (datatype) {
-        case pcl::PCLPointField::PointFieldTypes::INT8:
-            return static_cast<T>(*reinterpret_cast<const std::int8_t*>(field_ptr));
-        case pcl::PCLPointField::PointFieldTypes::UINT8:
-            return static_cast<T>(*field_ptr);
-        case pcl::PCLPointField::PointFieldTypes::INT16:
-            return static_cast<T>(*reinterpret_cast<const std::int16_t*>(field_ptr));
-        case pcl::PCLPointField::PointFieldTypes::UINT16:
-            return static_cast<T>(*reinterpret_cast<const std::uint16_t*>(field_ptr));
-        case pcl::PCLPointField::PointFieldTypes::INT32:
-            return static_cast<T>(*reinterpret_cast<const std::int32_t*>(field_ptr));
-        case pcl::PCLPointField::PointFieldTypes::UINT32:
-            return static_cast<T>(*reinterpret_cast<const std::uint32_t*>(field_ptr));
         case pcl::PCLPointField::PointFieldTypes::FLOAT32:
-            return static_cast<T>(*reinterpret_cast<const float*>(field_ptr));
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const float*>(field_ptr));
+            };
         case pcl::PCLPointField::PointFieldTypes::FLOAT64:
-            return static_cast<T>(*reinterpret_cast<const double*>(field_ptr));
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const double*>(field_ptr));
+            };
+        case pcl::PCLPointField::PointFieldTypes::INT8:
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const std::int8_t*>(field_ptr));
+            };
+        case pcl::PCLPointField::PointFieldTypes::UINT8:
+            return [](const std::uint8_t* field_ptr) { return static_cast<T>(*field_ptr); };
+        case pcl::PCLPointField::PointFieldTypes::INT16:
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const std::int16_t*>(field_ptr));
+            };
+        case pcl::PCLPointField::PointFieldTypes::UINT16:
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const std::uint16_t*>(field_ptr));
+            };
+        case pcl::PCLPointField::PointFieldTypes::INT32:
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const std::int32_t*>(field_ptr));
+            };
+        case pcl::PCLPointField::PointFieldTypes::UINT32:
+            return [](const std::uint8_t* field_ptr) {
+                return static_cast<T>(*reinterpret_cast<const std::uint32_t*>(field_ptr));
+            };
         default:
             throw std::runtime_error("datatype not recognised");
     }
@@ -233,8 +268,9 @@ T max(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
         throw std::runtime_error("Pointcloud was empty. Max value does not exist.");
     }
     T max_ = std::numeric_limits<T>::lowest();
+    auto conversion_func = field_data_func<T>(field.datatype);
     for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        max_ = std::max(max_, field_data<T>(&pointcloud.data[i + field.offset], field.datatype));
+        max_ = std::max(max_, conversion_func(&pointcloud.data[i + field.offset]));
     }
     return max_;
 }
@@ -261,8 +297,9 @@ T min(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
         throw std::runtime_error("Pointcloud was empty. Min value does not exist.");
     }
     T min_ = std::numeric_limits<T>::max();
+    auto conversion_func = field_data_func<T>(field.datatype);
     for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        min_ = std::min(min_, field_data<T>(&pointcloud.data[i + field.offset], field.datatype));
+        min_ = std::min(min_, conversion_func(&pointcloud.data[i + field.offset]));
     }
     return min_;
 }
@@ -277,13 +314,14 @@ Eigen::Matrix<T, 3, Eigen::Dynamic> polar_coordinates(const pcl::PCLPointCloud2&
     const pcl::PCLPointField& x_field = get_field(pointcloud, "x");
     const pcl::PCLPointField& y_field = get_field(pointcloud, "y");
     const pcl::PCLPointField& z_field = get_field(pointcloud, "z");
+    auto x_data_func = field_data_func<T>(x_field.datatype);
+    auto y_data_func = field_data_func<T>(y_field.datatype);
+    auto z_data_func = field_data_func<T>(z_field.datatype);
     Eigen::Matrix<T, 3, Eigen::Dynamic> polar_points;
     polar_points.resize(Eigen::NoChange, size_points(pointcloud));
     for (std::size_t i = 0, j = 0; i < pointcloud.data.size(); i += pointcloud.point_step, ++j) {
-        polar_points.col(j) = eigen_ext::cartesian_to_polar<T>(
-                field_data<T>(&pointcloud.data[i + x_field.offset], x_field.datatype),
-                field_data<T>(&pointcloud.data[i + y_field.offset], y_field.datatype),
-                field_data<T>(&pointcloud.data[i + z_field.offset], z_field.datatype));
+        polar_points.col(j) = eigen_ext::cartesian_to_polar<T>(x_data_func(&pointcloud.data[i + x_field.offset]),
+                y_data_func(&pointcloud.data[i + y_field.offset]), z_data_func(&pointcloud.data[i + z_field.offset]));
     }
     return polar_points;
 }
@@ -311,8 +349,9 @@ inline T standard_deviation(const pcl::PCLPointCloud2& pointcloud, const std::st
 template<typename T>
 T sum(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
     T sum_{0};
+    auto conversion_func = field_data_func<T>(field.datatype);
     for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        sum_ += field_data<T>(&pointcloud.data[i + field.offset], field.datatype);
+        sum_ += conversion_func(&pointcloud.data[i + field.offset]);
     }
     return sum_;
 }
@@ -327,13 +366,14 @@ Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors(const pcl::PCLPointCloud2& poin
     const pcl::PCLPointField& x_field = get_field(pointcloud, "x");
     const pcl::PCLPointField& y_field = get_field(pointcloud, "y");
     const pcl::PCLPointField& z_field = get_field(pointcloud, "z");
+    auto x_data_func = field_data_func<T>(x_field.datatype);
+    auto y_data_func = field_data_func<T>(y_field.datatype);
+    auto z_data_func = field_data_func<T>(z_field.datatype);
     Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors;
     unit_vectors.resize(Eigen::NoChange, size_points(pointcloud));
     for (std::size_t i = 0, j = 0; i < pointcloud.data.size(); i += pointcloud.point_step, ++j) {
-        unit_vectors.col(j) = eigen_ext::safe_normalise<T>(
-                field_data<T>(&pointcloud.data[i + x_field.offset], x_field.datatype),
-                field_data<T>(&pointcloud.data[i + y_field.offset], y_field.datatype),
-                field_data<T>(&pointcloud.data[i + z_field.offset], z_field.datatype));
+        unit_vectors.col(j) = eigen_ext::safe_normalise(x_data_func(&pointcloud.data[i + x_field.offset]),
+                y_data_func(&pointcloud.data[i + y_field.offset]), z_data_func(&pointcloud.data[i + z_field.offset]));
     }
     return unit_vectors;
 }
@@ -341,9 +381,9 @@ Eigen::Matrix<T, 3, Eigen::Dynamic> unit_vectors(const pcl::PCLPointCloud2& poin
 template<typename T = double>
 T variance(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const double mean) {
     double square_residuals_sum_{0.0};
+    auto conversion_func = field_data_func<double>(field.datatype);
     for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        const double data = field_data<double>(&pointcloud.data[i + field.offset], field.datatype);
-        square_residuals_sum_ += std::pow(data - mean, 2.0);
+        square_residuals_sum_ += std::pow(conversion_func(&pointcloud.data[i + field.offset]) - mean, 2.0);
     }
     square_residuals_sum_ /= static_cast<double>(size_points(pointcloud));
     return static_cast<T>(square_residuals_sum_);

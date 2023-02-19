@@ -1,5 +1,59 @@
 #include <pointcloud_tools/point_types.hpp>
 
+PointUnit::PointUnit(const _PointUnit& p) {
+    x = p.x;
+    y = p.y;
+    z = p.z;
+    data[3] = 1.0f;
+    ux = p.ux;
+    uy = p.uy;
+    uz = p.uz;
+    data_u[3] = 0.0f;
+}
+
+PointUnit::PointUnit() {
+    x = y = z = 0.0f;
+    data[3] = 1.0f;
+    ux = uy = uz = 0.f;
+    data_u[3] = 0.0f;
+}
+
+std::ostream& operator<<(std::ostream& os, const PointUnit& p) {
+    os << "(" << p.x << "," << p.y << "," << p.z << " - " << p.ux << ", " << p.uy << ", " << p.uz << ")";
+    return (os);
+}
+
+PointNormalUnit::PointNormalUnit(const _PointNormalUnit& p) {
+    x = p.x;
+    y = p.y;
+    z = p.z;
+    data[3] = 1.0f;
+    normal_x = p.normal_x;
+    normal_y = p.normal_y;
+    normal_z = p.normal_z;
+    data_n[3] = 0.0f;
+    curvature = p.curvature;
+    ux = p.ux;
+    uy = p.uy;
+    uz = p.uz;
+    data_u[3] = 0.0f;
+}
+
+PointNormalUnit::PointNormalUnit() {
+    x = y = z = 0.0f;
+    data[3] = 1.0f;
+    normal_x = normal_y = normal_z = data_n[3] = 0.0f;
+    curvature = 0.f;
+    ux = uy = uz = 0.f;
+    data_u[3] = 0.0f;
+}
+
+std::ostream& operator<<(std::ostream& os, const PointNormalUnit& p) {
+    os << "(" << p.x << "," << p.y << "," << p.z << " - " << p.normal[0] << "," << p.normal[1] << "," << p.normal[2]
+       << " - " << p.ux << ", " << p.uy << ", " << p.uz << ")";
+    return (os);
+}
+
 PointCovariance::PointCovariance(const _PointCovariance& p) {
     x = p.x;
     y = p.y;

@@ -38,6 +38,27 @@ pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector
     return dest;
 }
 
+pcl::PCLPointCloud2 add_unit_vectors(const pcl::PCLPointCloud2& src) {
+    pcl::PCLPointCloud2 dest = add_fields(src, {"ux", "uy", "uz"}, pcl::PCLPointField::PointFieldTypes::FLOAT32, 1);
+    const pcl::PCLPointField& x_field = get_field(dest, "x");
+    const pcl::PCLPointField& y_field = get_field(dest, "y");
+    const pcl::PCLPointField& z_field = get_field(dest, "z");
+    auto x_data_func = field_data_func<float>(x_field.datatype);
+    auto y_data_func = field_data_func<float>(y_field.datatype);
+    auto z_data_func = field_data_func<float>(z_field.datatype);
+    const pcl::PCLPointField& ux_field = get_field(dest, "ux");
+    const pcl::PCLPointField& uy_field = get_field(dest, "uy");
+    const pcl::PCLPointField& uz_field = get_field(dest, "uz");
+    for (std::size_t i = 0, j = 0; i < dest.data.size(); i += dest.point_step) {
+        Eigen::Vector3f unit_vector = eigen_ext::safe_normalise(x_data_func(&dest.data[i + x_field.offset]),
+                y_data_func(&dest.data[i + y_field.offset]), z_data_func(&dest.data[i + z_field.offset]));
+        *reinterpret_cast<float*>(&dest.data[i + ux_field.offset]) = unit_vector[0];
+        *reinterpret_cast<float*>(&dest.data[i + uy_field.offset]) = unit_vector[1];
+        *reinterpret_cast<float*>(&dest.data[i + uz_field.offset]) = unit_vector[2];
+    }
+    return dest;
+}
+
 void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
     pcl::PCLPointField& field = get_field(pointcloud, name);
     if (field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
@@ -70,12 +91,14 @@ int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold) 
                 "Expected normal fields to be FLOAT32 but was " + field_type_to_string(normal_x_field.datatype) + ", " +
                 field_type_to_string(normal_y_field.datatype) + ", " + field_type_to_string(normal_z_field.datatype));
     }
+    auto normal_x_data_func = field_data_func<float>(normal_x_field.datatype);
+    auto normal_y_data_func = field_data_func<float>(normal_y_field.datatype);
+    auto normal_z_data_func = field_data_func<float>(normal_z_field.datatype);
     int unnormalised_count{0};
     for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        const float* normal_x = reinterpret_cast<const float*>(&pointcloud.data[i + normal_x_field.offset]);
-        const float* normal_y = reinterpret_cast<const float*>(&pointcloud.data[i + normal_y_field.offset]);
-        const float* normal_z = reinterpret_cast<const float*>(&pointcloud.data[i + normal_z_field.offset]);
-        const Eigen::Vector3f normal{*normal_x, *normal_y, *normal_z};
+        const Eigen::Vector3f normal{normal_x_data_func(&pointcloud.data[i + normal_x_field.offset]),
+                normal_y_data_func(&pointcloud.data[i + normal_y_field.offset]),
+                normal_z_data_func(&pointcloud.data[i + normal_z_field.offset])};
         if (std::abs(normal.norm() - 1.f) > threshold) {
             ++unnormalised_count;
             std::cerr << "Normal (" << normal.norm() << "): " << normal[0] << ", " << normal[1] << ", " << normal[2]
@@ -119,7 +142,7 @@ void deskew(const Eigen::Isometry3d& skew, const double dt, const std::uint64_t 
         dest.row_step = src.row_step;
         dest.data.resize(src.data.size());
         dest.is_dense = src.is_dense;
-        for (std::uint32_t i = 0; i < src.data.size(); i += src.point_step) {
+        for (std::size_t i = 0; i < src.data.size(); i += src.point_step) {
             Eigen::Vector3d p;
             std::array<pcl::PCLPointField, 3> p_fields;
             double t;
@@ -261,6 +284,10 @@ std::string info_string(const pcl::PCLPointCloud2& pointcloud,
 
 std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
     switch (field.datatype) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
+            return std::to_string(max<float>(pointcloud, field));
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return std::to_string(max<double>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(max<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -273,10 +300,6 @@ std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
             return std::to_string(max<std::int32_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT32:
             return std::to_string(max<std::uint32_t>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
-            return std::to_string(max<float>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
-            return std::to_string(max<double>(pointcloud, field));
         default:
             throw std::runtime_error("Failed to get max value string");
     }
@@ -284,6 +307,10 @@ std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
 
 std::string min_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
     switch (field.datatype) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
+            return std::to_string(min<float>(pointcloud, field));
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return std::to_string(min<double>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(min<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -296,10 +323,6 @@ std::string min_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
             return std::to_string(min<std::int32_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT32:
             return std::to_string(min<std::uint32_t>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
-            return std::to_string(min<float>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
-            return std::to_string(min<double>(pointcloud, field));
         default:
             throw std::runtime_error("Failed to get max value string");
     }
