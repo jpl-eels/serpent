@@ -32,7 +32,7 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
-# OpenMP required to compile fast_gicp for PointNormalCovariance point type.
+# OpenMP required to compile fast_gicp for new point types.
 find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
