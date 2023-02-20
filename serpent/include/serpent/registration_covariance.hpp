@@ -110,7 +110,7 @@ Eigen::Matrix<double, 6, 6> censi_range_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double range_variance, int& correspondence_count);
 
-template<typename Model, typename Scalar, int = 0>
+template<typename Model, typename Scalar, int>
 Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double range_variance, const double range_bias_variance, int& correspondence_count);

@@ -61,12 +61,6 @@ Eigen::Matrix<double, 6, 6> censi_range_covariance(
     correspondence_count = correspondences->size();
 
     // Helper functions
-    auto source_point_outer_product = [](const typename Model::PointSource& p) {
-        return p.getUnitVector3fMap() * p.getUnitVector3fMap().transpose();
-    };
-    auto target_point_outer_product = [](const typename Model::PointTarget& p) {
-        return p.getUnitVector3fMap() * p.getUnitVector3fMap().transpose();
-    };
     auto fill_sparse_matrix = [](Eigen::SparseMatrix<double>& sm, const int index, const Eigen::Matrix3f& m) {
         for (int r = 0; r < 3; ++r) {
             for (int c = 0; c < 3; ++c) {
@@ -88,8 +82,8 @@ Eigen::Matrix<double, 6, 6> censi_range_covariance(
         Model::process_correspondence(source_point, target_point, tf, half_d2F_dx2_i, half_d2F_dzdx_i);
         half_d2F_dx2 += half_d2F_dx2_i;
         half_d2F_dzdx.block(0, 6 * i, 6, 6) = half_d2F_dzdx_i;
-        const Eigen::Matrix3f source_point_cov = range_variance * source_point_outer_product(source_point);
-        const Eigen::Matrix3f target_point_cov = range_variance * target_point_outer_product(target_point);
+        const Eigen::Matrix3f source_point_cov = range_variance * source_point.get_unit_outer_product();
+        const Eigen::Matrix3f target_point_cov = range_variance * target_point.get_unit_outer_product();
         fill_sparse_matrix(Sigma_z, i * 6, source_point_cov);
         fill_sparse_matrix(Sigma_z, i * 6 + 3, target_point_cov);
     }
@@ -98,11 +92,63 @@ Eigen::Matrix<double, 6, 6> censi_range_covariance(
     return half_d2F_dx2_inv * (half_d2F_dzdx * Sigma_z * half_d2F_dzdx.transpose()) * half_d2F_dx2_inv;
 }
 
-template<typename Model, typename Scalar, int = 0>
+template<typename Model, typename Scalar,
+        std::enable_if_t<!(std::is_same<typename Model::PointSource, PointNormalUnit>::value &&
+                                 std::is_same<typename Model::PointTarget, PointNormalUnit>::value),
+                int> = 0>
 Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
         typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
         const double range_variance, const double range_bias_variance, int& correspondence_count) {
-    throw std::runtime_error("censi_range_bias_covariance not implemented");
+    static_assert(std::is_same<typename Model::PointSource, typename Model::PointTarget>::value,
+            "Model point types must be the same.");
+    throw std::runtime_error("censi_range_bias_covariance currently requires PointNormalUnit type.");
+}
+
+template<typename Model, typename Scalar,
+        std::enable_if_t<std::is_same<typename Model::PointSource, PointNormalUnit>::value &&
+                                 std::is_same<typename Model::PointTarget, PointNormalUnit>::value,
+                int> = 0>
+Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
+        typename pcl::Registration<typename Model::PointSource, typename Model::PointTarget, Scalar>& registration,
+        const double range_variance, const double range_bias_variance, int& correspondence_count) {
+    static_assert(std::is_same<typename Model::PointSource, typename Model::PointTarget>::value,
+            "Model point types must be the same.");
+    eigen_ext::PrecomputedTransformComponents<double> tf{registration.getFinalTransformation().template cast<double>()};
+    const auto source_cloud = registration.getInputSource();
+    const auto target_cloud = registration.getInputTarget();
+
+    // Compute correspondences
+    const auto correspondences = pct::compute_registration_correspondences(registration);
+    correspondence_count = correspondences->size();
+
+    // Interate over correspondences to build half d2F_dx2 (hessian) and d2F_dzdx
+    Eigen::Matrix<double, 6, 6> half_d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, Eigen::Dynamic> half_d2F_dzdx(6, 6 * correspondences->size());
+    Eigen::Matrix<float, 3, Eigen::Dynamic> unit_vectors(3, 2 * correspondences->size());
+    for (std::size_t i = 0; i < correspondences->size(); ++i) {
+        const auto& correspondence = (*correspondences)[i];
+        const typename Model::PointSource& source_point = source_cloud->at(correspondence.index_query);
+        const typename Model::PointTarget& target_point = target_cloud->at(correspondence.index_match);
+        Eigen::Matrix<double, 6, 6> half_d2F_dx2_i, half_d2F_dzdx_i;
+        Model::process_correspondence(source_point, target_point, tf, half_d2F_dx2_i, half_d2F_dzdx_i);
+        half_d2F_dx2 += half_d2F_dx2_i;
+        half_d2F_dzdx.block(0, 6 * i, 6, 6) = half_d2F_dzdx_i;
+        unit_vectors.col(2 * i) = Eigen::Vector3f{source_point.ux, source_point.uy, source_point.uz};
+        unit_vectors.col(2 * i + 1) = Eigen::Vector3f{target_point.ux, target_point.uy, target_point.uz};
+    }
+    const Eigen::Matrix<double, 6, 6> half_d2F_dx2_inv = half_d2F_dx2.inverse();
+
+    // Construct Sigma_z where the diagonals are multiplied by (range_variance + range_bias_variance), rest by
+    // range_bias_variance. TODO: test speed of alternatives.
+    Eigen::MatrixXd Sigma_z = (unit_vectors * unit_vectors.transpose()).cast<double>();
+    const Eigen::VectorXd diagonal = Sigma_z.diagonal();
+    // or: const Eigen::Diagonal<Eigen::MatrixXd, 0> diagonal = Sigma_z.diagonal();
+    Sigma_z *= range_bias_variance;
+    Sigma_z.diagonal() += range_variance * diagonal;
+    // or: Sigma_z += (range_variance * diagonal).asDiagonal();
+
+    // Use brackets to ensure that the Nx6K * 6Kx6K * 6KxN multiplication occurs first.
+    return half_d2F_dx2_inv * (half_d2F_dzdx * Sigma_z * half_d2F_dzdx.transpose()) * half_d2F_dx2_inv;
 }
 
 template<typename Model, typename Scalar>
