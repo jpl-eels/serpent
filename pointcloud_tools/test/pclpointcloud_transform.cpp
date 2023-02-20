@@ -1,7 +1,8 @@
+#include "pointcloud_tools/pclpointcloud_transform.hpp"
+
 #include <gtest/gtest.h>
 
 #include "eigen_ext/geometry.hpp"
-#include "pointcloud_tools/pclpointcloud_transform.hpp"
 #include "pointcloud_tools/point_types.hpp"
 #include "test_instances.hpp"
 

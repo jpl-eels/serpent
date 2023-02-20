@@ -22,6 +22,14 @@ pcl::PointXYZ test_z(const float z = 0.f);
 
 pcl::PointXYZ test_xyz(const float xyz = 0.f);
 
+pcl::PointNormal test_pn_x(const unsigned int i = 0);
+
+pcl::PointNormal test_pn_y(const unsigned int i = 0);
+
+pcl::PointNormal test_pn_z(const unsigned int i = 0);
+
+pcl::PointNormal test_pn_xyz(const unsigned int i = 0);
+
 PointNormalUnit test_pnu_x(const unsigned int i = 0);
 
 PointNormalUnit test_pnu_y(const unsigned int i = 0);
