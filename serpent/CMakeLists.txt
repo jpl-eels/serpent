@@ -116,6 +116,7 @@ add_library(${LIBRARY} SHARED
     src/point_types.cpp
     src/registration_covariance.cpp
     src/registration_methods.cpp
+    src/ros_conversion.cpp
     src/sensor_point_types.cpp
     src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp

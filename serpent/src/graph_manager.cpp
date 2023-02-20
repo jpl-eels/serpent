@@ -1,7 +1,12 @@
 #include "serpent/graph_manager.hpp"
 
+#if GTSAM_VERSION_NUMERIC >= 40200
+#include <gtsam/navigation/BarometricFactor.h>
+#endif
 #include <gtsam/inference/Symbol.h>
-#include <ros/ros.h>  // TEMPORARY
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/StereoFactor.h>
 
 using gtsam::symbol_shorthand::B;  // IMU Bias       (ax,ay,az,gx,gy,gz)
 using gtsam::symbol_shorthand::P;  // Pressure Bias  (p)
@@ -167,7 +172,6 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
                             body_to_stereo_left_cam);
                     factors__.push_back(stereo_factor);
                     new_factors__.push_back(stereo_factor);
-                    ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ - 1 << ") and S(" << id << ")");
 
                     // Save id
                     ids.emplace_back(id);
@@ -184,7 +188,6 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
                         feature, stereo_noise_model, X(key_), S(id), K, body_to_stereo_left_cam);
                 factors__.push_back(stereo_factor);
                 new_factors__.push_back(stereo_factor);
-                ROS_DEBUG_STREAM("Created stereo factor between X(" << key_ << ") and S(" << id << ")");
             }
         }
     }

@@ -2,6 +2,7 @@
 
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/LossFunctions.h>
+#include <gtsam/slam/StereoFactor.h>
 #include <pcl_ros/point_cloud.h>
 
 #include <eigen_ext/covariance.hpp>
@@ -10,6 +11,7 @@
 #include <eigen_ros/eigen_ros.hpp>
 
 #include "serpent/ImuBiases.h"
+#include "serpent/ros_conversion.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {

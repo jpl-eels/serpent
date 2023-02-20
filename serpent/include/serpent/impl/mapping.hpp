@@ -1,3 +1,6 @@
+#ifndef SERPENT_IMPL_MAPPING_HPP
+#define SERPENT_IMPL_MAPPING_HPP
+
 #include <pcl/common/transforms.h>
 
 #include <cmath>
@@ -5,6 +8,7 @@
 #include <eigen_ros/geometry_msgs.hpp>
 
 #include "serpent/PoseGraph.h"
+#include "serpent/mapping.hpp"
 #include "serpent/transform_pointcloud.hpp"
 
 namespace serpent {
@@ -191,3 +195,5 @@ bool Mapping<PointT>::should_add_to_map(const eigen_ros::Pose& new_frame_pose,
 }
 
 }
+
+#endif

@@ -40,7 +40,7 @@ struct StereoData {
     sensor_msgs::CameraInfoConstPtr left_info;
     sensor_msgs::CameraInfoConstPtr right_info;
 
-    ros::Time timestamp() const {
+    inline ros::Time timestamp() const {
         return left_image->header.stamp;
     }
 };

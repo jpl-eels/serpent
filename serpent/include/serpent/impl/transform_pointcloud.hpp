@@ -1,6 +1,11 @@
+#ifndef SERPENT_IMPL_TRANSFORM_POINTCLOUD_HPP
+#define SERPENT_IMPL_TRANSFORM_POINTCLOUD_HPP
+
 #include <pcl/common/transforms.h>
 
 #include <pointcloud_tools/pclpointcloud_transform.hpp>
+
+#include "serpent/transform_pointcloud.hpp"
 
 namespace serpent {
 
@@ -41,3 +46,5 @@ void transform_pointcloud(const pcl::PointCloud<PointNormalCovariance>& cloud_in
 }
 
 }
+
+#endif

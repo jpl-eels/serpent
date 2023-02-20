@@ -92,21 +92,6 @@ std::string to_flat_string(const typename Eigen::Matrix<Scalar, Size, 1>& vector
 void update_preintegration_params(gtsam::PreintegrationParams& params, const Eigen::Matrix3d& accelerometer_covariance,
         const Eigen::Matrix3d& gyroscope_covariance);
 
-/* Serialisation */
-
-void from_ros(const serpent::ImuBiases& msg, gtsam::imuBias::ConstantBias& imu_biases);
-
-void to_ros(serpent::ImuBiases& msg, const gtsam::imuBias::ConstantBias& imu_biases, const ros::Time& timestamp,
-        const std::string& frame_id = std::string());
-
-void from_ros(const std::vector<sensor_msgs::Imu>& msgs, std::deque<eigen_ros::Imu>& imu_array);
-
-void to_ros(std::vector<sensor_msgs::Imu>& msgs, const std::deque<eigen_ros::Imu>& imu_array);
-
-void from_ros(const geometry_msgs::Pose& msg, gtsam::Pose3& pose);
-
-void to_ros(geometry_msgs::Pose& msg, const gtsam::Pose3& pose);
-
 }
 
 #include "serpent/impl/utilities.hpp"

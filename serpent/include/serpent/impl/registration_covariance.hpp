@@ -1,3 +1,8 @@
+#ifndef SERPENT_IMPL_REGISTRATION_COVARIANCE_HPP
+#define SERPENT_IMPL_REGISTRATION_COVARIANCE_HPP
+
+#include "serpent/registration_covariance.hpp"
+
 namespace serpent {
 
 template<typename Model, typename Scalar>
@@ -4106,3 +4111,5 @@ Eigen::Matrix<double, 6, 6> PointToPlaneIcpLinearisedModel<PointSource, PointTar
 }
 
 }
+
+#endif

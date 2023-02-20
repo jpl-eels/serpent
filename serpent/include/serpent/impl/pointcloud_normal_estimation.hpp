@@ -1,7 +1,11 @@
+#ifndef SERPENT_IMPL_POINTCLOUD_NORMAL_ESTIMATION_HPP
+#define SERPENT_IMPL_POINTCLOUD_NORMAL_ESTIMATION_HPP
+
 #include <pcl_ros/point_cloud.h>
 
 #include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
+#include "serpent/pointcloud_normal_estimation.hpp"
 #include "serpent/registration_covariance.hpp"
 
 namespace serpent {
@@ -76,3 +80,5 @@ void PointcloudNormalEstimation<PointIn, PointOut>::normal_estimation_callback(
 }
 
 }
+
+#endif

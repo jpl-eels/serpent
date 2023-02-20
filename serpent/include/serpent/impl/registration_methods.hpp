@@ -1,3 +1,8 @@
+#ifndef SERPENT_IMPL_REGISTRATION_METHODS_HPP
+#define SERPENT_IMPL_REGISTRATION_METHODS_HPP
+
+#include "serpent/registration_methods.hpp"
+
 namespace serpent {
 
 template<typename PointIn, typename PointOut>
@@ -118,3 +123,5 @@ typename pcl::Registration<PointIn, PointOut>::Ptr registration_method(const ros
 }
 
 }
+
+#endif

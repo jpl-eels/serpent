@@ -1,3 +1,8 @@
+#ifndef SERPENT_IMPL_UTILITIES_HPP
+#define SERPENT_IMPL_UTILITIES_HPP
+
+#include "serpent/utilities.hpp"
+
 namespace serpent {
 
 template<typename Scalar>
@@ -21,3 +26,5 @@ std::string to_flat_string(const typename Eigen::Matrix<Scalar, Size, 1>& vector
 }
 
 }
+
+#endif

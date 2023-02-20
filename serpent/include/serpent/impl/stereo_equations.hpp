@@ -1,3 +1,8 @@
+#ifndef SERPENT_IMPL_STEREO_EQUATIONS_HPP
+#define SERPENT_IMPL_STEREO_EQUATIONS_HPP
+
+#include "serpent/stereo_equations.hpp"
+
 namespace serpent {
 
 template<typename Scalar>
@@ -26,3 +31,5 @@ Eigen::Matrix<Scalar, 3, 1> stereo_project(const Eigen::Matrix<Scalar, 3, 1>& po
 }
 
 }
+
+#endif

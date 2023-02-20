@@ -13,6 +13,7 @@
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
 #include "serpent/ImuArray.h"
+#include "serpent/ros_conversion.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {

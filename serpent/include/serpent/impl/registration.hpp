@@ -1,3 +1,6 @@
+#ifndef SERPENT_IMPL_REGISTRATION_HPP
+#define SERPENT_IMPL_REGISTRATION_HPP
+
 #include <pcl/common/transforms.h>
 
 #include <eigen_ext/covariance.hpp>
@@ -5,6 +8,7 @@
 #include <eigen_ros/eigen_ros.hpp>
 #include <pointcloud_tools/pclpointcloud_utilities.hpp>
 
+#include "serpent/registration.hpp"
 #include "serpent/registration_methods.hpp"
 #include "serpent/transform_pointcloud.hpp"
 #include "serpent/utilities.hpp"
@@ -365,3 +369,5 @@ void Registration<PointT>::s2m_callback(const PointCloudConstPtr& map) {
 }
 
 }
+
+#endif

@@ -2,18 +2,16 @@
 #define SERPENT_GRAPH_MANAGER_HPP
 
 #include <gtsam/base/types.h>
+#include <gtsam/geometry/Cal3_S2Stereo.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/StereoCamera.h>
+#include <gtsam/geometry/StereoPoint2.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#if GTSAM_VERSION_NUMERIC >= 40200
-#include <gtsam/navigation/BarometricFactor.h>
-#endif
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/StereoFactor.h>
 #include <ros/time.h>
 
 #include <deque>
@@ -497,33 +495,8 @@ private:
     int opt_key_;
 };
 
-/* Implementation */
-
-template<typename ValueType>
-void GraphManager::add(const gtsam::Key key_, const ValueType& value_) {
-    values_.insert(key_, value_);
-    new_values_.insert(key_, value_);
 }
 
-template<typename ValueType>
-void GraphManager::set(const gtsam::Key key_, const ValueType& value_) {
-    assert(key_ >= 0);
-    if (values_.exists(key_)) {
-        update(key_, value_);
-    } else {
-        add(key_, value_);
-    }
-}
-
-template<typename ValueType>
-void GraphManager::update(const gtsam::Key key_, const ValueType& value_) {
-    assert(key_ >= 0);
-    values_.update(key_, value_);
-    if (new_values_.exists(key_)) {
-        new_values_.update(key_, value_);
-    }
-}
-
-}
+#include "serpent/impl/graph_manager.hpp"
 
 #endif
