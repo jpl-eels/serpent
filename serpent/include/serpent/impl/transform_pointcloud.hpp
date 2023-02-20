@@ -1,3 +1,5 @@
+#include <pcl/common/transforms.h>
+
 #include <pointcloud_tools/pclpointcloud_transform.hpp>
 
 namespace serpent {
