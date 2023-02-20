@@ -161,6 +161,7 @@ target_link_libraries(compute_distances
 if(CATKIN_ENABLE_TESTING)
     catkin_add_gtest(test_${PROJECT_NAME}
         test/main.cpp
+        test/pclpointcloud_transform.cpp
         test/pclpointcloud2_utilities.cpp
         test/src/test_instances.cpp
     )

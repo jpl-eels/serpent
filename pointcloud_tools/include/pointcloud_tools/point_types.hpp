@@ -23,7 +23,10 @@
     inline pcl::Vector3fMap getUnitVector3fMap() { return (pcl::Vector3fMap(data_u)); }                 \
     inline pcl::Vector3fMapConst getUnitVector3fMap() const { return (pcl::Vector3fMapConst(data_u)); } \
     inline pcl::Vector4fMap getUnitVector4fMap() { return (pcl::Vector4fMap(data_u)); }                 \
-    inline pcl::Vector4fMapConst getUnitVector4fMap() const { return (pcl::Vector4fMapConst(data_u)); }
+    inline pcl::Vector4fMapConst getUnitVector4fMap() const { return (pcl::Vector4fMapConst(data_u)); } \
+    inline Eigen::Matrix3f get_unit_outer_product() const {                                             \
+        return getUnitVector3fMap() * getUnitVector3fMap().transpose();                                 \
+    }
 
 #define ADD_COVARIANCE   \
     ADD_COVARIANCE_UNION \

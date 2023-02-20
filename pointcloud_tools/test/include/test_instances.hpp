@@ -4,6 +4,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "pointcloud_tools/point_types.hpp"
+
 pcl::PCLHeader test_header(const unsigned int i = 0);
 
 template<typename PointT>
@@ -19,6 +21,14 @@ pcl::PointXYZ test_y(const float y = 0.f);
 pcl::PointXYZ test_z(const float z = 0.f);
 
 pcl::PointXYZ test_xyz(const float xyz = 0.f);
+
+PointNormalUnit test_pnu_x(const unsigned int i = 0);
+
+PointNormalUnit test_pnu_y(const unsigned int i = 0);
+
+PointNormalUnit test_pnu_z(const unsigned int i = 0);
+
+PointNormalUnit test_pnu_xyz(const unsigned int i = 0);
 
 /* Implementation */
 
