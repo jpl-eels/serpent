@@ -8,6 +8,50 @@
 #define N (100)
 #define FLOAT_PRECISION (1.e-7f)
 
+TEST(empty, pointxyz) {
+    for (unsigned int i = 0; i < N; ++i) {
+        auto pointcloud = test_empty_pointcloud<pcl::PointXYZ>(i);
+        pcl::PCLPointCloud2 pointcloud2;
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_TRUE(pct::empty(pointcloud2));
+        pointcloud.push_back(test_xyz(static_cast<float>(i)));
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_FALSE(pct::empty(pointcloud2));
+    }
+}
+
+TEST(size_points, pointxyz) {
+    for (unsigned int i = 0; i < N; ++i) {
+        auto pointcloud = test_empty_pointcloud<pcl::PointXYZ>(i);
+        pcl::PCLPointCloud2 pointcloud2;
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pct::size_points(pointcloud2), 0);
+        pointcloud.push_back(test_xyz(static_cast<float>(i)));
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pct::size_points(pointcloud2), 1);
+        pointcloud.push_back(test_xyz(static_cast<float>(i + 1)));
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pct::size_points(pointcloud2), 2);
+    }
+}
+
+TEST(size_bytes, pointxyz) {
+    const std::size_t point_size = 4 * sizeof(float);
+    for (unsigned int i = 0; i < N; ++i) {
+        auto pointcloud = test_empty_pointcloud<pcl::PointXYZ>(i);
+        pcl::PCLPointCloud2 pointcloud2;
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pointcloud2.point_step, point_size);
+        EXPECT_EQ(pct::size_bytes(pointcloud2), 0);
+        pointcloud.push_back(test_xyz(static_cast<float>(i)));
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pct::size_bytes(pointcloud2), 1 * point_size);
+        pointcloud.push_back(test_xyz(static_cast<float>(i + 1)));
+        pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+        EXPECT_EQ(pct::size_bytes(pointcloud2), 2 * point_size);
+    }
+}
+
 TEST(unit_vectors, float_empty) {
     for (unsigned int i = 0; i < N; ++i) {
         Eigen::Matrix<float, 3, Eigen::Dynamic> unit_vectors =
