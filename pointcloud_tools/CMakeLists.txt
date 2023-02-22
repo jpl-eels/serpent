@@ -57,7 +57,7 @@ set(INCLUDE_DIRS
     include
 )
 
-set(LIBRARIES
+set(SYSTEM_LIBRARIES
     ${catkin_LIBRARIES}
     ${PCL_LIBRARIES}
 )
@@ -81,11 +81,13 @@ target_include_directories(${LIBRARY} PUBLIC
 )
 
 target_link_libraries(${LIBRARY}
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
 )
 
-set(LIBRARIES ${LIBRARIES}
-    ${LIBRARY}
+set_target_properties(${LIBRARY}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
 
 target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
@@ -110,7 +112,14 @@ target_include_directories(pointcloud_file_converter PUBLIC
 )
 
 target_link_libraries(pointcloud_file_converter
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
+)
+
+set_target_properties(pointcloud_file_converter
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
 
 # Analyser
@@ -132,7 +141,14 @@ target_include_directories(pointcloud_analyser PUBLIC
 )
 
 target_link_libraries(pointcloud_analyser
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
+)
+
+set_target_properties(pointcloud_analyser
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
 
 # ComputeDistances
@@ -153,7 +169,14 @@ target_include_directories(compute_distances PUBLIC
 )
 
 target_link_libraries(compute_distances
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
+)
+
+set_target_properties(compute_distances
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
 
 # Testing
@@ -175,7 +198,6 @@ if(CATKIN_ENABLE_TESTING)
     )
     target_link_libraries(test_${PROJECT_NAME}
         ${SYSTEM_LIBRARIES}
-        ${catkin_LIBRARIES}
         ${LIBRARY}
     )
     set_target_properties(test_${PROJECT_NAME}
