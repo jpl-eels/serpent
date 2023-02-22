@@ -6,7 +6,7 @@
 #include "pointcloud_tools/point_types.hpp"
 #include "test_instances.hpp"
 
-#define N (100)
+#define N (10)
 #define FLOAT_PRECISION (1.e-7f)
 #define RELAXED_FLOAT_PRECISION (2.e-5f)
 

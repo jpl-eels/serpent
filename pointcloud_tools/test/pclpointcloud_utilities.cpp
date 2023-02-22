@@ -6,6 +6,7 @@
 
 #define N (100)
 #define FLOAT_PRECISION (1.e-7f)
+#define RELAXED_FLOAT_PRECISION (2.e-5f)
 
 TEST(check_normals, empty) {
     for (unsigned int i = 0; i < N; ++i) {

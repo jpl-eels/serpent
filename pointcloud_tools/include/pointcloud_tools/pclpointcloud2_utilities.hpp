@@ -2,6 +2,7 @@
 #define POINTCLOUD_TOOLS_PCLPOINTCLOUD2_UTILITIES_HPP
 
 #include <pcl/PCLPointCloud2.h>
+#include <pcl/point_traits.h>
 #include <statistics_msgs/SummaryStatistics.h>
 #include <statistics_msgs/SummaryStatisticsArray.h>
 
@@ -31,8 +32,28 @@ pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector
 
 pcl::PCLPointCloud2 add_unit_vectors(const pcl::PCLPointCloud2& src);
 
-// TODO: generalise this function to other types
-void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name);
+/**
+ * @brief Cast field from one type to another. Currently the types must be of the same bit depth.
+ *
+ * See also cast_field_with_scale().
+ *
+ * @tparam type
+ * @param pointcloud
+ * @param name
+ */
+template<std::uint8_t type>
+void cast_field(pcl::PCLPointCloud2& pointcloud, const std::string& name);
+
+/**
+ * @brief Cast a field from one type to another with a scale. The scaling is done as a double multiplication.
+ *
+ * @tparam type
+ * @param pointcloud
+ * @param name
+ * @param scale
+ */
+template<std::uint8_t type>
+void cast_field_with_scale(pcl::PCLPointCloud2& pointcloud, const std::string& name, const double scale);
 
 void change_field_name(pcl::PCLPointCloud2& pointcloud, const std::string& from, const std::string& to);
 
@@ -45,6 +66,100 @@ void change_field_name(pcl::PCLPointCloud2& pointcloud, const std::string& from,
  * @return int
  */
 int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold = 0.000001f);
+
+/**
+ * @brief Get a function that will get the data of type T in a pointcloud as type OutT.
+ *
+ * The function returns a lambda with signature (but with by-value capturing):
+ *  `OutT (*)(pcl::PCLPointCloud2& pointcloud, const std::size_t i)`
+ * where:
+ *  - pointcloud is the pointcloud to get the data from
+ *  - i is the index of the point to get
+ *
+ * Example Usage:
+ *      auto get_field_data = pct::create_get_field_data_function<float, float>(field);
+ *      for (std::size_t i = 0; i < pct::size_points(pointcloud); ++i) {
+ *          float f = get_field_data(pointcloud, i);
+ *      }
+ *
+ * @tparam OutT
+ * @tparam T
+ * @tparam int
+ * @param field
+ * @return auto
+ */
+template<typename OutT, typename T, int>
+auto create_get_field_data_function(const pcl::PCLPointField& field);
+
+/**
+ * @brief Get a function that will get the data of runtime type in a pointcloud as type OutT.
+ *
+ * The function returns a lambda with signature (but with by-value capturing):
+ *  `OutT (*)(pcl::PCLPointCloud2& pointcloud, const std::size_t i)`
+ * where:
+ *  - pointcloud is the pointcloud to get the data from
+ *  - i is the index of the point to get
+ *
+ * Example Usage:
+ *      auto get_field_data = pct::create_get_field_data_function<float>(field);
+ *      for (std::size_t i = 0; i < pct::size_points(pointcloud); ++i) {
+ *          float f = get_field_data(pointcloud, i);
+ *      }
+ *
+ * @tparam OutT
+ * @param field
+ * @return auto
+ */
+template<typename OutT>
+auto create_get_field_data_function(const pcl::PCLPointField& field);
+
+/**
+ * @brief Get a function that will set the data of type T in a pointcloud with input data of type InT.
+ *
+ * The function returns a lambda with signature (but with by-value capturing):
+ *  `void (*)(pcl::PCLPointCloud2& pointcloud, const std::size_t i, const InT value)`
+ * where:
+ *  - pointcloud is the pointcloud to be modified
+ *  - i is the index of the point to be modified
+ *  - value is the desired value for the point's field
+ *
+ * Example Usage:
+ *      auto set_field_data = pct::create_set_field_data_function<float, float>(field);
+ *      for (std::size_t i = 0; i < pct::size_points(pointcloud); ++i) {
+ *          set_field_data(pointcloud, i, 5.f);
+ *      }
+ *
+ * @tparam InT
+ * @tparam T
+ * @tparam int
+ * @param field
+ * @return auto
+ */
+template<typename InT, typename T, int>
+auto create_set_field_data_function(const pcl::PCLPointField& field);
+
+/**
+ * @brief Get a function that will set the data of runtime type in a pointcloud with input data of type InT.
+ *
+ * The function returns a lambda with signature (but with by-value capturing):
+ *  `void (*)(pcl::PCLPointCloud2& pointcloud, const std::size_t i, const InT value)`
+ * where:
+ *  - pointcloud is the pointcloud to be modified
+ *  - i is the index of the point to be modified
+ *  - value is the desired value for the point's field
+ *
+ * Example Usage:
+ *      auto set_field_data = pct::create_set_field_data_function<float>(field);
+ *      for (std::size_t i = 0; i < pct::size_points(pointcloud); ++i) {
+ *          set_field_data(pointcloud, i, 5.f);
+ *      }
+ *
+ * @tparam InT
+ * @param field
+ * @return auto
+ */
+template<typename InT>
+auto create_set_field_data_function(const pcl::PCLPointField& field);
 
 /**
  * @brief Deskew a pointcloud to new_time under the assumption that there has been a constant twist applied over a time
@@ -62,30 +177,18 @@ void deskew(const Eigen::Isometry3d& skew, const double dt, const std::uint64_t 
 bool empty(const pcl::PCLPointCloud2& pointcloud);
 
 /**
- * @brief Given a pointer to the location of field data, and a field type, return the field data cast to a
- * user-specified type. If one plans to call field_data on many points with the same datatype, use field_data_func.
+ * @brief Warning: This function should be used for debugging or singular data acquisition. Prefer to access data
+ * through the functions generated by create_get_field_data_function(field), especially if accessing the data of many
+ * points.
  *
- * @tparam T
- * @param field_ptr
- * @param field_type
- * @return T
+ * @tparam OutT
+ * @param pointcloud point cloud
+ * @param field point field
+ * @param i point index
+ * @return OutT
  */
-template<typename T>
-T field_data(const std::uint8_t* field_ptr, const std::uint8_t datatype);
-
-template<typename T>
-using FieldDataFunc = T (*)(const std::uint8_t*);
-
-/**
- * @brief Get a function to convert field data to type T based on a datatype. Use this if you need to get the field data
- * for many points.
- *
- * @tparam T
- * @param datatype
- * @return FieldDataFunc<T>
- */
-template<typename T>
-FieldDataFunc<T> field_data_func(const std::uint8_t datatype);
+template<typename OutT>
+OutT field_data(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const std::size_t i);
 
 std::string field_string(const pcl::PCLPointField& field);
 
@@ -94,6 +197,9 @@ std::string field_type_to_string(const std::uint8_t field_type);
 template<typename T>
 void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const pcl::PCLPointField& field,
         const T max);
+
+template<typename T>
+void filter_max(const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest, const std::string& field_name, const T max);
 
 const pcl::PCLPointField& get_field(const pcl::PCLPointCloud2& pointcloud, const std::string& name);
 
@@ -106,8 +212,33 @@ std::string info_string(const pcl::PCLPointCloud2& pointcloud);
 std::string info_string(const pcl::PCLPointCloud2& pointcloud,
         const std::vector<statistics_msgs::SummaryStatistics>& statistics);
 
-template<typename T>
-bool matches_field_type(const pcl::PCLPointField::PointFieldTypes field_type);
+template<int>
+struct is_8bit_type {};
+template<int>
+struct is_16bit_type {};
+template<int>
+struct is_32bit_type {};
+template<int>
+struct is_64bit_type {};
+
+template<std::uint8_t type>
+bool is_same_bit_depth(const std::uint8_t runtime_type);
+
+bool is_8bit(const pcl::PCLPointField::PointFieldTypes type);
+
+bool is_8bit(const std::uint8_t type);
+
+bool is_16bit(const pcl::PCLPointField::PointFieldTypes type);
+
+bool is_16bit(const std::uint8_t type);
+
+bool is_32bit(const pcl::PCLPointField::PointFieldTypes type);
+
+bool is_32bit(const std::uint8_t type);
+
+bool is_64bit(const pcl::PCLPointField::PointFieldTypes type);
+
+bool is_64bit(const std::uint8_t type);
 
 template<typename T>
 T max(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field);
@@ -131,17 +262,33 @@ T min(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name);
 
 std::string min_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field);
 
-void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field);
-
-void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name);
-
 std::uint32_t point_step(const pcl::PCLPointField& last_field);
+
+void resize(pcl::PCLPointCloud2& pointcloud, const std::uint32_t width, const std::uint32_t height = 1);
+
+std::uint32_t row_step(const pcl::PCLPointCloud2& pointcloud);
 
 template<typename T = float>
 std::vector<Eigen::Matrix<T, 3, 1>> polar_coordinates(const pcl::PCLPointCloud2& pointcloud);
 
-// TODO: generalise to other types
-void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale);
+void scale_field(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const double scale);
+
+void scale_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const double scale);
+
+/**
+ * @brief Warning: This function should be used for debugging or singular data acquisition. Prefer to access data
+ * through the functions generated by create_set_field_data_function(field), especially if accessing the data of many
+ * points.
+ *
+ * @tparam InT
+ * @param pointcloud
+ * @param field
+ * @param i
+ * @param value
+ */
+template<typename InT>
+void set_field_data(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const std::size_t i,
+        const InT value);
 
 std::uint32_t size_bytes(const pcl::PCLPointCloud2& pointcloud);
 
@@ -185,6 +332,12 @@ T variance(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name,
 
 template<typename T = double>
 T variance(const pcl::PCLPointCloud2& pointcloud, const std::string& field_name);
+
+}
+
+namespace pcl {
+
+bool operator==(const pcl::PCLPointField& f1, const pcl::PCLPointField& f2);
 
 }
 
