@@ -58,10 +58,9 @@ Frontend::Frontend()
     // Check base_link frame exists
     if (!body_frames.has_frame("base_link")) {
         throw std::runtime_error(
-                "SERPENT requires base_link frame to be defined in order to publish transforms and "
-                "poses from the map frame to it. A common use case is to set the body_frame_name to base_link, and "
-                "then optionally to set the frame_id also (may differ from \"base_link\"). See README and "
-                "body_frames.hpp documentation.");
+                "SERPENT requires base_link frame to be defined in order to publish transforms and poses from the map "
+                "frame to it. A common use case is to set the body_frame_name to base_link, and then optionally to set "
+                "the frame_id also (may differ from \"base_link\"). See README and body_frames.hpp documentation.");
     }
 
     // Map frame

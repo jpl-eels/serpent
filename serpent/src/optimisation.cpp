@@ -344,7 +344,7 @@ void Optimisation::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr
 
     // Catch zero variance
     if (pressure->variance <= 0.0) {
-        throw std::runtime_error("Barometer variance mut be greater than zero.");
+        throw std::runtime_error("Barometer variance must be greater than zero.");
     }
 
     // Create the barometer factor
@@ -384,7 +384,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     std::deque<eigen_ros::Imu> imu_s2s;
     from_ros(msg->measurements, imu_s2s);
     if (imu_s2s.empty()) {
-        throw std::runtime_error("S2S imu array was empty");
+        throw std::runtime_error("S2S imu array was empty.");
     }
 
     // Wait for imu bias to be optimised (when optimisation has run)

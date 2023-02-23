@@ -27,26 +27,3 @@ pcl::PCLPointField& time_field(pcl::PCLPointCloud2& pointcloud, const SensorType
 }
 
 }
-
-/*
-namespace pcl {
-
-template<>
-void copyPointCloud(const pcl::PointCloud<PointOuster>& src, pcl::PointCloud<PointXYZT>& dest) {
-    dest.header = src.header;
-    dest.resize(src.size());
-    dest.width = src.width;
-    dest.height = src.height;
-    dest.is_dense = src.is_dense;
-    dest.sensor_origin_ = src.sensor_origin_;
-    dest.sensor_orientation_ = src.sensor_orientation_;
-    for (std::size_t i = 0; i < src.size(); ++i) {
-        dest.points[i].x = src.points[i].x;
-        dest.points[i].y = src.points[i].y;
-        dest.points[i].z = src.points[i].z;
-        dest.points[i].t = src.points[i].t;
-    }
-}
-
-}
-*/
