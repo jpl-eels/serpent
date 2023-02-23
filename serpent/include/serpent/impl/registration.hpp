@@ -139,7 +139,7 @@ Registration<PointT>::Registration()
                         std::pow(nh.param<double>("registration_covariance/point_covariance/constant", 0.05), 2.0);
                 break;
             case PointCovarianceMethod::VOXEL_SIZE:
-                if (!nh.param<bool>("voxel_grid_filter/enabled", false)) {
+                if (!nh.param<bool>("voxel_grid_filter/enabled", true)) {
                     throw std::runtime_error(
                             "point_covariance/method VOXEL_SIZE selected but voxel_grid_filter/enabled was false");
                 }

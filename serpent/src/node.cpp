@@ -33,19 +33,17 @@ int main(int argc, char** argv) {
     std::unique_ptr<serpent::Registration<PointNormalUnit>> registration_unit_vectors;
     std::unique_ptr<serpent::StereoFactorFinder> stereo_factor_finder;
     if (nh.param<bool>("optimisation/factors/registration", true)) {
-        const bool voxel_grid_filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", false);
+        const bool voxel_grid_filter_enabled = nh.param<bool>("voxel_grid_filter/enabled", true);
         const bool add_unit_vectors =
                 serpent::requires_unit_vectors(nh.param<std::string>("registration_covariance/method", "CENSI"),
                         nh.param<std::string>("registration_covariance/point_covariance/method", "RANGE"));
-        if (voxel_grid_filter_enabled && add_unit_vectors) {
-            ROS_ERROR("Both the VoxelGrid filter and unit vector addition are enabled, however the unit vectors will "
-                      "be invalid for the sensor models used for covariance estimation. Disable the VoxelGrid filter "
-                      "(use random sampling instead) or change registration covariance/point_covariance method.");
-        }
+        ROS_WARN_COND(voxel_grid_filter_enabled && add_unit_vectors,
+                "Both the VoxelGrid filter and unit vector addition are enabled, however the unit vectors will not "
+                "exactly match the sensor models used for covariance estimation.");
         const bool filter_enabled = voxel_grid_filter_enabled || nh.param<bool>("body_filter/enabled", false) ||
                                     nh.param<bool>("range_filter/enabled", true) ||
                                     nh.param<bool>("statistical_outlier_removal/enabled", false) ||
-                                    nh.param<bool>("random_sample_filter/enabled", true);
+                                    nh.param<bool>("random_sample_filter/enabled", false);
         std::string input_topic = frontend.output_pointcloud_topic();
         if (filter_enabled) {
             pointcloud_filter = std::make_unique<serpent::PointcloudFilter>(input_topic);

@@ -10,11 +10,11 @@ namespace serpent {
 PointcloudFilter::PointcloudFilter(std::string input_topic)
     : nh("serpent"),
      final_output_topic("filter/filtered_pointcloud") {
-    const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", false);
+    const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", true);
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", true);
     const bool sor_enabled = nh.param<bool>("statistical_outlier_removal/enabled", false);
-    const bool random_sample_enabled = nh.param<bool>("random_sample_filter/enabled", true);
+    const bool random_sample_enabled = nh.param<bool>("random_sample_filter/enabled", false);
     ROS_INFO_STREAM("Filtering operations (in order):"
                     << "\nVOXEL_GRID    " << (voxel_grid_enabled ? " ENABLED" : "DISABLED") << "\nBODY_FILTER   "
                     << (body_filter_enabled ? " ENABLED" : "DISABLED") << "\nRANGE_FILTER  "
