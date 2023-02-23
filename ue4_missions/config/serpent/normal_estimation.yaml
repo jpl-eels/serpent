@@ -3,7 +3,7 @@ normal_estimation:
   viewpoint:
     x: 0.0
     y: 0.0
-    z: 1.0e+9
+    z: 0.0
   method: "knn" # Options: knn, radius
   k: 30
   radius: 1.0
