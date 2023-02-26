@@ -129,7 +129,7 @@ Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
     // Interate over correspondences to build half d2F_dx2 (hessian) and d2F_dzdx
     Eigen::Matrix<double, 6, 6> half_d2F_dx2 = Eigen::Matrix<double, 6, 6>::Zero();
     Eigen::Matrix<double, 6, Eigen::Dynamic> half_d2F_dzdx(6, 6 * correspondences->size());
-    Eigen::Matrix<float, 3, Eigen::Dynamic> unit_vectors(3, 2 * correspondences->size());
+    Eigen::VectorXf unit_vectors(6 * correspondences->size());
     for (std::size_t i = 0; i < correspondences->size(); ++i) {
         const auto& correspondence = (*correspondences)[i];
         const typename Model::PointSource& source_point = source_cloud->at(correspondence.index_query);
@@ -138,8 +138,8 @@ Eigen::Matrix<double, 6, 6> censi_range_bias_covariance(
         Model::process_correspondence(source_point, target_point, tf, half_d2F_dx2_i, half_d2F_dzdx_i);
         half_d2F_dx2 += half_d2F_dx2_i;
         half_d2F_dzdx.block(0, 6 * i, 6, 6) = half_d2F_dzdx_i;
-        unit_vectors.col(2 * i) = Eigen::Vector3f{source_point.ux, source_point.uy, source_point.uz};
-        unit_vectors.col(2 * i + 1) = Eigen::Vector3f{target_point.ux, target_point.uy, target_point.uz};
+        unit_vectors.segment(6 * i, 3) = Eigen::Vector3f{source_point.ux, source_point.uy, source_point.uz};
+        unit_vectors.segment(6 * i + 3, 3) = Eigen::Vector3f{target_point.ux, target_point.uy, target_point.uz};
     }
     const Eigen::Matrix<double, 6, 6> half_d2F_dx2_inv = half_d2F_dx2.inverse();
 
