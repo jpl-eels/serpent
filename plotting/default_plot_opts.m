@@ -1,5 +1,12 @@
 function plot_opts = default_plot_opts()
     plot_opts.align_first_pose = true;
+    plot_opts.align_trajectories = false;
+    plot_opts.align_opt_params = struct;
+    plot_opts.align_opt_params.gamma = 0.95;
+    plot_opts.align_opt_params.eta = 1.0e-4;
+    plot_opts.align_opt_params.iterations = 1000;
+    plot_opts.align_opt_params.max_r_change = deg2rad(5);
+    plot_opts.align_opt_params.max_t_change = 0.1;
     plot_opts.start_from_time_zero = true;
     plot_opts.use_frame_numbers = false;
     plot_opts.summary_decimal_places = 3;

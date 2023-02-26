@@ -1,5 +1,6 @@
 function [pose_data, twist_data] = plot_and_save(data, plot_opts)
-    pose_data = compute_pose_data(data, plot_opts.align_first_pose);
+    pose_data = compute_pose_data(data, plot_opts.align_first_pose, ...
+        plot_opts.align_trajectories, plot_opts.align_opt_params);
     if plot_opts.start_from_time_zero
         start_time = pose_data.gt.timestamps(1);
         pose_data.gt.timestamps = pose_data.gt.timestamps - start_time;

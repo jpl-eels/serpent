@@ -16,7 +16,7 @@ config.gt.accelerometer_bias = [0.0, 0.0, 0.0];
 config.gt.gyroscope_bias = [0.0, 0.0, 0.0];
 config.data_dir = join([data_base_dir, "results/", data_source, ...
     data_name, "/"], "");
-analysis_name = "feb_19_analysis";
+analysis_name = "feb_26_analysis";
 config.filenames = ["locus_2023-02-18-21-10-10.bag", ...
     "liosam_2023-02-18-22-53-59.bag", ...
     "serpent_constant_1deg1cm_2023-02-19-12-44-49.bag", ...
@@ -40,6 +40,10 @@ config.filepaths = config.data_dir + config.filenames;
 
 % Plot Options
 plot_opts = default_plot_opts();
+% plot_opts.align_first_pose = true;
+plot_opts.align_first_pose = false;
+plot_opts.align_trajectories = true;
+plot_opts.align_opt_params.gamma = 0.99;
 plot_opts.save = true;
 plot_opts.save_dir = join([data_base_dir, "analysis/", data_source, ...
     data_name, "/", analysis_name, "/"], "");

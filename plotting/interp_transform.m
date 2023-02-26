@@ -1,5 +1,5 @@
-function [position, orientation] = interp_transform(gt_time_1, gt_time_2, gt_pose_1, ...
-        gt_pose_2, t_query)
+function [position, orientation] = interp_transform(gt_time_1, ...
+    gt_time_2, gt_pose_1, gt_pose_2, t_query)
     interp_coeff = (t_query - gt_time_1) / (gt_time_2 - gt_time_1);
 
     pos1 = extract_position(gt_pose_1);
