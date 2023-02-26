@@ -56,6 +56,7 @@ Eigen::Matrix<double, 6, 6> Registration<PointT>::covariance_from_registration(P
                 case PointCovarianceMethod::RANGE_BIAS:
                     covariance = range_bias_covariance(registration, range_variance, range_bias_variance,
                             correspondence_count);
+                    break;
                 default:
                     throw std::runtime_error("Point covariance method not handled.");
             }
