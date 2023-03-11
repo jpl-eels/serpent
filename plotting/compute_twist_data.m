@@ -1,12 +1,24 @@
-function twist_data = compute_twist_data(data)
+function twist_data = compute_twist_data(data, time_bounds)
+    % Extraction and filtering
     twist_data = struct;
     twist_data.gt.timestamps = extract_timestamps(data.gt.odom);
-    gt_twists = extract_twists(data.gt.odom);
-    twist_data.gt.linear_velocities = extract_linear_velocities(gt_twists);
+    twist_data.gt.twists = extract_twists(data.gt.odom);
+    if time_bounds.filter
+        start_t = twist_data.gt.timestamps(1) + time_bounds.start;
+        end_t = start_t + time_bounds.duration;
+        filter_indices = and(twist_data.gt.timestamps >= start_t, ...
+            twist_data.gt.timestamps <= end_t);
+        twist_data.gt.timestamps = twist_data.gt.timestamps(filter_indices);
+        twist_data.gt.twists = twist_data.gt.twists(filter_indices);
+    end
+
+    % Compute data
+    twist_data.gt.linear_velocities = extract_linear_velocities(...
+        twist_data.gt.twists);
     twist_data.gt.linear_speeds = vecnorm( ...
         twist_data.gt.linear_velocities, 2, 2);
     twist_data.gt.angular_velocities = extract_angular_velocities( ...
-        gt_twists);
+        twist_data.gt.twists);
     twist_data.gt.angular_speeds = vecnorm( ...
         twist_data.gt.angular_velocities, 2, 2);
 

@@ -1,6 +1,7 @@
 function [pose_data, twist_data] = plot_and_save(data, plot_opts)
-    pose_data = compute_pose_data(data, plot_opts.align_first_pose, ...
-        plot_opts.align_trajectories, plot_opts.align_opt_params);
+    pose_data = compute_pose_data(data, plot_opts.time_bounds, ...
+        plot_opts.align_first_pose, plot_opts.align_trajectories, ...
+        plot_opts.align_opt_params);
     if plot_opts.start_from_time_zero
         start_time = pose_data.gt.timestamps(1);
         pose_data.gt.timestamps = pose_data.gt.timestamps - start_time;
@@ -16,7 +17,7 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
     end
     fprintf("Finished computing pose data.\n");
 
-    twist_data = compute_twist_data(data);
+    twist_data = compute_twist_data(data, plot_opts.time_bounds);
     if plot_opts.start_from_time_zero
         start_time = twist_data.gt.timestamps(1);
         twist_data.gt.timestamps = twist_data.gt.timestamps - start_time;
@@ -77,32 +78,38 @@ function [pose_data, twist_data] = plot_and_save(data, plot_opts)
 
     fmt_str = ['%30s: %.', num2str(plot_opts.summary_decimal_places), 'f'];
     for fid = fids
+        fprintf(fid, "GT Summary:\n");
+        fprintf(fid, [fmt_str, ' m\n'], "Length", pose_data.gt.length);
         for i = 1:length(data.names)
             fprintf(fid, "%s Summary:\n", data.names(i));
+
+            p_entry = pose_data.entries{i};
+            t_entry = twist_data.entries{i};
+            fprintf(fid, [fmt_str, ' m\n'], "Length", p_entry.length);
             fprintf(fid, [fmt_str, ' m\n'], ...
                 "Final Translation ||APE||", ...
-                pose_data.entries{i}.ape_norm.position(end));
+                p_entry.ape_norm.position(end));
             fprintf(fid, [fmt_str, ' rad\n'], ...
                 "Final Orientation ||APE||", ...
-                pose_data.entries{i}.ape_norm.rot_axang(end));
+                p_entry.ape_norm.rot_axang(end));
             fprintf(fid, [fmt_str, ' m\n'], ...
                 "Translation APE RMSE", ...
-                pose_data.entries{i}.ape_norm.position_rmse);
+                p_entry.ape_norm.position_rmse);
             fprintf(fid, [fmt_str, ' rad\n'], ...
                 "Orientation APE RMSE", ...
-                pose_data.entries{i}.ape_norm.rot_axang_rmse);
+                p_entry.ape_norm.rot_axang_rmse);
             fprintf(fid, [fmt_str, ' m/s\n'], ...
                 "Final Linear Velocity ||APE||", ...
-                twist_data.entries{i}.ae_norm.linear_velocity(end));
+                t_entry.ae_norm.linear_velocity(end));
             fprintf(fid, [fmt_str, ' rad/s\n'], ...
                 "Final Angular Velocity ||APE||", ...
-                twist_data.entries{i}.ae_norm.angular_velocity(end));
+                t_entry.ae_norm.angular_velocity(end));
             fprintf(fid, [fmt_str, ' m/s\n'], ...
                 "Linear Velocity APE RMSE", ...
-                twist_data.entries{i}.ae_norm.linear_velocity_rmse);
+                t_entry.ae_norm.linear_velocity_rmse);
             fprintf(fid, [fmt_str, ' rad/s\n'], ...
                 "Angular Velocity APE RMSE", ...
-                twist_data.entries{i}.ae_norm.angular_velocity_rmse);
+                t_entry.ae_norm.angular_velocity_rmse);
         end
     end
 end

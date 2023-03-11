@@ -1,19 +1,31 @@
-function pose_data = compute_pose_data(data, align_first_pose, ...
-    align_trajectories, align_opt_params)
+function pose_data = compute_pose_data(data, time_bounds, ...
+    align_first_pose, align_trajectories, align_opt_params)
     if align_first_pose && align_trajectories
         error("Both align_first_pose and align_trajectories were " + ...
             "true but only one can be.");
     end
     
+    % Extraction and filtering
     pose_data = struct;
     pose_data.gt.timestamps = extract_timestamps(data.gt.odom);
     pose_data.gt.poses = extract_poses(data.gt.odom);
+    if time_bounds.filter
+        start_t = pose_data.gt.timestamps(1) + time_bounds.start;
+        end_t = start_t + time_bounds.duration;
+        filter_indices = and(pose_data.gt.timestamps >= start_t, ...
+            pose_data.gt.timestamps <= end_t);
+        pose_data.gt.timestamps = pose_data.gt.timestamps(filter_indices);
+        pose_data.gt.poses = pose_data.gt.poses(filter_indices);
+    end
+
+    % Compute data
     pose_data.gt.positions = extract_positions(pose_data.gt.poses);
     pose_data.gt.distances = vecnorm(pose_data.gt.positions, 2, 2);
-    gt_quaternions = extract_quaternions(pose_data.gt.poses);
-    gt_axang = quat2axang(gt_quaternions);
+    pose_data.gt.quaternions = extract_quaternions(pose_data.gt.poses);
+    gt_axang = quat2axang(pose_data.gt.quaternions);
     pose_data.gt.rots_axang = gt_axang(:, 1:3) .* gt_axang(:, 4);
     pose_data.gt.angles = abs(gt_axang(:, 4));
+    pose_data.gt.length = compute_trajectory_length(pose_data.gt.poses);
 
     pose_data.num_odom = length(data.odoms);
     pose_data.names = data.names;
@@ -38,12 +50,15 @@ function pose_data = compute_pose_data(data, align_first_pose, ...
             entry = align_trajectory(pose_data.gt, entry, ...
                 align_opt_params);
         end
+
+        % Computation
         entry.positions = extract_positions(entry.poses);
         entry.quaternions = extract_quaternions(entry.poses);
         entry.distances = vecnorm(entry.positions, 2, 2);
         axang = quat2axang(entry.quaternions);
         entry.rots_axang = axang(:, 1:3) .* axang(:, 4);
         entry.angles = abs(axang(:, 4));
+        entry.length = compute_trajectory_length(entry.poses);
         [apes, ape_timestamps, rpes, rpe_timestamps] = ...
             compute_pose_errors(pose_data.gt.timestamps, ...
             pose_data.gt.poses, entry.timestamps, entry.poses);
