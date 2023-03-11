@@ -253,8 +253,8 @@ try
         save_and_close_figure(fig_cov, filename, plot_opts);
 
         % Plot translation error against normalised covariance
-        fig_cov_scatter = plot_normalised_covariance_scatter(...
-            pose_data.gt, pose_data.entries{i}, reg_transform_data{i});
+%         fig_cov_scatter = plot_normalised_covariance_scatter(...
+%             pose_data.gt, pose_data.entries{i}, reg_transform_data{i});
     end
 catch ex
     warning("Could not generate analysis for registration poses.");
