@@ -1,0 +1,1022 @@
+Panels:
+  - Class: rviz/Displays
+    Help Height: 0
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /S2M Registration1/Local Map (S2M reference)1
+        - /Output1
+      Splitter Ratio: 0.886274516582489
+    Tree Height: 441
+  - Class: rviz/Selection
+    Name: Selection
+  - Class: rviz/Tool Properties
+    Expanded:
+      - /2D Pose Estimate1
+      - /2D Nav Goal1
+      - /Publish Point1
+    Name: Tool Properties
+    Splitter Ratio: 0.5886790156364441
+  - Class: rviz/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+  - Class: rviz/Time
+    Name: Time
+    SyncMode: 0
+    SyncSource: Local Map (S2M reference)
+Preferences:
+  PromptSaveOnExit: true
+Toolbars:
+  toolButtonStyle: 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: false
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Map Plane
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 20
+      Reference Frame: <Fixed Frame>
+      Value: false
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: false
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Robocentric Plane
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 30
+      Reference Frame: head_base
+      Value: false
+    - Class: rviz/TF
+      Enabled: false
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+      Marker Alpha: 0.5
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        {}
+      Update Interval: 0
+      Value: false
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Lidar
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /os_cloud_node/points
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Alpha: 1
+          Class: rviz_plugin_tutorials/Imu
+          Color: 204; 51; 204
+          Enabled: false
+          History Length: 1
+          Name: Imu
+          Queue Size: 10
+          Topic: /vectornav/imu_nwu
+          Unreliable: false
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: false
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: fluid_pressure
+          Class: rviz/FluidPressure
+          Color: 255; 255; 255
+          Color Transformer: ""
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 105000
+          Min Color: 0; 0; 0
+          Min Intensity: 98000
+          Name: Altimeter
+          Position Transformer: ""
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /altimeter
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Class: rviz/Camera
+          Enabled: true
+          Image Rendering: background and overlay
+          Image Topic: /camera_front/left/image_raw
+          Name: Left Camera
+          Overlay Alpha: 0.5
+          Queue Size: 2
+          Transport Hint: raw
+          Unreliable: false
+          Value: true
+          Visibility:
+            Frontend:
+              "": true
+              Value: true
+            Input:
+              Altimeter: true
+              Imu: true
+              Lidar: true
+              Right Camera: true
+              Value: true
+            Map Plane: true
+            Optimisation:
+              "": true
+              Value: true
+            Output:
+              "": true
+              Value: true
+            Robocentric Plane: true
+            S2M Registration:
+              "": true
+              Value: true
+            S2S Registration:
+              "": true
+              Value: true
+            Stereo Introspection:
+              "": true
+              Value: true
+            TF: true
+            Value: false
+          Zoom Factor: 1
+        - Class: rviz/Camera
+          Enabled: true
+          Image Rendering: background and overlay
+          Image Topic: /camera_front/right/image_raw
+          Name: Right Camera
+          Overlay Alpha: 0.5
+          Queue Size: 2
+          Transport Hint: raw
+          Unreliable: false
+          Value: true
+          Visibility:
+            Frontend:
+              "": true
+              Value: true
+            Input:
+              Altimeter: true
+              Imu: true
+              Left Camera: true
+              Lidar: true
+              Value: true
+            Map Plane: true
+            Optimisation:
+              "": true
+              Value: true
+            Output:
+              "": true
+              Value: true
+            Robocentric Plane: true
+            S2M Registration:
+              "": true
+              Value: true
+            S2S Registration:
+              "": true
+              Value: true
+            Stereo Introspection:
+              "": true
+              Value: true
+            TF: true
+            Value: false
+          Zoom Factor: 1
+      Enabled: false
+      Name: Input
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: t
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Formatted Pointcloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /serpent/formatter/formatted_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: t
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Deskewed Pointcloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /serpent/frontend/deskewed_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: t
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Filtered Pointcloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /serpent/filter/filtered_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: curvature
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Normal Pointcloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /serpent/normal_estimation/pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Class: rviz/Camera
+          Enabled: true
+          Image Rendering: background and overlay
+          Image Topic: /serpent/stereo/left/image
+          Name: Left Camera
+          Overlay Alpha: 0.5
+          Queue Size: 2
+          Transport Hint: raw
+          Unreliable: false
+          Value: true
+          Visibility:
+            Frontend:
+              Deskewed Pointcloud: true
+              Filtered Pointcloud: true
+              Formatted Pointcloud: true
+              Normal Pointcloud: true
+              Right Camera: true
+              Value: false
+            Input:
+              Altimeter: true
+              Imu: true
+              Left Camera: true
+              Lidar: true
+              Right Camera: true
+              Value: false
+            Map Plane: false
+            Optimisation:
+              Optimised Odometry: true
+              Path Changes: true
+              Stereo Landmarks: true
+              Value: true
+            Output:
+              Global Map: true
+              Global Path: true
+              IMU-Rate Odometry: true
+              Value: false
+            Robocentric Plane: true
+            S2M Registration:
+              "": true
+              Value: false
+            S2S Registration:
+              "": true
+              Value: false
+            Stereo Introspection:
+              "": true
+              Value: true
+            TF: false
+            Value: true
+          Zoom Factor: 1
+        - Class: rviz/Camera
+          Enabled: true
+          Image Rendering: background and overlay
+          Image Topic: /serpent/stereo/right/image
+          Name: Right Camera
+          Overlay Alpha: 0.5
+          Queue Size: 2
+          Transport Hint: raw
+          Unreliable: false
+          Value: true
+          Visibility:
+            Frontend:
+              Deskewed Pointcloud: true
+              Filtered Pointcloud: true
+              Formatted Pointcloud: true
+              Left Camera: true
+              Normal Pointcloud: true
+              Value: false
+            Input:
+              Altimeter: true
+              Imu: true
+              Left Camera: true
+              Lidar: true
+              Right Camera: true
+              Value: false
+            Map Plane: false
+            Optimisation:
+              Optimised Odometry: true
+              Path Changes: true
+              Stereo Landmarks: true
+              Value: true
+            Output:
+              Global Map: true
+              Global Path: true
+              IMU-Rate Odometry: true
+              Value: false
+            Robocentric Plane: true
+            S2M Registration:
+              "": true
+              Value: false
+            S2S Registration:
+              "": true
+              Value: false
+            Stereo Introspection:
+              "": true
+              Value: true
+            TF: false
+            Value: true
+          Zoom Factor: 1
+      Enabled: false
+      Name: Frontend
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Current Untransformed
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Flat Squares
+          Topic: /serpent/debug/current_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 239; 41; 41
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Previous (S2S reference)
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Flat Squares
+          Topic: /serpent/debug/previous_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 114; 159; 207
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: IMU Guess
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Flat Squares
+          Topic: /serpent/debug/imu_guess_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 0; 255; 0
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: S2S Transformed
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Flat Squares
+          Topic: /serpent/debug/s2s_transformed_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+      Enabled: false
+      Name: S2S Registration
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: curvature
+          Class: rviz/PointCloud2
+          Color: 252; 233; 79
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Local Map (S2M reference)
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.029999999329447746
+          Style: Flat Squares
+          Topic: /serpent/mapping/local_map
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 191; 64; 188
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: S2M Transformed
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Flat Squares
+          Topic: /serpent/debug/s2m_transformed_pointcloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+      Enabled: true
+      Name: S2M Registration
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/left/extracted_keypoints/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left Extracted Keypoints
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/left/sof_matches/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left SOF Matches
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+          Enabled: false
+          Name: Left Camera
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/right/extracted_keypoints/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right Extracted Keypoints
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: true
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/right/sof_matches/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right SOF Matches
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+          Enabled: false
+          Name: Right Camera
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/new_matches/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: New Matches
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/tracked_matches/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Tracked Matches
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /serpent/stereo/stereo_filtered_matches/image
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Stereo Filtered Matches
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Unreliable: false
+              Value: true
+          Enabled: true
+          Name: Matches
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 0; 0; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Track Points
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Spheres
+          Topic: /serpent/stereo/track_points
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+      Enabled: false
+      Name: Stereo Introspection
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 0
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 52; 101; 164
+          Enabled: false
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Path Changes
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 32; 74; 135
+          Pose Style: Arrows
+          Queue Size: 10
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /serpent/output/path
+          Unreliable: false
+          Value: false
+        - Angle Tolerance: 0.10000000149011612
+          Class: rviz/Odometry
+          Covariance:
+            Orientation:
+              Alpha: 0.5
+              Color: 255; 255; 127
+              Color Style: Unique
+              Frame: Local
+              Offset: 1
+              Scale: 1
+              Value: true
+            Position:
+              Alpha: 0.30000001192092896
+              Color: 204; 51; 204
+              Scale: 1
+              Value: true
+            Value: true
+          Enabled: false
+          Keep: 100
+          Name: Optimised Odometry
+          Position Tolerance: 0.10000000149011612
+          Queue Size: 10
+          Shape:
+            Alpha: 1
+            Axes Length: 1
+            Axes Radius: 0.10000000149011612
+            Color: 255; 25; 0
+            Head Length: 0.30000001192092896
+            Head Radius: 0.10000000149011612
+            Shaft Length: 1
+            Shaft Radius: 0.05000000074505806
+            Value: Axes
+          Topic: /serpent/optimisation/odometry
+          Unreliable: false
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Stereo Landmarks
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.05000000074505806
+          Style: Spheres
+          Topic: /serpent/debug/stereo_points
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+      Enabled: true
+      Name: Optimisation
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 25; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.10000000149011612
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Global Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: Axes
+          Queue Size: 10
+          Radius: 0.019999999552965164
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /serpent/output/path
+          Unreliable: false
+          Value: true
+        - Angle Tolerance: 0.10000000149011612
+          Class: rviz/Odometry
+          Covariance:
+            Orientation:
+              Alpha: 0.5
+              Color: 255; 255; 127
+              Color Style: Unique
+              Frame: Local
+              Offset: 1
+              Scale: 1
+              Value: true
+            Position:
+              Alpha: 0.30000001192092896
+              Color: 204; 51; 204
+              Scale: 1
+              Value: true
+            Value: false
+          Enabled: false
+          Keep: 100
+          Name: IMU-Rate Odometry
+          Position Tolerance: 0.10000000149011612
+          Queue Size: 10
+          Shape:
+            Alpha: 1
+            Axes Length: 0.25
+            Axes Radius: 0.009999999776482582
+            Color: 255; 25; 0
+            Head Length: 0.30000001192092896
+            Head Radius: 0.10000000149011612
+            Shaft Length: 1
+            Shaft Radius: 0.05000000074505806
+            Value: Axes
+          Topic: /serpent/output/odometry
+          Unreliable: false
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: normal_z
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Global Map
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /serpent/output/global_map
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+      Enabled: true
+      Name: Output
+  Enabled: true
+  Global Options:
+    Background Color: 0; 0; 0
+    Default Light: true
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/Interact
+      Hide Inactive Objects: true
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/FocusCamera
+    - Class: rviz/Measure
+    - Class: rviz/SetInitialPose
+      Theta std deviation: 0.2617993950843811
+      Topic: /initialpose
+      X std deviation: 0.5
+      Y std deviation: 0.5
+    - Class: rviz/SetGoal
+      Topic: /move_base_simple/goal
+    - Class: rviz/PublishPoint
+      Single click: true
+      Topic: /clicked_point
+  Value: true
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Distance: 19.637208938598633
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Field of View: 0.7853981852531433
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.43479597568511963
+      Target Frame: head
+      Yaw: 1.9127784967422485
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: true
+  Height: 1376
+  Hide Left Dock: true
+  Hide Right Dock: true
+  Left Camera:
+    collapsed: false
+  Left Extracted Keypoints:
+    collapsed: false
+  Left SOF Matches:
+    collapsed: true
+  New Matches:
+    collapsed: true
+  QMainWindow State: 000000ff00000000fd000000040000000000000200000004c7fc0200000010fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000041600000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000007c00000486000000c900fffffffb0000000e004d006100740063006800650073000000033c000000510000000000000000fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb00000016004c006500660074002000430061006d0065007200610000000000ffffffff0000001600fffffffb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000001600fffffffb00000020004c00650066007400200053004f00460020004d006100740063006800650073000000007c0000012d0000001600fffffffb000000220052006900670068007400200053004f00460020004d00610074006300680065007300000001af0000012e0000001600fffffffb0000001e0054007200610063006b006500640020004d0061007400630068006500730000000000ffffffff0000001600fffffffb0000002e00530074006500720065006f002000460069006c007400650072006500640020004d00610074006300680065007300000002e30000012d0000001600fffffffb00000016004e006500770020004d00610074006300680065007300000004160000012d0000001600ffffff000000010000010f00000311fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000007c00000311000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b2000000000000000000000002000009b800000039fc0100000002fb0000000800540069006d00650100000000000009b8000003bc00fffffffb0000000a00560069006500770073030000004e00000080000002e10000019700000003000006c90000016ffc0100000006fc00000000000003190000000000fffffffa000000000200000005fb00000016004c006500660074002000430061006d0065007200610000000000ffffffff0000000000000000fb00000016004c006500660074002000430061006d0065007200610000000000ffffffff0000000000000000fb00000016004c006500660074002000430061006d00650072006100000003930000016f0000001600fffffffb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000ffffffff0000000000000000fb00000020004c00650066007400200053004f00460020004d0061007400630068006500730000000000ffffffff0000000000000000fc0000019e000003420000000000fffffffa000000000200000005fb0000001e0054007200610063006b006500640020004d0061007400630068006500730000000000ffffffff0000000000000000fb0000002c0043006f006e00730069007300740065006e00740020004e006500770020004d0061007400630068006500730000000000ffffffff0000000000000000fb0000002e00530074006500720065006f002000460069006c007400650072006500640020004d0061007400630068006500730000000000ffffffff0000000000000000fb0000003200440069007300740061006e00630065002000460069006c007400650072006500640020004d0061007400630068006500730000000000ffffffff0000000000000000fb00000016004e006500770020004d00610074006300680065007300000003930000016f0000000000000000fc0000031f000003aa0000000000fffffffa000000000200000005fb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000000000000000fb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000000000000000fb0000001800520069006700680074002000430061006d0065007200610000000000ffffffff0000001600fffffffb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e0074007300000003930000016f0000000000000000fb000000220052006900670068007400200053004f00460020004d0061007400630068006500730000000000ffffffff0000000000000000fb00000030004c00650066007400200045007800740072006100630074006500640020004b006500790070006f0069006e00740073000000000000000240000000dd00fffffffb000000320052006900670068007400200045007800740072006100630074006500640020004b006500790070006f0069006e007400730000000000000006c9000000e600fffffffb0000000800540069006d00650100000000000004500000000000000000000009b8000004c700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Right Camera:
+    collapsed: false
+  Right Extracted Keypoints:
+    collapsed: false
+  Right SOF Matches:
+    collapsed: true
+  Selection:
+    collapsed: false
+  Stereo Filtered Matches:
+    collapsed: true
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Tracked Matches:
+    collapsed: false
+  Views:
+    collapsed: true
+  Width: 2488
+  X: 72
+  Y: 27
