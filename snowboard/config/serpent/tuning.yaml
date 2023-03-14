@@ -151,6 +151,10 @@ mapping:
   frame_extraction_number: 10
   distance_threshold: 0.1                   # metres
   rotation_threshold: 0.05235987755982988   # radians
+  voxel_grid_filter:
+    enabled: true
+    leaf_size: 0.05
+    minimum_points_number_per_voxel: 1
 
 # Stereo Factors
 stereo_factors:

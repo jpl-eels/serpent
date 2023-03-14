@@ -48,6 +48,13 @@ Mapping<PointT>::Mapping()
         throw std::runtime_error("Frame extraction number " + std::to_string(frame_extraction_number_) + " invalid");
     }
     frame_extraction_number = static_cast<std::size_t>(frame_extraction_number_);
+
+    // Voxel grid configuration
+    voxel_grid_enabled = nh.param<bool>("mapping/voxel_grid_filter/enabled", true);
+    const double leaf_size = nh.param<double>("mapping/voxel_grid_filter/leaf_size", 0.05);
+    voxel_grid_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+    voxel_grid_filter.setMinimumPointsNumberPerVoxel(
+            nh.param<double>("mapping/voxel_grid_filter/minimum_points_number_per_voxel", 1));
 }
 
 template<typename PointT>
@@ -98,6 +105,7 @@ template<typename PointT>
 void Mapping<PointT>::map_update_callback(const PointCloudConstPtr& pointcloud_msg,
         const nav_msgs::Path::ConstPtr& path_changes_msg) {
     std::lock_guard<std::mutex> guard{map_mutex};
+    const ros::WallTime tic = ros::WallTime::now();
     if (path_changes_msg->poses.empty()) {
         throw std::runtime_error("path.poses was empty. Something went wrong.");
     }
@@ -142,8 +150,17 @@ void Mapping<PointT>::map_update_callback(const PointCloudConstPtr& pointcloud_m
     // Extract map around pose in the pose frame
     auto map_region = extract_past_frames(frame_extraction_number, pointcloud_lidar_pose);
 
+    // Filtering/Downsampling
+    PointCloudPtr filtered_map_region = map_region;
+    if (voxel_grid_enabled) {
+        voxel_grid_filter.setInputCloud(map_region);
+        filtered_map_region = boost::make_shared<PointCloud>();
+        voxel_grid_filter.filter(*filtered_map_region);
+    }
+
     // Publish the local map
-    local_map_publisher.publish(map_region);
+    local_map_publisher.publish(filtered_map_region);
+    ROS_INFO_STREAM("Created and published local map in " << (ros::WallTime::now() - tic).toSec() << " seconds.");
 }
 
 template<typename PointT>

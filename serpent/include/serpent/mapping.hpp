@@ -5,6 +5,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <nav_msgs/Path.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -124,6 +125,10 @@ private:
 
     // Map
     std::map<ros::Time, Frame> map;
+
+    // Downsampling
+    bool voxel_grid_enabled;
+    pcl::VoxelGrid<PointT> voxel_grid_filter;
 };
 
 }
