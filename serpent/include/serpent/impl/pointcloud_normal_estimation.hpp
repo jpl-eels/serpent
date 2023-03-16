@@ -26,7 +26,7 @@ PointcloudNormalEstimation<PointIn, PointOut>::PointcloudNormalEstimation(const 
     normal_estimation.setNumberOfThreads(nh.param<int>("normal_estimation/threads", 1));
     normal_estimation.setViewPoint(nh.param<float>("normal_estimation/viewpoint/x", 0.f),
             nh.param<float>("normal_estimation/viewpoint/y", 0.f),
-            nh.param<float>("normal_estimation/viewpoint/z", std::numeric_limits<float>::max()));
+            nh.param<float>("normal_estimation/viewpoint/z", 0.f));
     const std::string ne_method = nh.param<std::string>("normal_estimation/method", "knn");
     if (ne_method == "knn") {
         normal_estimation.setKSearch(nh.param<int>("normal_estimation/k", 30));
