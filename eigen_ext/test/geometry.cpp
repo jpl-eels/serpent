@@ -56,11 +56,11 @@ TEST(relative_transform, linear_rates_1) {
 
 TEST(relative_transform, linear_rates_2) {
     const Eigen::Vector3d start_position{0.5, -5.0, 0.0};
-    const Eigen::Isometry3d start_pose = eigen_ext::to_transform(Eigen::Translation<double, 3>{start_position},
-            Eigen::Quaterniond::Identity());
+    const Eigen::Isometry3d start_pose =
+            eigen_ext::to_transform(Eigen::Translation<double, 3>{start_position}, Eigen::Quaterniond::Identity());
     const Eigen::Vector3d end_position{2.0, 3.0, 4.0};
-    const Eigen::Isometry3d end_pose = eigen_ext::to_transform(Eigen::Translation<double, 3>{2.0, 3.0, 4.0},
-            Eigen::Quaterniond::Identity());
+    const Eigen::Isometry3d end_pose =
+            eigen_ext::to_transform(Eigen::Translation<double, 3>{2.0, 3.0, 4.0}, Eigen::Quaterniond::Identity());
     const double dt{5.0};
     const Eigen::Matrix<double, 6, 1> rates = eigen_ext::linear_rates(start_pose, end_pose, dt);
     Eigen::Matrix<double, 6, 1> rates_reference;
@@ -165,12 +165,53 @@ TEST(change_relative_transform_frame, check_against_alternate_method) {
 
 TEST(change_covariance_frame, identity) {
     Eigen::Matrix<double, 6, 6> covariance;
-    covariance << 0.01, 0.02, 0.03, 0.04, 0.05, 0.06,
-                  0.02, 0.02, 0.07, 0.08, 0.09, 0.10,
-                  0.03, 0.07, 0.03, 0.11, 0.12, 0.13,
-                  0.04, 0.08, 0.11, 0.04, 0.14, 0.15,
-                  0.05, 0.09, 0.12, 0.14, 0.05, 0.16,
-                  0.06, 0.10, 0.13, 0.15, 0.16, 0.06;
+    covariance << 0.1, 0.02, 0.03, 0.04, 0.05, 0.06, 0.02, 0.2, 0.07, 0.08, 0.09, 0.10, 0.03, 0.07, 0.3, 0.11, 0.12,
+            0.13, 0.04, 0.08, 0.11, 0.4, 0.14, 0.15, 0.05, 0.09, 0.12, 0.14, 0.5, 0.16, 0.06, 0.10, 0.13, 0.15, 0.16,
+            0.6;
     const Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
     EXPECT_TRUE(covariance.isApprox(eigen_ext::change_covariance_frame(covariance, transform)));
+}
+
+TEST(rotate_point_covariance, identity_rotation) {
+    Eigen::Matrix<double, 3, 3> covariance;
+    covariance << 0.1, 0.002, 0.003, 0.002, 0.2, 0.006, 0.003, 0.006, 0.3;
+    Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+    EXPECT_TRUE(covariance.isApprox(eigen_ext::rotate_point_covariance(covariance, rotation)));
+}
+
+TEST(rotate_point_covariance, yaw_90_x_covariance) {
+    Eigen::Matrix<double, 3, 3> covariance;
+    covariance << 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    Eigen::AngleAxisd rotation = Eigen::AngleAxisd(M_PI/2.0, Eigen::Vector3d::UnitZ());
+    Eigen::Matrix<double, 3, 3> expected_covariance;
+    expected_covariance << 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0;
+    EXPECT_TRUE(expected_covariance.isApprox(eigen_ext::rotate_point_covariance(covariance, rotation)));
+}
+
+TEST(rotate_point_covariance, yaw_180_x_covariance) {
+    Eigen::Matrix<double, 3, 3> covariance;
+    covariance << 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    Eigen::AngleAxisd rotation = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ());
+    Eigen::Matrix<double, 3, 3> expected_covariance;
+    expected_covariance << 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    EXPECT_TRUE(expected_covariance.isApprox(eigen_ext::rotate_point_covariance(covariance, rotation)));
+}
+
+TEST(rotate_point_covariance, yaw_270_x_covariance) {
+    Eigen::Matrix<double, 3, 3> covariance;
+    covariance << 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    Eigen::AngleAxisd rotation = Eigen::AngleAxisd(1.5 * M_PI, Eigen::Vector3d::UnitZ());
+    Eigen::Matrix<double, 3, 3> expected_covariance;
+    expected_covariance << 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0;
+    EXPECT_TRUE(expected_covariance.isApprox(eigen_ext::rotate_point_covariance(covariance, rotation)));
+}
+
+TEST(rotate_point_covariance, yaw_45_x_covariance) {
+    const double var = 0.5;
+    Eigen::Matrix<double, 3, 3> covariance;
+    covariance << var, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    Eigen::AngleAxisd rotation = Eigen::AngleAxisd(M_PI/4.0, Eigen::Vector3d::UnitZ());
+    Eigen::Vector3d xy = Eigen::Vector3d(1.0 / std::sqrt(2.0), 1.0 / std::sqrt(2.0), 0.0);
+    Eigen::Matrix<double, 3, 3> expected_covariance = var * xy * xy.transpose();
+    EXPECT_TRUE(expected_covariance.isApprox(eigen_ext::rotate_point_covariance(covariance, rotation)));
 }

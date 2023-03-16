@@ -9,152 +9,170 @@
 
 namespace pct {
 
-void cast_to_float32(pcl::PCLPointCloud2& pointcloud, const std::string& name) {
-    pcl::PCLPointField& field = get_field(pointcloud, name);
-    if (field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-        for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-            if (field.datatype == pcl::PCLPointField::PointFieldTypes::UINT32) {
-                const std::uint32_t* t = reinterpret_cast<const std::uint32_t*>(&pointcloud.data[i + field.offset]);
-                const float f = static_cast<float>(*t);
-                std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
-            } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::INT32) {
-                const std::int32_t* t = reinterpret_cast<const std::int32_t*>(&pointcloud.data[i + field.offset]);
-                const float f = static_cast<float>(*t);
-                std::memcpy(&pointcloud.data[i + field.offset], &f, sizeof(float));
-            } else {
-                throw std::runtime_error(
-                        "Converting field.datatype " + field_type_to_string(field.datatype) + " not supported yet.");
-            }
-        }
-        field.datatype = pcl::PCLPointField::PointFieldTypes::FLOAT32;
+pcl::PCLPointCloud2 add_field(const pcl::PCLPointCloud2& src, const std::string& name,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count) {
+    return add_fields(src, {name}, datatype, count);
+}
+
+pcl::PCLPointCloud2 add_fields(const pcl::PCLPointCloud2& src, const std::vector<std::string>& names,
+        const pcl::PCLPointField::PointFieldTypes datatype, const std::uint32_t count) {
+    pcl::PCLPointCloud2 dest;
+    dest.header = src.header;
+    dest.height = src.height;
+    dest.width = src.width;
+    dest.fields = src.fields;
+    for (const auto& name : names) {
+        dest.fields.emplace_back(pcl::PCLPointField{.name = name,
+                .offset = dest.fields.empty() ? 0 : point_step(dest.fields.back()),
+                .datatype = datatype,
+                .count = count});
     }
+    dest.is_bigendian = src.is_bigendian;
+    dest.point_step = point_step(dest.fields.back());
+    dest.row_step = row_step(dest);
+    dest.data.resize(size_bytes(dest));
+    dest.is_dense = src.is_dense;
+    for (std::size_t i = 0, j = 0; i < dest.data.size(); i += dest.point_step, j += src.point_step) {
+        std::memcpy(&dest.data[i], &src.data[j], src.point_step);
+    }
+    return dest;
+}
+
+pcl::PCLPointCloud2 add_unit_vectors(const pcl::PCLPointCloud2& src) {
+    pcl::PCLPointCloud2 dest = add_fields(src, {"ux", "uy", "uz"}, pcl::PCLPointField::PointFieldTypes::FLOAT32, 1);
+    auto get_x_field_data = create_get_field_data_function<float>(get_field(dest, "x"));
+    auto get_y_field_data = create_get_field_data_function<float>(get_field(dest, "y"));
+    auto get_z_field_data = create_get_field_data_function<float>(get_field(dest, "z"));
+    auto set_ux_field_data = create_set_field_data_function<float, float>(get_field(dest, "ux"));
+    auto set_uy_field_data = create_set_field_data_function<float, float>(get_field(dest, "uy"));
+    auto set_uz_field_data = create_set_field_data_function<float, float>(get_field(dest, "uz"));
+    const std::size_t num_points = size_points(dest);
+    for (std::size_t i = 0; i < num_points; ++i) {
+        const Eigen::Vector3f unit_vector = eigen_ext::safe_normalise(get_x_field_data(dest, i),
+                get_y_field_data(dest, i), get_z_field_data(dest, i));
+        set_ux_field_data(dest, i, unit_vector[0]);
+        set_uy_field_data(dest, i, unit_vector[1]);
+        set_uz_field_data(dest, i, unit_vector[2]);
+    }
+    return dest;
 }
 
 int check_normals(const pcl::PCLPointCloud2& pointcloud, const float threshold) {
-    const pcl::PCLPointField& normal_x_field = get_field(pointcloud, "normal_x");
-    const pcl::PCLPointField& normal_y_field = get_field(pointcloud, "normal_y");
-    const pcl::PCLPointField& normal_z_field = get_field(pointcloud, "normal_z");
-    if (normal_x_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32 ||
-            normal_y_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32 ||
-            normal_z_field.datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-        throw std::runtime_error(
-                "Expected normal fields to be FLOAT32 but was " + field_type_to_string(normal_x_field.datatype) + ", " +
-                field_type_to_string(normal_y_field.datatype) + ", " + field_type_to_string(normal_z_field.datatype));
-    }
+    auto get_normal_x_field_data = create_get_field_data_function<float>(get_field(pointcloud, "normal_x"));
+    auto get_normal_y_field_data = create_get_field_data_function<float>(get_field(pointcloud, "normal_y"));
+    auto get_normal_z_field_data = create_get_field_data_function<float>(get_field(pointcloud, "normal_z"));
     int unnormalised_count{0};
-    for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        const float* normal_x = reinterpret_cast<const float*>(&pointcloud.data[i + normal_x_field.offset]);
-        const float* normal_y = reinterpret_cast<const float*>(&pointcloud.data[i + normal_y_field.offset]);
-        const float* normal_z = reinterpret_cast<const float*>(&pointcloud.data[i + normal_z_field.offset]);
-        const Eigen::Vector3f normal{*normal_x, *normal_y, *normal_z};
+    const std::size_t num_points = size_points(pointcloud);
+    for (std::size_t i = 0; i < num_points; ++i) {
+        const Eigen::Vector3f normal{get_normal_x_field_data(pointcloud, i), get_normal_y_field_data(pointcloud, i),
+                get_normal_z_field_data(pointcloud, i)};
         if (std::abs(normal.norm() - 1.f) > threshold) {
             ++unnormalised_count;
-            std::cerr << "Normal (" << normal.norm() << "): " << normal[0] << ", " << normal[1] << ", " << normal[2]
-                      << "\n";
         }
     }
     return unnormalised_count;
 }
 
+/**
+ * @brief Template specialisation of create_get_field_data_function<InT, T> for when OutT == T == std::uint8_t.
+ *
+ * It is more efficient as we can directly access the vector data.
+ *
+ * @tparam
+ * @param field
+ * @return auto
+ */
+template<>
+auto create_get_field_data_function<std::uint8_t, std::uint8_t>(const pcl::PCLPointField& field) {
+    if (pcl::traits::asEnum<std::uint8_t>::value != field.datatype) {
+        throw std::runtime_error("datatype did not match type T");
+    }
+    const std::size_t offset = field.offset;
+    return [offset](const pcl::PCLPointCloud2& pointcloud, const std::size_t i) -> std::uint8_t {
+        return pointcloud.data[i * pointcloud.point_step + offset];
+    };
+}
+
+/**
+ * @brief Template specialisation of create_set_field_data_function<InT, T> for when InT == T == std::uint8_t.
+ *
+ * It is more efficient as we can directly access the vector data.
+ *
+ * @tparam
+ * @param field
+ * @return auto
+ */
+template<>
+auto create_set_field_data_function<std::uint8_t, std::uint8_t>(const pcl::PCLPointField& field) {
+    if (pcl::traits::asEnum<std::uint8_t>::value != field.datatype) {
+        throw std::runtime_error("datatype did not match type std::uint8_t");
+    }
+    const std::size_t offset = field.offset;
+    return [offset](pcl::PCLPointCloud2& pointcloud, const std::size_t i, const std::uint8_t value) -> void {
+        pointcloud.data[i * pointcloud.point_step + offset] = value;
+    };
+}
+
 void deskew(const Eigen::Isometry3d& skew, const double dt, const std::uint64_t new_time,
         const pcl::PCLPointCloud2& src, pcl::PCLPointCloud2& dest) {
-    // Perform a point cloud copy if there is no transform
-    if (skew.isApprox(Eigen::Isometry3d::Identity())) {
-        dest = src;
-        dest.header.stamp = new_time;
-    } else {
+    // Skip processing if identity transform.
+    dest = src;
+    dest.header.stamp = new_time;
+    if (!skew.isApprox(Eigen::Isometry3d::Identity())) {
         // Error handling
         if (dt <= 0.0) {
             throw std::runtime_error("dt cannot be <= 0.0 for deskewing");
         }
 
-        // Setup
-        const Eigen::Isometry3d deskew = skew.inverse();
-        const Eigen::Vector3d deskew_translation = deskew.translation();
-        const Eigen::Quaterniond deskew_quaternion = Eigen::Quaterniond(deskew.rotation());
-        // Compute
+        // Setup. Skew is T_S^E where S denotes start and E denotes end
+        const Eigen::Vector3d skew_translation = skew.translation();
+        const Eigen::Quaterniond skew_quaternion = Eigen::Quaterniond(skew.rotation());
+
+        // Compute required quantities
         const double new_time_seconds = static_cast<double>(new_time - src.header.stamp) / 1.0e6;  // us to s
         const double new_time_fraction = new_time_seconds / dt;
-        const Eigen::Vector3d new_time_translation = new_time_fraction * deskew_translation;
+        const Eigen::Vector3d new_time_translation = new_time_fraction * skew_translation;
         const Eigen::Quaterniond new_time_quaternion =
-                Eigen::Quaterniond::Identity().slerp(new_time_fraction, deskew_quaternion);
+                Eigen::Quaterniond::Identity().slerp(new_time_fraction, skew_quaternion);
+        // new_time_transform = T_N^S where N denotes new
         const Eigen::Isometry3d new_time_transform =
                 eigen_ext::to_transform(new_time_translation, new_time_quaternion).inverse();
-        dest.header = src.header;
-        dest.header.stamp = new_time;
-        dest.height = src.height;
-        dest.width = src.width;
-        dest.fields = src.fields;
-        dest.is_bigendian = src.is_bigendian;
-        dest.point_step = src.point_step;
-        dest.row_step = src.row_step;
-        dest.data.resize(src.data.size());
-        dest.is_dense = src.is_dense;
-        for (std::uint32_t i = 0; i < src.data.size(); i += src.point_step) {
-            Eigen::Vector3d p;
-            std::array<pcl::PCLPointField, 3> p_fields;
-            double t;
-            for (const pcl::PCLPointField& field : src.fields) {
-                if (field.name == "x") {
-                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-                        p[0] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
-                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
-                        p[0] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
-                    } else {
-                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
-                    }
-                    p_fields[0] = field;
-                } else if (field.name == "y") {
-                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-                        p[1] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
-                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
-                        p[1] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
-                    } else {
-                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
-                    }
-                    p_fields[1] = field;
-                } else if (field.name == "z") {
-                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-                        p[2] = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
-                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
-                        p[2] = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
-                    } else {
-                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
-                    }
-                    p_fields[2] = field;
-                } else if (field.name == "t") {
-                    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-                        t = static_cast<double>(*reinterpret_cast<const float*>(&src.data[i + field.offset]));
-                    } else if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
-                        t = *reinterpret_cast<const double*>(&src.data[i + field.offset]);
-                    } else {
-                        throw std::runtime_error(field.name + " field did not have floating-point datatype");
-                    }
-                } else {
-                    std::memcpy(&dest.data[i + field.offset], &src.data[i + field.offset],
-                            pcl::getFieldSize(field.datatype));
-                }
-            }
+
+        // Access functions
+        auto x_field = get_field(dest, "x");
+        auto y_field = get_field(dest, "y");
+        auto z_field = get_field(dest, "z");
+        auto t_field = get_field(dest, "t");
+        auto get_x_field_data = create_get_field_data_function<double>(x_field);
+        auto get_y_field_data = create_get_field_data_function<double>(y_field);
+        auto get_z_field_data = create_get_field_data_function<double>(z_field);
+        auto get_t_field_data = create_get_field_data_function<double>(t_field);
+        auto set_x_field_data = create_set_field_data_function<double>(x_field);
+        auto set_y_field_data = create_set_field_data_function<double>(y_field);
+        auto set_z_field_data = create_set_field_data_function<double>(z_field);
+        auto set_t_field_data = create_set_field_data_function<float>(t_field);
+
+        const std::size_t num_points = size_points(dest);
+        for (std::size_t i = 0; i < num_points; ++i) {
+            // Get relevant data from pointcloud
+            const Eigen::Vector3d p{get_x_field_data(dest, i), get_y_field_data(dest, i), get_z_field_data(dest, i)};
+            const double t = get_t_field_data(dest, i);
 
             // Compute the deskewed point
             const double interp_fraction = t / dt;
-            const Eigen::Vector3d interp_translation = interp_fraction * deskew_translation;
+            const Eigen::Vector3d interp_translation = interp_fraction * skew_translation;
             const Eigen::Quaterniond interp_quaternion =
-                    Eigen::Quaterniond::Identity().slerp(interp_fraction, deskew_quaternion);
+                    Eigen::Quaterniond::Identity().slerp(interp_fraction, skew_quaternion);
+            // interp_transform = T_S^i where i is the frame where point i was taken
             const Eigen::Isometry3d interp_transform = eigen_ext::to_transform(interp_translation, interp_quaternion);
+            // p_N = T_N^S * T_S^i * p_i
             const Eigen::Vector3d p_deskew = new_time_transform * interp_transform * p;
 
-            // Copy the deskewed point data
-            for (std::size_t j = 0; j < p_fields.size(); ++j) {
-                if (p_fields[j].datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-                    const float f = static_cast<float>(p_deskew[j]);
-                    std::memcpy(&dest.data[i + p_fields[j].offset], &f, sizeof(float));
-                } else if (p_fields[j].datatype == pcl::PCLPointField::PointFieldTypes::FLOAT64) {
-                    std::memcpy(&dest.data[i + p_fields[j].offset], &p_deskew[j], sizeof(double));
-                } else {
-                    throw std::runtime_error("point field did not have floating-point datatype");
-                }
-            }
+            // Set the relevant data in the pointcloud
+            set_x_field_data(dest, i, p_deskew[0]);
+            set_y_field_data(dest, i, p_deskew[1]);
+            set_z_field_data(dest, i, p_deskew[2]);
+            set_t_field_data(dest, i, 0.0f);
         }
     }
 }
@@ -230,8 +248,96 @@ std::string info_string(const pcl::PCLPointCloud2& pointcloud,
     return ss.str();
 }
 
+bool is_8bit(const pcl::PCLPointField::PointFieldTypes type) {
+    switch (type) {
+        case pcl::PCLPointField::PointFieldTypes::INT8:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT8:  // fallthrough
+            return true;
+        case pcl::PCLPointField::PointFieldTypes::INT16:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT16:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:  // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT32:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT32:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return false;
+        default:
+            throw std::runtime_error("pcl::PCLPointField::PointFieldTypes not recognised.");
+    }
+}
+
+bool is_8bit(const std::uint8_t type) {
+    return is_8bit(static_cast<pcl::PCLPointField::PointFieldTypes>(type));
+}
+
+bool is_16bit(const pcl::PCLPointField::PointFieldTypes type) {
+    switch (type) {
+        case pcl::PCLPointField::PointFieldTypes::INT16:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT16:  // fallthrough
+            return true;
+        case pcl::PCLPointField::PointFieldTypes::INT8:     // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT8:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:  // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT32:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT32:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return false;
+        default:
+            throw std::runtime_error("pcl::PCLPointField::PointFieldTypes not recognised.");
+    }
+}
+
+bool is_16bit(const std::uint8_t type) {
+    return is_16bit(static_cast<pcl::PCLPointField::PointFieldTypes>(type));
+}
+
+bool is_32bit(const pcl::PCLPointField::PointFieldTypes type) {
+    switch (type) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:  // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT32:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT32:
+            return true;
+        case pcl::PCLPointField::PointFieldTypes::INT8:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT8:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT16:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT16:  // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return false;
+        default:
+            throw std::runtime_error("pcl::PCLPointField::PointFieldTypes not recognised.");
+    }
+}
+
+bool is_32bit(const std::uint8_t type) {
+    return is_32bit(static_cast<pcl::PCLPointField::PointFieldTypes>(type));
+}
+
+bool is_64bit(const pcl::PCLPointField::PointFieldTypes type) {
+    switch (type) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return true;
+        case pcl::PCLPointField::PointFieldTypes::INT8:     // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT8:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT16:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT16:   // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:  // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::INT32:    // fallthrough
+        case pcl::PCLPointField::PointFieldTypes::UINT32:
+            return false;
+        default:
+            throw std::runtime_error("pcl::PCLPointField::PointFieldTypes not recognised.");
+    }
+}
+
+bool is_64bit(const std::uint8_t type) {
+    return is_64bit(static_cast<pcl::PCLPointField::PointFieldTypes>(type));
+}
+
 std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
     switch (field.datatype) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
+            return std::to_string(max<float>(pointcloud, field));
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return std::to_string(max<double>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(max<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -244,10 +350,6 @@ std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
             return std::to_string(max<std::int32_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT32:
             return std::to_string(max<std::uint32_t>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
-            return std::to_string(max<float>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
-            return std::to_string(max<double>(pointcloud, field));
         default:
             throw std::runtime_error("Failed to get max value string");
     }
@@ -255,6 +357,10 @@ std::string max_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
 
 std::string min_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field) {
     switch (field.datatype) {
+        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
+            return std::to_string(min<float>(pointcloud, field));
+        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
+            return std::to_string(min<double>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::INT8:
             return std::to_string(min<std::int8_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT8:
@@ -267,40 +373,37 @@ std::string min_str(const pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointFi
             return std::to_string(min<std::int32_t>(pointcloud, field));
         case pcl::PCLPointField::PointFieldTypes::UINT32:
             return std::to_string(min<std::uint32_t>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT32:
-            return std::to_string(min<float>(pointcloud, field));
-        case pcl::PCLPointField::PointFieldTypes::FLOAT64:
-            return std::to_string(min<double>(pointcloud, field));
         default:
             throw std::runtime_error("Failed to get max value string");
     }
 }
 
-void ns_to_s(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& time_field) {
-    if (time_field.datatype != pcl::traits::asEnum<float>::value) {
-        throw std::runtime_error("Currently ns_to_s only handled for FLOAT32");
-    }
-    for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-        float* t = reinterpret_cast<float*>(&pointcloud.data[i + time_field.offset]);
-        *t /= 1.0e9;
+std::uint32_t point_step(const pcl::PCLPointField& last_field) {
+    return last_field.offset + pcl::getFieldSize(last_field.datatype) * last_field.count;
+}
+
+void resize(pcl::PCLPointCloud2& pointcloud, const std::uint32_t width, const std::uint32_t height) {
+    pointcloud.height = height;
+    pointcloud.width = width;
+    pointcloud.row_step = row_step(pointcloud);
+    pointcloud.data.resize(size_bytes(pointcloud));
+}
+
+std::uint32_t row_step(const pcl::PCLPointCloud2& pointcloud) {
+    return pointcloud.point_step * pointcloud.width;
+}
+
+void scale_field(pcl::PCLPointCloud2& pointcloud, const pcl::PCLPointField& field, const double scale) {
+    auto get_field_data = create_get_field_data_function<double>(field);
+    auto set_field_data = create_set_field_data_function<double>(field);
+    const std::size_t num_points = size_points(pointcloud);
+    for (std::size_t i = 0; i < num_points; ++i) {
+        set_field_data(pointcloud, i, get_field_data(pointcloud, i) * scale);
     }
 }
 
-void ns_to_s(pcl::PCLPointCloud2& pointcloud, const std::string& time_field_name) {
-    ns_to_s(pointcloud, get_field(pointcloud, time_field_name));
-}
-
-void scale_float32_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const float scale) {
-    const pcl::PCLPointField& field = get_field(pointcloud, name);
-    if (field.datatype == pcl::PCLPointField::PointFieldTypes::FLOAT32) {
-        for (std::size_t i = 0; i < pointcloud.data.size(); i += pointcloud.point_step) {
-            float* f = reinterpret_cast<float*>(&pointcloud.data[i + field.offset]);
-            *f *= scale;
-        }
-    } else {
-        throw std::runtime_error("field.datatype was not FLOAT32. field.datatype " +
-                                 field_type_to_string(field.datatype) + "Not yet supported.");
-    }
+void scale_field(pcl::PCLPointCloud2& pointcloud, const std::string& name, const double scale) {
+    return scale_field(pointcloud, get_field(pointcloud, name), scale);
 }
 
 // Could also use pointcloud.data.size(), which should be identical if the metadata is correct
@@ -353,6 +456,14 @@ std::string to_string(const pcl::PCLPointField::PointFieldTypes field_type) {
         default:
             throw std::runtime_error("Unknown PointFieldType " + std::to_string(field_type));
     }
+}
+
+}
+
+namespace pcl {
+
+bool operator==(const pcl::PCLPointField& f1, const pcl::PCLPointField& f2) {
+    return f1.name == f2.name && f1.offset == f2.offset && f1.datatype == f2.datatype && f1.count == f2.count;
 }
 
 }

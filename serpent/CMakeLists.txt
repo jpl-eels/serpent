@@ -32,6 +32,13 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
+# OpenMP required to compile fast_gicp for new point types.
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 catkin_python_setup()
 
 add_message_files(
@@ -101,14 +108,15 @@ set(SYSTEM_LIBRARIES
 add_library(${LIBRARY} SHARED
     src/frontend.cpp
     src/match_filters.cpp
+    src/pointcloud_add_unit_vectors.cpp
     src/pointcloud_filter.cpp
     src/pointcloud_formatter.cpp
-    src/pointcloud_normal_estimation.cpp
     src/graph_manager.cpp
-    src/mapping.cpp
     src/optimisation.cpp
+    src/point_types.cpp
+    src/registration_covariance.cpp
     src/registration_methods.cpp
-    src/registration.cpp
+    src/ros_conversion.cpp
     src/sensor_point_types.cpp
     src/stereo_cost_functions.cpp
     src/stereo_factor_finder.cpp
@@ -273,6 +281,7 @@ set_target_properties(${STEREO_PIPELINE_NODE}
 )
 
 # Required (before PCL headers) from PCL 1.7 onwards when using custom point types to include templated algorithms also
+target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${NODE} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${FRONTEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${BACKEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
@@ -284,8 +293,7 @@ if(CATKIN_ENABLE_TESTING)
         src/graph_manager.cpp
         src/utilities.cpp
         test/graph_manager.cpp
-        test/DEPRECATED_registration_degeneracy.cpp
-        test/registration_covariance_estimator.cpp
+        test/registration_covariance.cpp
         test/serpent.cpp
         test/test_main.cpp
         test/src/read_data.cpp

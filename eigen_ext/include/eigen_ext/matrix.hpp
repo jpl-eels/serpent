@@ -58,6 +58,15 @@ template<typename Derived>
 Derived linear_interpolate(const Eigen::DenseBase<Derived>& m1, const Eigen::DenseBase<Derived>& m2,
         const double interp);
 
+template<typename Derived>
+bool non_zero_diagonals(const Eigen::MatrixBase<Derived>& matrix);
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 3, 1> safe_normalise(const Scalar x, const Scalar y, const Scalar z);
+
+template<typename Scalar, int Rows>
+Eigen::Matrix<Scalar, Rows, 1> safe_normalise(const Eigen::Matrix<Scalar, Rows, 1>& vector);
+
 /**
  * @brief Create the skew symmetric matrix for a 3-dim vector.
  *
@@ -102,6 +111,25 @@ template<typename Derived>
 Derived linear_interpolate(const Eigen::MatrixBase<Derived>& m1, const Eigen::MatrixBase<Derived>& m2,
         const double interp) {
     return (1.0 - interp) * m1.derived() + interp * m2.derived();
+}
+
+template<typename Derived>
+bool non_zero_diagonals(const Eigen::MatrixBase<Derived>& matrix) {
+    return matrix.diagonal().minCoeff() > 0.0;
+}
+
+template<typename Scalar>
+Eigen::Matrix<Scalar, 3, 1> safe_normalise(const Scalar x, const Scalar y, const Scalar z) {
+    return safe_normalise(Eigen::Matrix<Scalar, 3, 1>{x, y, z});
+}
+
+template<typename Scalar, int Rows>
+Eigen::Matrix<Scalar, Rows, 1> safe_normalise(const Eigen::Matrix<Scalar, Rows, 1>& vector) {
+    const Scalar norm = vector.norm();
+    if (norm == 0.0) {
+        throw std::runtime_error("Cannot normalise because norm equals zero.");
+    }
+    return vector / norm;
 }
 
 template<typename Scalar>

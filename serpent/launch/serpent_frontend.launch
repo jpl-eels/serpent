@@ -40,24 +40,16 @@
     <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
 
     <!-- Parameter Configuration -->
-    <!-- Robot -->
-    <rosparam ns="serpent" if="$(eval robot_file != '')"             file="$(arg robot_file)"/>
-    <!-- Mission -->
-    <rosparam ns="serpent" if="$(eval mission_file != '')"           file="$(arg mission_file)"/>
-    <!-- Filter -->
-    <rosparam ns="serpent" if="$(eval filter_file != '')"            file="$(arg filter_file)"/>
-    <!-- Format -->
-    <rosparam ns="serpent" if="$(eval format_file != '')"            file="$(arg format_file)"/>
-    <!-- Normal Estimation -->
-    <rosparam ns="serpent" if="$(eval normal_estimation_file != '')" file="$(arg normal_estimation_file)"/>
-    <!-- Tuning -->
-    <rosparam ns="serpent" if="$(eval tuning_file != '')"            file="$(arg tuning_file)"/>
-    <!-- Debug -->
-    <rosparam ns="serpent" if="$(eval debug_file != '')"             file="$(arg debug_file)"/>
-    <!-- Other Parameters -->
-    <rosparam ns="serpent" subst_value="true">
-        threads: $(arg threads)
-    </rosparam>
+    <include file="$(find serpent)/launch/load_parameters.launch">
+        <arg name="robot_file"                 value="$(arg robot_file)"/>
+        <arg name="mission_file"               value="$(arg mission_file)"/>
+        <arg name="filter_file"                value="$(arg filter_file)"/>
+        <arg name="format_file"                value="$(arg format_file)"/>
+        <arg name="normal_estimation_file"     value="$(arg normal_estimation_file)"/>
+        <arg name="tuning_file"                value="$(arg tuning_file)"/>
+        <arg name="debug_file"                 value="$(arg debug_file)"/>
+        <arg name="threads"                    value="$(arg threads)"/>
+    </include>
 
     <node pkg="serpent" type="serpent_frontend_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">

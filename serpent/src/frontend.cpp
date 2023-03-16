@@ -13,6 +13,7 @@
 #include <pointcloud_tools/pclpointcloud2_utilities.hpp>
 
 #include "serpent/ImuArray.h"
+#include "serpent/ros_conversion.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {
@@ -57,10 +58,9 @@ Frontend::Frontend()
     // Check base_link frame exists
     if (!body_frames.has_frame("base_link")) {
         throw std::runtime_error(
-                "SERPENT requires base_link frame to be defined in order to publish transforms and "
-                "poses from the map frame to it. A common use case is to set the body_frame_name to base_link, and "
-                "then optionally to set the frame_id also (may differ from \"base_link\"). See README and "
-                "body_frames.hpp documentation.");
+                "SERPENT requires base_link frame to be defined in order to publish transforms and poses from the map "
+                "frame to it. A common use case is to set the body_frame_name to base_link, and then optionally to set "
+                "the frame_id also (may differ from \"base_link\"). See README and body_frames.hpp documentation.");
     }
 
     // Map frame
@@ -141,6 +141,10 @@ Frontend::Frontend()
             throw std::runtime_error("Barometer noise should be >= zero with overwrite set to true.");
         }
     }
+}
+
+std::string Frontend::output_pointcloud_topic() const {
+    return deskewed_pointcloud_publisher.getTopic();
 }
 
 void Frontend::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure) {
@@ -394,7 +398,7 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             }
             delete_old_measurements(imu_s2s->measurements.front().header.stamp, imu_buffer);
             imu_s2s_publisher.publish(imu_s2s);
-            ROS_INFO_STREAM(
+            ROS_DEBUG_STREAM(
                     "Published IMU measurements from " << imu_s2s->start_timestamp << " to " << imu_s2s->end_timestamp);
         } else {
             // Wait for IMU message after deskew timestamp (for safety, as should already be received).

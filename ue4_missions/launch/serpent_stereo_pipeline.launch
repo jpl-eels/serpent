@@ -28,22 +28,22 @@
         <arg name="stereo_right_cam_image_topic"   value="$(arg right_image_topic)"/>
         <arg name="stereo_right_cam_info_topic"    value="$(arg right_info_topic)"/>
 
-        <arg name="robot_file"              value="$(find ue4_missions)/config/serpent/ue4_platform.yaml"/>
-        <arg name="mission_file"            value="$(find ue4_missions)/config/serpent/mission/icy_surface.yaml"/>
-        <arg name="filter_file"             value="$(find ue4_missions)/config/serpent/filter.yaml"/>
-        <arg name="format_file"             value="$(find ue4_missions)/config/serpent/format.yaml"/>
-        <arg name="normal_estimation_file"  value="$(find ue4_missions)/config/serpent/normal_estimation.yaml"/>
-        <arg name="tuning_file"             value="$(find ue4_missions)/config/serpent/tuning.yaml"/>
-        <arg name="debug_file"              value="$(find ue4_missions)/config/serpent/debug.yaml"/>
-        <arg name="threads"                 value="4"/>
+        <arg name="robot_file"                  value="$(find ue4_missions)/config/serpent/ue4_platform.yaml"/>
+        <arg name="mission_file"                value="$(find ue4_missions)/config/serpent/mission/icy_surface.yaml"/>
+        <arg name="filter_file"                 value="$(find ue4_missions)/config/serpent/filter.yaml"/>
+        <arg name="format_file"                 value="$(find ue4_missions)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"      value="$(find ue4_missions)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"                 value="$(find ue4_missions)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"                  value="$(find ue4_missions)/config/serpent/debug.yaml"/>
+        <arg name="threads"                     value="4"/>
 
-        <arg name="use_gdb"                 value="false"/>
+        <arg name="use_gdb"                     value="false"/>
 
-        <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag"                  value="$(arg rosbag)"/>
-        <arg name="rosbag_data_dir"         value="$(arg data_dir)"/>
-        <arg name="rosbag_rate"             value="$(arg rate)"/>
-        <arg name="rosbag_start"            value="$(arg start)"/>
-        <arg name="rosbag_duration"         value="$(arg duration)"/>
+        <arg name="play_rosbag"                 value="true"/>
+        <arg name="rosbag"                      value="$(arg rosbag)"/>
+        <arg name="rosbag_data_dir"             value="$(arg data_dir)"/>
+        <arg name="rosbag_rate"                 value="$(arg rate)"/>
+        <arg name="rosbag_start"                value="$(arg start)"/>
+        <arg name="rosbag_duration"             value="$(arg duration)"/>
     </include>
 </launch>

@@ -8,9 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
     nav_msgs
     roscpp
     sensor_msgs
+    std_msgs
     tf2_ros
 
     eigen_ext
+    statistics_msgs
 )
 find_package(Eigen3 REQUIRED)
 
@@ -36,9 +38,11 @@ catkin_package(
         nav_msgs
         roscpp
         sensor_msgs
+        std_msgs
         tf2_ros
 
         eigen_ext
+        statistics_msgs
     DEPENDS
         EIGEN3
     LIBRARIES
@@ -56,6 +60,8 @@ add_library(${LIBRARY_NAME}
     src/odometry.cpp
     src/pose.cpp
     src/sensor_msgs.cpp
+    src/std_msgs.cpp
+    src/statistics_msgs.cpp
     src/twist.cpp
 )
 
@@ -147,4 +153,5 @@ if(CATKIN_ENABLE_TESTING)
     make_test(odometry)
     make_test(pose)
     make_test(sensor_msgs)
+    make_test(statistics_msgs)
 endif(CATKIN_ENABLE_TESTING)

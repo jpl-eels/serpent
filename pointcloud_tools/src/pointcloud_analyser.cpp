@@ -20,18 +20,17 @@ void PointcloudAnalyser::analyse(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 
     // Print information with statistics
     statistics_msgs::SummaryStatisticsArray statistics_array = statistics(*pointcloud);
-    ROS_INFO_STREAM(pct::info_string(*pointcloud, statistics_array.statistics));
+    ROS_INFO_STREAM(info_string(*pointcloud, statistics_array.statistics));
 
     // Publish statistics
     statistics_array_publisher.publish(statistics_array);
 
     // Print normal information
-    if (pct::has_field(*pointcloud, "normal_x") && pct::has_field(*pointcloud, "normal_y") &&
-            pct::has_field(*pointcloud, "normal_z")) {
-        const int unnormalised_normals = pct::check_normals(*pointcloud);
+    if (has_field(*pointcloud, "normal_x") && has_field(*pointcloud, "normal_y") &&
+            has_field(*pointcloud, "normal_z")) {
+        const int unnormalised_normals = check_normals(*pointcloud);
         if (unnormalised_normals > 0) {
-            ROS_WARN_STREAM(
-                    unnormalised_normals << "/" << pct::size_points(*pointcloud) << " normals are unnormalised");
+            ROS_WARN_STREAM(unnormalised_normals << "/" << size_points(*pointcloud) << " normals are unnormalised");
         } else {
             ROS_INFO_STREAM("All point normals are normalised.");
         }

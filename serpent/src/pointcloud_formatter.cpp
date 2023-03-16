@@ -41,9 +41,10 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
     // Sensor-specific processing
     switch (sensor_type) {
         case SensorType::OUSTER:
-            ouster_ns_to_s(*pointcloud);
-            pct::cast_to_float32(*pointcloud, "range");
-            pct::scale_float32_field(*pointcloud, "range", 0.001f);
+            // Cast time field from UINT32 to FLOAT32, scaling by 1.0e-9 to go from nanoseconds to seconds
+            pct::cast_field_with_scale<pcl::PCLPointField::PointFieldTypes::FLOAT32>(*pointcloud, "t", 1.0e-9);
+            // Cast range field to FLOAT32, scaling by 1.0e-3 to go from millimetres to metres
+            pct::cast_field_with_scale<pcl::PCLPointField::PointFieldTypes::FLOAT32>(*pointcloud, "range", 1.0e-3);
             break;
         case SensorType::CUSTOM:
             if (!pct::has_field(*pointcloud, "t") && pct::has_field(*pointcloud, "time")) {
@@ -69,7 +70,7 @@ void PointcloudFormatter::format(const sensor_msgs::PointCloud2::ConstPtr& msg) 
         }
 
         auto filtered_pointcloud = boost::make_shared<pcl::PCLPointCloud2>();
-        pct::filter_max(*pointcloud, *filtered_pointcloud, t_field, max_time_threshold);
+        pct::filter_max<float>(*pointcloud, *filtered_pointcloud, t_field, max_time_threshold);
         pointcloud = filtered_pointcloud;
     }
 
