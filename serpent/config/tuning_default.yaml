@@ -55,6 +55,9 @@ optimisation:
     imu: true
     registration: true
     stereo: true
+  marginalisation:
+    enabled: false
+    window_size: 100
 
 # Registration Covariance
 registration_covariance:

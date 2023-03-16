@@ -181,7 +181,7 @@ void GraphManager::create_stereo_factors_and_values(const int key_,
                 // Compute landmark position in world frame
                 const gtsam::Point3 landmark = camera.backproject(feature);
                 // Update values
-                set(S(id), landmark);
+                set<S>(id, landmark);
 
                 // Add current state factor if feature is in i-1
                 auto stereo_factor = boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
@@ -315,7 +315,7 @@ void GraphManager::set_body_to_stereo_left_cam_pose(const gtsam::Pose3& body_to_
 }
 
 void GraphManager::set_barometer_bias(const int key_, const double barometer_bias_) {
-    set(P(key_), barometer_bias_);
+    set<P>(key_, barometer_bias_);
 }
 
 void GraphManager::set_barometer_bias(const std::string& key_, const double barometer_bias_, const int offset) {
@@ -324,7 +324,7 @@ void GraphManager::set_barometer_bias(const std::string& key_, const double baro
 
 void GraphManager::set_imu_bias(const int key_, const gtsam::imuBias::ConstantBias& imu_bias_) {
     assert(key_ >= 0);
-    set(B(key_), imu_bias_);
+    set<B>(key_, imu_bias_);
 }
 
 void GraphManager::set_imu_bias(const std::string& key_, const gtsam::imuBias::ConstantBias& imu_bias_,
@@ -340,8 +340,8 @@ void GraphManager::set_named_key(const std::string& name, const int key_, const 
 
 void GraphManager::set_navstate(const int key_, const gtsam::NavState& navstate) {
     assert(key_ >= 0);
-    set(X(key_), navstate.pose());
-    set(V(key_), navstate.velocity());
+    set<X>(key_, navstate.pose());
+    set<V>(key_, navstate.velocity());
 }
 
 void GraphManager::set_navstate(const std::string& key_, const gtsam::NavState& navstate, const int offset) {
@@ -350,7 +350,7 @@ void GraphManager::set_navstate(const std::string& key_, const gtsam::NavState& 
 
 void GraphManager::set_pose(const int key_, const gtsam::Pose3& pose) {
     assert(key_ >= 0);
-    set(X(key_), pose);
+    set<X>(key_, pose);
 }
 
 void GraphManager::set_pose(const std::string& key_, const gtsam::Pose3& pose, const int offset) {
@@ -380,7 +380,7 @@ void GraphManager::set_timestamp(const std::string& key_, const ros::Time& times
 }
 
 void GraphManager::set_velocity(const int key_, const gtsam::Velocity3& velocity) {
-    set(V(key_), velocity);
+    set<V>(key_, velocity);
 }
 
 void GraphManager::set_velocity(const std::string& key_, const gtsam::Velocity3& velocity, const int offset) {
@@ -544,6 +544,18 @@ gtsam::Values GraphManager::extract_new_values(const int max_key) {
     return extracted_new_values;
 }
 
+gtsam::FastList<gtsam::Key> GraphManager::extract_unmarginalised_keys(const int max_key) {
+    gtsam::FastList<gtsam::Key> extracted_keys_;
+    auto it = unmarginalised_keys_.begin();
+    while (it != unmarginalised_keys_.end() && it->first <= max_key) {
+        extracted_keys_.insert(extracted_keys_.end(), it->second.begin(), it->second.end());
+        // Remove the unmarginalised keys from the map without invalidating the iterator
+        auto it_ = it++;
+        unmarginalised_keys_.erase(it_);
+    }
+    return extracted_keys_;
+}
+
 gtsam::NonlinearFactorGraph& GraphManager::factors(const int key_) {
     return factors_.emplace(key_, gtsam::NonlinearFactorGraph{}).first->second;
 }
@@ -552,21 +564,16 @@ gtsam::NonlinearFactorGraph& GraphManager::new_factors(const int key_) {
     return new_factors_.emplace(key_, gtsam::NonlinearFactorGraph{}).first->second;
 }
 
+gtsam::FastList<gtsam::Key>& GraphManager::unmarginalised_keys(const int key_) {
+    return unmarginalised_keys_.emplace(key_, gtsam::FastList<gtsam::Key>{}).first->second;
+}
+
 ISAM2GraphManager::ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params)
     : optimiser(isam2_params),
-      opt_key_(-1) {}
-
-gtsam::ISAM2Result ISAM2GraphManager::optimise(const int max_key) {
-    // Update the optimiser with new factors and new values
-    const gtsam::ISAM2Result result = optimiser.update(extract_new_factors(max_key), extract_new_values(max_key));
-    opt_key_ = max_key;
-    update_from_values(optimiser.calculateEstimate());
-    return result;
-}
-
-int ISAM2GraphManager::opt_key() {
-    return opt_key_;
-}
+      opt_key_(-1),
+      marginalisation(false),
+      marginalisation_key_(-1),
+      marginalisation_window_size(0) {}
 
 Eigen::Matrix<double, 1, 1> ISAM2GraphManager::barometer_bias_variance(const int key_) const {
     return optimiser.marginalCovariance(P(key_));
@@ -580,8 +587,44 @@ Eigen::Matrix<double, 6, 6> ISAM2GraphManager::imu_bias_covariance(const int key
     return optimiser.marginalCovariance(B(key_));
 }
 
+int ISAM2GraphManager::marginalisation_key() const {
+    return marginalisation_key_;
+}
+
+void ISAM2GraphManager::marginalise(const int key_) {
+    if (key_ > opt_key_) {
+        throw std::runtime_error("Cannot marginalise before optimisation.");
+    }
+    auto marginalisation_keys = extract_unmarginalised_keys(key_);
+    marginalisation_key_ = key_;
+    optimiser.marginalizeLeaves(marginalisation_keys);
+}
+
+gtsam::ISAM2Result ISAM2GraphManager::optimise(const int max_key) {
+    // Update the optimiser with new factors and new values
+    const gtsam::ISAM2Result result = optimiser.update(extract_new_factors(max_key), extract_new_values(max_key));
+    opt_key_ = max_key;
+    update_from_values(optimiser.calculateEstimate());
+    const int new_marginalisation_key = opt_key_ - marginalisation_window_size;
+    if (marginalisation && marginalisation_key_ <= new_marginalisation_key) {
+        marginalise(new_marginalisation_key);
+    }
+    return result;
+}
+
+int ISAM2GraphManager::opt_key() const {
+    return opt_key_;
+}
+
 Eigen::Matrix<double, 6, 6> ISAM2GraphManager::pose_covariance(const int key_) const {
     return optimiser.marginalCovariance(X(key_));
+}
+
+void ISAM2GraphManager::set_marginalisation(const bool enabled, const unsigned int window_size) {
+    marginalisation = enabled;
+    if (enabled) {
+        marginalisation_window_size = window_size;
+    }
 }
 
 Eigen::Matrix3d ISAM2GraphManager::velocity_covariance(const int key_) const {

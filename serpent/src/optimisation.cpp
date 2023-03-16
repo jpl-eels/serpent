@@ -249,6 +249,17 @@ Optimisation::Optimisation()
         }
         barometer_bias_noise = gtsam::noiseModel::Isotropic::Sigma(1, barometer_bias_noise_sigma);
     }
+
+    // Marginalisation
+    if (nh.param<bool>("optimisation/marginalisation/enabled", false)) {
+        const int marginalisation_window_size = nh.param<int>("optimisation/marginalisation/window_size", 100);
+        if (marginalisation_window_size < 0) {
+            throw std::runtime_error("Marginalisation window size must be >= 0 but was " +
+                                     std::to_string(marginalisation_window_size) + ".");
+        }
+        gm->set_marginalisation(true, static_cast<unsigned int>(marginalisation_window_size));
+        ROS_INFO_STREAM("Enabled marginalisation with window size " << marginalisation_window_size << ".");
+    }
 }
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {

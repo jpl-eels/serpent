@@ -68,25 +68,25 @@ class GraphManager {
 public:
     /**
      * @brief Barometric bias in metres.
-     * 
-     * @param key 
+     *
+     * @param key
      * @return double bias in metres
      */
     double barometer_bias(const int key) const;
 
     /**
      * @brief Barometric bias in metres.
-     * 
-     * @param key 
-     * @param offset 
+     *
+     * @param key
+     * @param offset
      * @return double bias in metres
      */
     double barometer_bias(const std::string& key, const int offset) const;
 
     /**
      * @brief Create a barometric bias (between) factor as a zero-measurement between biases at new_key - 1 and new_key.
-     * 
-     * @param new_key 
+     *
+     * @param new_key
      * @param noise noise model for between factor, where standard devation / sigma is in metres.
      */
     void create_barometric_bias_factor(const int new_key, gtsam::SharedNoiseModel noise);
@@ -94,8 +94,8 @@ public:
     /**
      * @brief Create a barometric factor for a new pressure measurement in kilopascals (kPa). Returns the height for
      * that pressure.
-     * 
-     * @param new_key 
+     *
+     * @param new_key
      * @param pressure pressure measurement in kPa
      * @param noise noise model for barometeric factor error, where standard devation / sigma is in metres.
      * @return double height in metres
@@ -103,9 +103,9 @@ public:
     double create_barometric_factor(const int new_key, const double pressure, gtsam::SharedNoiseModel noise);
 
     /**
-     * @brief Create a between pose factor between new_key - 1 and new_key. 
-     * 
-     * @param new_key 
+     * @brief Create a between pose factor between new_key - 1 and new_key.
+     *
+     * @param new_key
      * @param transform SE(3) relative transform from new_key - 1 to new_key
      * @param noise noise model for between pose factor, with standard devations / sigmas ordered rx, ry, rz, tx, ty, tz
      */
@@ -392,26 +392,30 @@ protected:
 
     /**
      * @brief Extract (find and remove) from new factors all factors with key <= max_key.
-     * 
-     * @param max_key 
-     * @return gtsam::NonlinearFactorGraph 
+     *
+     * @param max_key
+     * @return gtsam::NonlinearFactorGraph
      */
     gtsam::NonlinearFactorGraph extract_new_factors(const int max_key);
 
     gtsam::Values extract_new_values(const int max_key);
 
+    gtsam::FastList<gtsam::Key> extract_unmarginalised_keys(const int max_key);
+
     gtsam::NonlinearFactorGraph& factors(const int key);
 
     gtsam::NonlinearFactorGraph& new_factors(const int key);
 
-    template<typename ValueType>
-    void add(const gtsam::Key key, const ValueType& value);
+    gtsam::FastList<gtsam::Key>& unmarginalised_keys(const int key);
+
+    template<gtsam::Key (*KeyFunc)(std::uint64_t), typename ValueType>
+    void add(const int key, const ValueType& value);
+
+    template<gtsam::Key (*KeyFunc)(std::uint64_t), typename ValueType>
+    void set(const int key, const ValueType& value);
 
     template<typename ValueType>
-    void set(const gtsam::Key key, const ValueType& value);
-
-    template<typename ValueType>
-    void update(const gtsam::Key key, const ValueType& value);
+    void update(const gtsam::Key raw_key, const ValueType& value);
 
     // Named keys
     std::map<std::string, NamedKeyInfo> keys;
@@ -456,14 +460,35 @@ protected:
 
     // New stereo landmark ids
     std::map<int, std::vector<int>> new_stereo_landmark_ids;
+
+    // Unmarginalised keys
+    std::map<int, gtsam::FastList<gtsam::Key>> unmarginalised_keys_;
 };
 
 class ISAM2GraphManager : public GraphManager {
 public:
     explicit ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params);
 
+    Eigen::Matrix<double, 1, 1> barometer_bias_variance(const int key) const;
+
+    Eigen::MatrixXd covariance(const gtsam::Key key) const;
+
+    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
+
+    int marginalisation_key() const;
+
+    /**
+     * @brief Marginalise all keys <= key which are not already marginalised.
+     *
+     * @param key
+     */
+    void marginalise(const int key);
+
     /**
      * @brief Perform an incremental optimisation up to max_key, and internally update all optimised values.
+     *
+     * If marginalisation is enabled, this function will marginalise keys according to the marginalisation window size
+     * if enabled (see set_marginalisation()).
      *
      * @param max_key
      * @return gtsam::ISAM2Result
@@ -475,15 +500,18 @@ public:
      *
      * @return int
      */
-    int opt_key();
-
-    Eigen::Matrix<double, 1, 1> barometer_bias_variance(const int key) const;
-
-    Eigen::MatrixXd covariance(const gtsam::Key key) const;
-
-    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
+    int opt_key() const;
 
     Eigen::Matrix<double, 6, 6> pose_covariance(const int key) const;
+
+    /**
+     * @brief Enable marginalisation in optimisation, so that the number of unmarginalised keys is equal to the
+     * marginalisation window size.
+     *
+     * @param enabled
+     * @param window_size
+     */
+    void set_marginalisation(const bool enabled, const unsigned int window_size);
 
     Eigen::Matrix3d velocity_covariance(const int key) const;
 
@@ -493,6 +521,14 @@ private:
 
     // Optimisation key (separate to user-specifiable named keys)
     int opt_key_;
+
+    //// Marginalisation
+    // Marginalisation enabled in optimisation
+    bool marginalisation;
+    // Last marginalised key (-1 if no marginalisation has occurred)
+    int marginalisation_key_;
+    // Window size for optimisation marginalisation
+    int marginalisation_window_size;
 };
 
 }
