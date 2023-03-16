@@ -123,6 +123,26 @@ PointAngleAxis::PointAngleAxis(const _PointAngleAxis& p) {
     data_r[3] = 0.0f;
 }
 
+PointAngleAxis::PointAngleAxis(const Eigen::Isometry3f& pose) {
+    setPose(pose);
+}
+
+PointAngleAxis::PointAngleAxis(const Eigen::Vector3f& position, const Eigen::AngleAxisf& angle_axis) {
+    setPose(position, angle_axis);
+}
+
+PointAngleAxis::PointAngleAxis(const Eigen::Vector3f& position, const Eigen::Quaternionf& quaternion) {
+    setPose(position, quaternion);
+}
+
+PointAngleAxis::PointAngleAxis(const Eigen::Translation<float, 3>& position, const Eigen::Quaternionf& quaternion) {
+    setPose(position, quaternion);
+}
+
+PointAngleAxis::PointAngleAxis(const Eigen::Translation<float, 3>& position, const Eigen::Matrix3f& rotation_matrix) {
+    setPose(position, rotation_matrix);
+}
+
 PointAngleAxis::PointAngleAxis() {
     x = y = z = 0.0f;
     data[3] = 1.0f;
