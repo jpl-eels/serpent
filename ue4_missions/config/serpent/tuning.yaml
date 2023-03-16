@@ -66,8 +66,8 @@ registration_covariance:
   #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
   model: "POINT_TO_PLANE_LINEARISED" 
   constant: # For method = <CONSTANT>
-    rotation: 0.0174533 # 1 deg
-    translation: 1.0e-2  # 10 mm
+    rotation: 0.0174533  # 1 deg
+    translation: 1.0e-2  # 1 cm
   point_covariance: # For method = <CENSI, LLS>
     method: "CONSTANT" # Options: CONSTANT (default), VOXEL_SIZE, RANGE, RANGE_BIAS
     constant: 0.05 # For method = <CONSTANT>,

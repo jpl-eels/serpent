@@ -5,7 +5,7 @@
     <arg name="save_in_ros_folder"  default="false"/>
     <arg name="topics" default="/serpent/optimisation/odometry /serpent/optimisation/imu_biases 
             /serpent/registration/transform /serpent/stereo/statistics
-            /serpent/stereo/track_points_with_distances/statistics"/>
+            /serpent/stereo/track_points_with_distances/statistics /serpent/output/path"/>
 
     <!-- Intermediate processing -->
     <arg     if="$(arg save_in_ros_folder)" name="full_bag_name" value="$(arg bag_name)"/>

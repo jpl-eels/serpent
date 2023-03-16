@@ -55,7 +55,7 @@ Optimisation::Optimisation()
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
     imu_transform_publisher = nh.advertise<geometry_msgs::TransformStamped>("optimisation/imu_transform", 1);
     optimised_odometry_publisher = nh.advertise<nav_msgs::Odometry>("optimisation/odometry", 1);
-    path_publisher = nh.advertise<nav_msgs::Path>("output/path", 1);
+    path_publisher = nh.advertise<nav_msgs::Path>("output/path", 1, true);
     path_changes_publisher = nh.advertise<nav_msgs::Path>("optimisation/path_changes", 1);
 
     // Subscribers
