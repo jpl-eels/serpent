@@ -17,6 +17,8 @@ The intention is for SERPENT to be run with any subset of sensor modalities, wit
 
 The current best results are achieved with IMU + LiDAR + Barometer. Stereo is not currently working correctly.
 
+Note that when IMU factors are disabled, the system still runs with IMU in a loosely-coupled manner.
+
 ## Known Limitations
 
 In addition to specific issues which are tracked through version control, SERPENT has some limitations:
@@ -225,8 +227,9 @@ Here are some of the crucial parameters:
 | `tuning`              | `registration_covariance` | Describes the configuration of the registration covariance estimation method. |
 | `tuning`              | `s2s` | Describes scan-to-scan registration. |
 | `tuning`              | `s2m` | Describes scan-to-map (local map) registration. |
-| `tuning`              | `mapping` | Describes the construction of the local and global maps. |
+| `tuning`              | `mapping` | Describes the construction of the local and global maps. The threshold parameters determine the required spacing between keyclouds. |
 | `tuning`              | `stereo_factors` | Describes the covariance and noise model of stereo factors. |
+| `tuning`              | `stereo_factors/left_cam_frame` | Selection of stereo camera to use, much match block in `body_frames`. Note also the `stereo_camera` launch file parameter. |
 | `tuning`              | `stereo_tracking` | Describes the configuration of the stereo tracking module. |
 
 It is highly recommended that you create a set of configuration files for your exact purpose, modifying the defaults where necessary. In particular the following must be changed for any expectation of a working system:
@@ -251,6 +254,24 @@ roslaunch serpent serpent_backend.launch <arg>:=<value> ...
 ```
 
 This latter option may be useful if, for example, you want to run SERPENT on a remote machine and only want to run the frontend on the robot, where the pointcloud can be deskewed and downsampled before it is sent over the network.
+
+An important parameter in the launch file is the number of threads to run with. Configure this to a sensible number for your application.
+
+The run with a rosbag, ensure `use_sim_time:=true` is set when launching and it is essential to include the `--clock` flag:
+```bash
+rosbag play ./*.bag --clock --pause --rate 1
+```
+
+### Visualisation
+
+Four options are provided by `serpent.launch`:
+
+* `rviz:=true`
+* `rqt:=true`
+* `rviz_stereo:=true`
+* `rqt_stereo:=true`
+
+Alternatively the visualisation can be launched separately with `serpent_visualisation.launch`.
 
 ## Plotting Results
 
