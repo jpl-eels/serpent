@@ -43,7 +43,9 @@ In addition to specific issues which are tracked through version control, SERPEN
 
 ## System Structure (development)
 
+For development purposes, a simple system structure diagram is provided below. Last updated 17/03/2023.
 
+<img src="serpent/diagrams/serpent_software.png"  width="1000">
 
 ## Dependencies
 
@@ -198,6 +200,17 @@ source ~/catkin_ws/devel/setup.bash
 
 If you did not configure your `catkin` environment to build in a release mode, then you should build with `--cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo` (see ROS section).
 
+## Testing
+
+```bash
+catkin test serpent
+```
+
+To test all the packages, you can simply run:
+```bash
+catkin test
+```
+
 ## Usage
 
 ### Configuration
@@ -255,7 +268,7 @@ roslaunch serpent serpent_backend.launch <arg>:=<value> ...
 
 This latter option may be useful if, for example, you want to run SERPENT on a remote machine and only want to run the frontend on the robot, where the pointcloud can be deskewed and downsampled before it is sent over the network.
 
-An important parameter in the launch file is the number of threads to run with. Configure this to a sensible number for your application.
+An important parameter in the launch file is the number of threads to run with, e.g. `threads:=8`. Configure this to a sensible number for your application and device.
 
 The run with a rosbag, ensure `use_sim_time:=true` is set when launching and it is essential to include the `--clock` flag:
 ```bash
@@ -292,12 +305,6 @@ The following plots will be generated:
  - angular velocity vs ground truth, angular velocity AE, angular velocity RE
  - covariance plots
  - stereo-feature to lidar distance plots
-
-## Testing
-
-```bash
-catkin test serpent
-```
 
 ## Reference Frame Conventions and Implementation
 
