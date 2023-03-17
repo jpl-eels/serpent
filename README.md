@@ -360,4 +360,5 @@ The `.1` is present if callgrind was dumped.
 ## Authors
 
 Original Author: William Talbot (willat343)
+
 Current Maintainer: William Talbot (willat343)
