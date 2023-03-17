@@ -19,6 +19,8 @@ The current best results are achieved with IMU + LiDAR + Barometer. Stereo is no
 
 Note that when IMU factors are disabled, the system still runs with IMU in a loosely-coupled manner.
 
+<img src="serpent/diagrams/serpent_architecture_diagram.png"  width="1000">
+
 ## Known Limitations
 
 In addition to specific issues which are tracked through version control, SERPENT has some limitations:
