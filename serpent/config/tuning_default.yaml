@@ -22,9 +22,9 @@ imu:
 # Barometer
 barometer:
   noise:
-    barometer_bias: 1.0e-6
-    overwrite: true # If true, the barometer variance will be overridden as the square of the barometer noise.
-    barometer: 1.0e-2
+    barometer_bias: 1.0e-6  # m
+    overwrite: true         # If true, the barometer variance will be overridden as the square of the barometer noise.
+    barometer: 1.0e-2       # m
 
 # Motion Distortion Correction
 mdc:
