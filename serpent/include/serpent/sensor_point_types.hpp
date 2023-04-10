@@ -28,13 +28,6 @@ SensorType to_sensor_type(const std::string& sensor_type);
  */
 pcl::PCLPointField& time_field(pcl::PCLPointCloud2& pointcloud, const SensorType sensor_type);
 
-/**
- * @brief Converts integer nanoseconds to floating point seconds for time field.
- *
- * @param pointcloud
- */
-void ouster_ns_to_s(pcl::PCLPointCloud2& pointcloud);
-
 }
 
 /*

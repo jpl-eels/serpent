@@ -2,6 +2,7 @@
 
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/LossFunctions.h>
+#include <gtsam/slam/StereoFactor.h>
 #include <pcl_ros/point_cloud.h>
 
 #include <eigen_ext/covariance.hpp>
@@ -10,6 +11,7 @@
 #include <eigen_ros/eigen_ros.hpp>
 
 #include "serpent/ImuBiases.h"
+#include "serpent/ros_conversion.hpp"
 #include "serpent/utilities.hpp"
 
 namespace serpent {
@@ -47,12 +49,13 @@ gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std
 }
 
 Optimisation::Optimisation()
-    : nh("~") {
+    : nh("serpent"),
+      body_frames("serpent") {
     // Publishers
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
     imu_transform_publisher = nh.advertise<geometry_msgs::TransformStamped>("optimisation/imu_transform", 1);
     optimised_odometry_publisher = nh.advertise<nav_msgs::Odometry>("optimisation/odometry", 1);
-    path_publisher = nh.advertise<nav_msgs::Path>("output/path", 1);
+    path_publisher = nh.advertise<nav_msgs::Path>("output/path", 1, true);
     path_changes_publisher = nh.advertise<nav_msgs::Path>("optimisation/path_changes", 1);
 
     // Subscribers
@@ -64,10 +67,20 @@ Optimisation::Optimisation()
     nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
     nh.param<bool>("optimisation/factors/registration", registration_factors_enabled, true);
     nh.param<bool>("optimisation/factors/stereo", stereo_factors_enabled, true);
-    ROS_INFO_STREAM("Factors:\nIMU            " << (imu_factors_enabled ? "ENABLED" : "DISABLED") << "\nRegistration   "
-                                                << (registration_factors_enabled ? "ENABLED" : "DISABLED")
-                                                << "\nStereo         "
-                                                << (stereo_factors_enabled ? "ENABLED" : "DISABLED"));
+    nh.param<bool>("optimisation/factors/barometer", barometer_factors_enabled, true);
+    ROS_INFO_STREAM("Factors:\n-----------------------"
+                    << "\n|IMU          " << (imu_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Registration "
+                    << (registration_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Stereo       "
+                    << (stereo_factors_enabled ? " ENABLED" : "DISABLED") << "|\n|Barometer    "
+                    << (barometer_factors_enabled ? " ENABLED" : "DISABLED") << "|\n-----------------------");
+
+    // Warn about CombinedIMUFactor bug
+#if GTSAM_VERSION_NUMERIC < 40200
+    if (imu_factors_enabled) {
+        ROS_WARN("gtsam::CombinedImuFactor is used however has a covariance propagation bug in GTSAM versions prior to "
+                 "4.2.0. Consider upgrading GTSAM to version >= 4.2.0.");
+    }
+#endif
 
     // Map frame
     nh.param<std::string>("map_frame_id", map_frame_id, "map");
@@ -76,9 +89,14 @@ Optimisation::Optimisation()
     if (registration_factors_enabled) {
         registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
                 &Optimisation::registration_callback, this);
-    } else if (stereo_factors_enabled) {
+    }
+    if (stereo_factors_enabled) {
         stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>("stereo/features", 10,
                 &Optimisation::stereo_features_callback, this);
+    }
+    if (barometer_factors_enabled) {
+        barometer_subscriber = nh.subscribe<sensor_msgs::FluidPressure>("frontend/barometer", 10,
+                &Optimisation::barometer_callback, this);
     }
 
     // Debugging
@@ -94,8 +112,13 @@ Optimisation::Optimisation()
     ROS_WARN_ONCE("DESIGN DECISION: gravity from initialisation procedure?");
     preintegration_params->setIntegrationCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/integration", 1.0e-3), 2.0));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    preintegration_params->setBiasAccOmegaInit(Eigen::Matrix<double, 6, 6>::Identity() *
+                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#else
     preintegration_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() *
                                               std::pow(nh.param<double>("imu/noise/integration_bias", 1.0e-3), 2.0));
+#endif
     preintegration_params->setBiasAccCovariance(
             Eigen::Matrix3d::Identity() * std::pow(nh.param<double>("imu/noise/accelerometer_bias", 1.0e-3), 2.0));
     preintegration_params->setBiasOmegaCovariance(
@@ -124,12 +147,20 @@ Optimisation::Optimisation()
         throw std::runtime_error("Unrecognised isam2 optimisation method " + optimization);
     }
     isam2_params.setRelinearizeThreshold(nh.param<double>("isam2/relinearize_threshold", 0.1));
+    isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    nh.param<int>("isam2/relinearize_skip", isam2_params.relinearizeSkip, 10);
+    nh.param<bool>("isam2/enable_relinearization", isam2_params.enableRelinearization, true);
+    nh.param<bool>("isam2/evaluate_nonlinear_error", isam2_params.evaluateNonlinearError, false);
+    nh.param<bool>("isam2/cache_linearized_factors", isam2_params.cacheLinearizedFactors, true);
+    if (isam2_params.evaluateNonlinearError) {
+#else
     isam2_params.setRelinearizeSkip(nh.param<int>("isam2/relinearize_skip", 10));
     isam2_params.setEnableRelinearization(nh.param<bool>("isam2/enable_relinearization", true));
     isam2_params.setEvaluateNonlinearError(nh.param<bool>("isam2/evaluate_nonlinear_error", false));
-    isam2_params.setFactorization(nh.param<std::string>("isam2/factorization", "CHOLESKY"));
     isam2_params.setCacheLinearizedFactors(nh.param<bool>("isam2/cache_linearized_factors", true));
     if (isam2_params.isEvaluateNonlinearError()) {
+#endif
         ROS_WARN("Evaluation of Nonlinear Error in iSAM2 optimisation is ENABLED (isam2/evaluate_nonlinear_error = "
                  "true). This incurs a computational cost, so should only be used while debugging.");
     }
@@ -207,12 +238,40 @@ Optimisation::Optimisation()
         }
         gm->set_stereo_noise_model(stereo_noise_model);
     }
+    if (barometer_factors_enabled) {
+        // Barometer has priority 1, so is not required for optimisation.
+        gm->set_named_key("barometer", 0, 1);
+
+        // Bias Noise
+        const double barometer_bias_noise_sigma = nh.param<double>("barometer/noise/barometer_bias", 1.0e-6);
+        if (barometer_bias_noise_sigma == 0.0) {
+            throw std::runtime_error("Prior barometer bias noise should not be zero.");
+        }
+        barometer_bias_noise = gtsam::noiseModel::Isotropic::Sigma(1, barometer_bias_noise_sigma);
+    }
+
+    // Marginalisation
+    if (nh.param<bool>("optimisation/marginalisation/enabled", false)) {
+        const int marginalisation_window_size = nh.param<int>("optimisation/marginalisation/window_size", 100);
+        if (marginalisation_window_size < 0) {
+            throw std::runtime_error("Marginalisation window size must be >= 0 but was " +
+                                     std::to_string(marginalisation_window_size) + ".");
+        }
+        gm->set_marginalisation(true, static_cast<unsigned int>(marginalisation_window_size));
+        ROS_INFO_STREAM("Enabled marginalisation with window size " << marginalisation_window_size << ".");
+    }
 }
 
 void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     gm->increment("reg");
+    if (gm->timestamp("reg") != msg->header.stamp) {
+        throw std::runtime_error("Registrations are out of sync with graph manager [Graph timestamp: " +
+                                 std::to_string(gm->timestamp("reg").toSec()) +
+                                 ", Transform timestamp:" + std::to_string(msg->header.stamp.toSec()) + "].");
+    }
+
     // Extract registration information (note that eigen_ros reorders covariance from ROS to eigen_ros/GTSAM convention)
-    eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
+    const eigen_ros::PoseStamped registration_pose = eigen_ros::from_ros<eigen_ros::PoseStamped>(*msg);
     const gtsam::Pose3 registration_pose_gtsam =
             gtsam::Pose3(gtsam::Rot3(registration_pose.data.orientation), registration_pose.data.position);
 
@@ -224,19 +283,14 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 
     // Convert to GTSAM noise model
     auto registration_covariance = gtsam::noiseModel::Gaussian::Covariance(registration_pose.data.covariance);
-    ROS_INFO_STREAM("Registration covariance:\n" << registration_covariance->covariance());
-    ROS_INFO_STREAM("Registration covariance sigmas (r, t): " << to_flat_string(registration_covariance->sigmas()));
+    ROS_DEBUG_STREAM("Registration covariance:\n" << registration_covariance->covariance());
+    ROS_DEBUG_STREAM("Registration covariance sigmas (r, t): " << to_flat_string(registration_covariance->sigmas()));
     if (registration_covariance->sigmas().minCoeff() == 0.0) {
         throw std::runtime_error("Registration noise sigmas contained a zero.");
     }
 
     // Update state
     gm->set_pose("reg", gm->pose("reg", -1) * registration_pose_gtsam);
-    if (gm->timestamp("reg") != msg->header.stamp) {
-        throw std::runtime_error("Timestamps did not match [Graph: " + std::to_string(gm->timestamp("reg").toSec()) +
-                                 ", Transform:" + std::to_string(msg->header.stamp.toSec()) +
-                                 "]. Something went wrong.");
-    }
 
     // Add the registration factor
     const int reg_key = gm->key("reg");
@@ -247,25 +301,93 @@ void Optimisation::add_registration_factor(const geometry_msgs::PoseWithCovarian
 void Optimisation::add_stereo_factors(const serpent::StereoFeatures::ConstPtr& features) {
     gm->increment("stereo");
     if (gm->timestamp("stereo") != features->header.stamp) {
-        throw std::runtime_error("Stereo features are out of sync with graph manager.");
+        throw std::runtime_error("Stereo features timestamp does not match graph manager [Graph timestamp: " +
+                                 std::to_string(gm->timestamp("stereo").toSec()) +
+                                 ", Features timestamp:" + std::to_string(features->header.stamp.toSec()) + "].");
     }
+
+    // Initialise stereo calibration
     if (!gm->stereo_calibration()) {
         const auto& left_info = features->left_info;
+        const auto& right_info = features->right_info;
         const double fx = left_info.K[0];
         const double skew = left_info.K[1];
         const double cx = left_info.K[2];
         const double fy = left_info.K[4];
         const double cy = left_info.K[5];
-        const double baseline = nh.param<double>("stereo/baseline", 0.1);
+        const double baseline = -right_info.P[3] / right_info.P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         auto K = boost::make_shared<gtsam::Cal3_S2Stereo>(fx, fy, skew, cx, cy, baseline);
         gm->set_stereo_calibration(K);
-        ROS_INFO_STREAM("Set stereo calibration matrix:\n" << K->matrix());
+#if GTSAM_VERSION_NUMERIC >= 40200
+        ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->K());
+#else
+        ROS_INFO_STREAM("Set stereo calibration matrix (baseline: " << K->baseline() << "):\n" << K->matrix());
+#endif
     }
+
+    // Generate stereo factors and values
     std::map<int, gtsam::StereoPoint2> stereo_features;
     from_ros(features->features, stereo_features);
     gm->create_stereo_factors_and_values(gm->key("stereo"), stereo_features);
-    ROS_INFO_STREAM(
-            "Added " << stereo_features.size() << " stereo measurements to graph manager at key " << gm->key("stereo"));
+    ROS_INFO_STREAM("Added " << stereo_features.size() << " stereo measurements to graph manager at key = "
+                             << gm->key("stereo") << ", timestamp = " << gm->timestamp("stereo") << ".");
+}
+
+void Optimisation::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure) {
+    // Wait for the state at the barometer time to be set before adding factors.
+    graph_mutex.lock();
+    int next_barometer_key = gm->key("barometer");
+    if (!protected_sleep(graph_mutex, 0.01, true, true, [this, pressure]() {
+            while (gm->has_pose("barometer") && gm->timestamp("barometer") < pressure->header.stamp) {
+                gm->increment("barometer");
+            }
+            return !gm->has_pose("barometer") || gm->timestamp("barometer") < pressure->header.stamp;
+        })) {
+        return;
+    };
+    if (gm->timestamp("barometer") != pressure->header.stamp) {
+        throw std::runtime_error("A time synchronisation error occurred while adding barometer measurements.");
+    }
+
+    // Catch zero variance
+    if (pressure->variance <= 0.0) {
+        throw std::runtime_error("Barometer variance must be greater than zero.");
+    }
+
+    // Create the barometer factor
+    const double height = gm->create_barometric_factor(gm->key("barometer"), pressure->fluid_pressure * 1.0e-3,
+            gtsam::noiseModel::Isotropic::Variance(1, pressure->variance));
+    ROS_INFO_STREAM("Create barometer factor: P(" << gm->key("barometer") << ")");
+
+    // For first barometer key, create prior (on the current state)
+    if (next_barometer_key == 0) {
+        // Set first barometer bias value using first measurement, which will get propagated up to current state.
+        gm->set_barometer_bias(0, height);
+
+        // Prior barometer bias factor
+        const double prior_barometer_noise = nh.param<double>("prior_noise/barometer_bias", 1.0e-6);
+        if (prior_barometer_noise == 0.0) {
+            throw std::runtime_error("Prior barometer bias noise should not be zero.");
+        }
+        gm->create_prior_barometer_bias_factor(gm->key("barometer"), height,
+                gtsam::noiseModel::Isotropic::Sigma(1, prior_barometer_noise));
+        ROS_INFO_STREAM("Created prior factor: P(" << gm->key("barometer") << ") with height = " << height << " m");
+    }
+
+    // Create barometer bias factors up to the current key
+    for (int key = std::max(1, next_barometer_key); key <= gm->key("barometer"); ++key) {
+        gm->create_barometric_bias_factor(key, barometer_bias_noise);
+        ROS_INFO_STREAM("Created barometer bias between factor: P(" << key - 1 << ") to P(" << key << ")");
+        gm->set_barometer_bias(key, gm->barometer_bias(key - 1));
+    }
+
+    // Increment the barometer key
+    gm->increment("barometer");
+    graph_mutex.unlock();
 }
 
 void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
@@ -273,11 +395,16 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
     std::deque<eigen_ros::Imu> imu_s2s;
     from_ros(msg->measurements, imu_s2s);
     if (imu_s2s.empty()) {
-        throw std::runtime_error("S2S imu array was empty");
+        throw std::runtime_error("S2S imu array was empty.");
     }
 
     // Wait for imu bias to be optimised (when optimisation has run)
-    if (!protected_sleep(graph_mutex, 0.01, false, true, [this]() { return gm->opt_key() != gm->key("imu"); })) {
+    graph_mutex.lock();
+    ROS_WARN_STREAM_COND(gm->opt_key() != gm->key("imu"),
+            "Waiting for optimisation (key = " << gm->opt_key() << ", t = " << gm->timestamp(gm->opt_key())
+                                               << ")  to catch up (key = " << gm->key("imu") << ", t = "
+                                               << gm->timestamp("imu") << "). SERPENT may be running slow.");
+    if (!protected_sleep(graph_mutex, 0.01, true, true, [this]() { return gm->opt_key() != gm->key("imu"); })) {
         return;
     };
 
@@ -338,7 +465,7 @@ void Optimisation::imu_s2s_callback(const serpent::ImuArray::ConstPtr& msg) {
                                              << ")");
 
         // Optimise if not waiting on other factors
-        if (gm->minimum_key() == imu_key) {
+        if (gm->minimum_key(0) == imu_key) {
             optimise_and_publish(imu_key);
         }
     }
@@ -419,9 +546,9 @@ gtsam::ISAM2Result Optimisation::optimise(const int key) {
         isam2_result = gm->optimise(key);
         ROS_INFO_STREAM("Optimised and calculated estimate for key = "
                         << key << ", t = " << gm->timestamp(key) << " in " << (ros::WallTime::now() - tic).toSec()
-                        << " seconds.\n#Reeliminated = " << isam2_result.getVariablesReeliminated()
-                        << ", #Relinearized = " << isam2_result.getVariablesRelinearized() << ", #Cliques = "
-                        << isam2_result.getCliques() << ", Factors Recalculated = " << isam2_result.factorsRecalculated
+                        << " s.\n#Reeliminated = " << isam2_result.getVariablesReeliminated() << ", #Relinearized = "
+                        << isam2_result.getVariablesRelinearized() << ", #Cliques = " << isam2_result.getCliques()
+                        << ", Factors Recalculated = " << isam2_result.factorsRecalculated
                         << (isam2_result.errorBefore && isam2_result.errorAfter
                                            ? "\nError Before = " + std::to_string(*isam2_result.errorBefore) +
                                                      ", Error After = " + std::to_string(*isam2_result.errorAfter)
@@ -446,13 +573,13 @@ void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result
     optimised_odometry_msg->header.frame_id = map_frame_id;
     optimised_odometry_msg->child_frame_id = body_frames.body_frame_id();
     auto pose = gm->pose(key);
-    ROS_INFO_STREAM("Pose:\n" << pose.matrix());
+    ROS_DEBUG_STREAM("Pose:\n" << pose.matrix());
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.position, pose.translation());
     eigen_ros::to_ros(optimised_odometry_msg->pose.pose.orientation, pose.rotation().toQuaternion());
     if (!stereo_factors_enabled) {
         auto pose_covariance = gm->pose_covariance(key);
         eigen_ros::to_ros(optimised_odometry_msg->pose.covariance, eigen_ext::reorder_covariance(pose_covariance, 3));
-        ROS_INFO_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << pose_covariance);
+        ROS_DEBUG_STREAM("Pose Covariance (r, p, y, x, y, z):\n" << pose_covariance);
     } else {
         ROS_WARN_ONCE("Pose covariance computation skipped when stereo factors ENABLED - cannot run in real time");
     }
@@ -464,10 +591,10 @@ void Optimisation::publish(const int key, const gtsam::ISAM2Result& isam2_result
     ROS_WARN_ONCE("TODO: add angular velocity covariance from IMU odometry to optimised odometry");
     optimised_odometry_publisher.publish(optimised_odometry_msg);
     if (imu_factors_enabled) {
-        ROS_INFO_STREAM("Velocity: " << to_flat_string(gm->velocity(key)));
-        ROS_INFO_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
-        ROS_INFO_STREAM("IMU Bias:\n" << gm->imu_bias(key));
-        ROS_INFO_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
+        ROS_DEBUG_STREAM("Velocity: " << to_flat_string(gm->velocity(key)));
+        ROS_DEBUG_STREAM("Velocity Covariance:\n" << optimised_vel_covariance);
+        ROS_DEBUG_STREAM("IMU Bias:\n" << gm->imu_bias(key));
+        ROS_DEBUG_STREAM("IMU Bias Covariance:\n" << gm->imu_bias_covariance(key));
     }
 
     // Publish optimised biases
@@ -526,12 +653,43 @@ void Optimisation::print_information_at_key(const gtsam::Key key) {
     ROS_INFO_STREAM(ss.str());
     value.print();
     const gtsam::NonlinearFactorGraph connected_factors = gm->factors_for_key(key);
-    ROS_INFO_STREAM("Connected factors:\n");
-    int factor_counter{0};
     const gtsam::Values& values = gm->values();
+    ROS_INFO_STREAM("Connected factors (unnormalised error = " << connected_factors.error(values)
+                                                               << ", unnormalised probability = "
+                                                               << connected_factors.probPrime(values) << "):\n");
+    int factor_counter{0};
     for (const auto& factor : connected_factors) {
         factor->print("Factor " + std::to_string(factor_counter++) + ": ");
-        std::cerr << "error: " << factor->error(values) << "\n\n";
+        std::cerr << "error (typically log-likelihood): " << factor->error(values) << "\n";
+        const gtsam::NoiseModelFactor* factor_ptr = dynamic_cast<const gtsam::NoiseModelFactor*>(factor.get());
+        if (factor_ptr != nullptr) {
+            std::cerr << "weight = " << factor_ptr->weight(values) << "\n";
+            std::cerr << "unwhitened error (without noise model, z - h(x)) = "
+                      << to_flat_string(factor_ptr->unwhitenedError(values)) << "\n";
+            std::cerr << "whitened error (with noise model) = " << to_flat_string(factor_ptr->whitenedError(values))
+                      << "\n";
+            std::cerr << "unweighted whitened error = " << to_flat_string(factor_ptr->unweightedWhitenedError(values))
+                      << "\n";
+        }
+        const gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>* stereo_factor_ptr =
+                dynamic_cast<const gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>*>(factor.get());
+        if (stereo_factor_ptr != nullptr) {
+            const gtsam::StereoPoint2 measured = stereo_factor_ptr->measured();
+            const gtsam::StereoCamera camera = gm->stereo_camera(stereo_factor_ptr->key1());
+            const gtsam::Point3 backprojected = camera.backproject(measured);
+            std::cerr << "z backprojected = " << to_flat_string(backprojected) << "\n";
+            try {
+                const gtsam::StereoPoint2 projected =
+                        camera.project(values.at<gtsam::Point3>(stereo_factor_ptr->key2()));
+                std::cerr << "stereo h(x) = " << to_flat_string(projected.vector()) << "\n";
+                std::cerr << "stereo    z = " << to_flat_string(measured.vector()) << "\n";
+                std::cerr << "   z - h(x) = " << to_flat_string(Eigen::Vector3d(measured.vector() - projected.vector()))
+                          << "\n";
+            } catch (gtsam::StereoCheiralityException& ex) {
+                std::cerr << "projection failed with StereoCheiralityException: point lies behind camera\n";
+            }
+        }
+        std::cerr << "\n";
     }
 }
 
@@ -542,10 +700,10 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
     add_registration_factor(msg);
 
     // Optimise and publish
-    const int key = gm->key("reg");
-    if (gm->minimum_key() == key) {
+    const int reg_key = gm->key("reg");
+    if (gm->minimum_key(0) == reg_key) {
         // Optimise
-        const auto optimisation_result = optimise(key);
+        const auto optimisation_result = optimise(reg_key);
 
         // Update values that weren't optimised
         if (!imu_factors_enabled) {
@@ -553,29 +711,49 @@ void Optimisation::registration_callback(const geometry_msgs::PoseWithCovariance
         }
 
         // Publish
-        publish(key, optimisation_result);
+        publish(reg_key, optimisation_result);
     }
 }
 
 void Optimisation::stereo_features_callback(const serpent::StereoFeatures::ConstPtr& features) {
-    // Pose at (the next) stereo key must be set in order to create landmarks.
-    if (!protected_sleep(graph_mutex, 0.01, false, true, [this]() { return !gm->has_pose("stereo", 1); })) {
-        return;
-    };
+    graph_mutex.lock();
+    // Repeat while feature timestamp is ahead of the graph optimisation
+    bool features_in_future;
+    do {
+        features_in_future = false;
 
-    // Integrate stereo data
-    add_stereo_factors(features);
+        // Pose at (the next) stereo key must be set in order to create landmarks.
+        ROS_INFO_STREAM_COND(!gm->has_pose("stereo", 1),
+                "Waiting for pose at key " << gm->key("stereo", 1) << " to be set.");
+        if (!protected_sleep(graph_mutex, 0.01, true, true, [this]() { return !gm->has_pose("stereo", 1); })) {
+            return;
+        };
 
-    // Optimise and publish
-    if (gm->minimum_key() == gm->key("stereo") && gm->key("stereo") > 0) {
-        optimise_and_publish(gm->key("stereo"));
+        // Action depends on timestamp of features (< ignore, == integrate, > repeat process)
+        if (features->header.stamp >= gm->timestamp("stereo", 1)) {
+            if (features->header.stamp == gm->timestamp("stereo", 1)) {
+                // Integrate stereo data
+                add_stereo_factors(features);
+            } else if (features->header.stamp > gm->timestamp("stereo", 1)) {
+                // No features for the expected timestamp.
+                ROS_WARN_STREAM("Stereo feature data was ahead of next optimisation state ("
+                                << features->header.stamp << " > " << gm->timestamp("stereo", 1)
+                                << "). Stereo factors skipped for this state.");
+                gm->increment("stereo");
+                features_in_future = true;
+            }
 
-        // Update velocity if no IMU factors
-        if (!imu_factors_enabled) {
-            update_velocity_from_transforms("stereo");
+            // Optimise and publish
+            if (gm->minimum_key(0) == gm->key("stereo") && gm->key("stereo") > 0) {
+                optimise_and_publish(gm->key("stereo"));
+
+                // Update velocity if no IMU factors
+                if (!imu_factors_enabled) {
+                    update_velocity_from_transforms("stereo");
+                }
+            }
         }
-    }
-
+    } while (features_in_future);
     graph_mutex.unlock();
 }
 

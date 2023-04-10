@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
+namespace pct {
+
 class PointcloudRangeFilter {
 public:
     PointcloudRangeFilter();
@@ -25,5 +27,7 @@ private:
     double min_range;
     double max_range;
 };
+
+}
 
 #endif

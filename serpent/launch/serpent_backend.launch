@@ -1,0 +1,43 @@
+<launch>
+    <!-- Launch Arguments -->
+    <arg name="robot_file"                      default="$(find serpent)/config/robot_default.yaml"/>
+    <arg name="mission_file"                    default="$(find serpent)/config/mission_default.yaml"/>
+    <arg name="filter_file"                     default="$(find serpent)/config/filter_default.yaml"/>
+    <arg name="format_file"                     default="$(find serpent)/config/format_default.yaml"/>
+    <arg name="normal_estimation_file"          default="$(find serpent)/config/normal_estimation_default.yaml"/>
+    <arg name="tuning_file"                     default="$(find serpent)/config/tuning_default.yaml"/>
+    <arg name="debug_file"                      default="$(find serpent)/config/debug_default.yaml"/>
+    <arg name="threads"                         default="4"/>
+
+    <!-- Debugging Arguments -->
+    <arg name="use_gdb"                         default="false"/>
+    <arg name="use_callgrind"                   default="false"/>
+    <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
+
+    <!-- Rosbag Playback Arguments-->
+    <arg name="use_sim_time" default="false"/>
+    <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
+
+    <!-- Debugging -->
+    <arg name="program_name" value="serpent_backend"/>
+    <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
+    <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
+            value="valgrind --tool=callgrind --callgrind-out-file='callgrind.$(arg program_name).%p'"/>
+    <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
+    <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
+
+    <!-- Parameter Configuration -->
+    <include file="$(find serpent)/launch/load_parameters.launch">
+        <arg name="robot_file"                 value="$(arg robot_file)"/>
+        <arg name="mission_file"               value="$(arg mission_file)"/>
+        <arg name="filter_file"                value="$(arg filter_file)"/>
+        <arg name="format_file"                value="$(arg format_file)"/>
+        <arg name="normal_estimation_file"     value="$(arg normal_estimation_file)"/>
+        <arg name="tuning_file"                value="$(arg tuning_file)"/>
+        <arg name="debug_file"                 value="$(arg debug_file)"/>
+        <arg name="threads"                    value="$(arg threads)"/>
+    </include>
+
+    <node pkg="serpent" type="serpent_backend_node" name="$(arg program_name)" output="screen"
+            launch-prefix="$(arg launch_prefix)"/>
+</launch>

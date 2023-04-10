@@ -5,6 +5,7 @@ prior_noise:
   linear_velocity: 0.001
   accelerometer_bias: 1.0e-4
   gyroscope_bias: 1.0e-4
+  barometer_bias: 1.0e-6
 
 # IMU
 imu:
@@ -18,10 +19,17 @@ imu:
     accelerometer: 1.86e-03
     gyroscope: 1.87e-04
 
+# Barometer
+barometer:
+  noise:
+    barometer_bias: 1.0e-6
+    overwrite: true # If true, the barometer variance will be overridden as the square of the barometer noise.
+    barometer: 1.0e-2
+
 # Motion Distortion Correction
 mdc:
-  translation: false
-  rotation: false
+  translation: true
+  rotation: true
 
 # ISAM2 Optimisation
 isam2:
@@ -43,31 +51,40 @@ isam2:
 # Optimisation
 optimisation:
   factors:
-    imu: false
+    barometer: false
+    imu: true
     registration: true
     stereo: false
+  marginalisation:
+    enabled: false
+    window_size: 100
+
+# Registration Covariance
+registration_covariance:
+  method: "CENSI" # Options: CONSTANT, CENSI (default), LLS
+  # Options (for method = <CENSI, LLS>): POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR,
+  #   POINT_TO_PLANE_LINEARISED (default), POINT_TO_PLANE_NONLINEAR
+  model: "POINT_TO_PLANE_LINEARISED" 
+  constant: # For method = <CONSTANT>
+    rotation: 0.0174533  # 1 deg
+    translation: 1.0e-2  # 1 cm
+  point_covariance: # For method = <CENSI, LLS>
+    method: "CONSTANT" # Options: CONSTANT (default), VOXEL_SIZE, RANGE, RANGE_BIAS
+    constant: 0.05 # For method = <CONSTANT>,
+    range_noise: 0.05 # For method = <RANGE, RANGE_BIAS>
+    range_bias_noise: 0.02 # For method = <RANGE_BIAS>
 
 # Registration
 s2s:
-  covariance:
-    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
-    #   POINT_TO_PLANE_NONLINEAR
-    method: "POINT_TO_PLANE_LINEARISED"
-    constant:
-      rotation: 0.0174533 # 1 deg
-      translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <linearised, NONLINEAR>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
-      constant: 0.01
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
-    maximum_iterations: 20
+    maximum_iterations: 30
     ransac_iterations: 0
     ransac_outlier_rejection_threshold: 0.05
-    max_correspondence_distance: 2.5
-    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
-    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
-    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+    max_correspondence_distance: 0.5
+    transformation_epsilon: 0.001           # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.0001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.0001       # Mean of correspondence euclidean distances convergence threshold
   icp: # Uses base
     use_reciprocal_correspondences: false
   gicp: # Uses icp
@@ -94,26 +111,16 @@ s2s:
     outlier_ratio: 0.55
     
 s2m:
-  covariance:
-    # Options: CONSTANT, POINT_TO_POINT_LINEARISED, POINT_TO_POINT_NONLINEAR, POINT_TO_PLANE_LINEARISED (default),
-    #   POINT_TO_PLANE_NONLINEAR
-    method: "POINT_TO_PLANE_LINEARISED"
-    constant:
-      rotation: 0.0174533 # 1 deg
-      translation: 1.0e-2  # 10 mm
-    point_covariance: # For method = <linearised, NONLINEAR>
-      method: "VOXEL_SIZE" # Options: CONSTANT, VOXEL_SIZE (default)
-      constant: 0.01
   enabled: true
   method: "fast_gicp"  # Options: icp, gicp, fast_gicp, fast_gicp_st (uses fast_gicp), fast_vgicp, ndt
   base:
-    maximum_iterations: 20
+    maximum_iterations: 30
     ransac_iterations: 0
     ransac_outlier_rejection_threshold: 0.05
-    max_correspondence_distance: 2.5
-    transformation_epsilon: 0.001          # Translation convergence threshold in distance units
-    transformation_rotation_epsilon: 0.001 # Rotation convergence threshold in cos(angle)
-    euclidean_fitness_epsilon: 0.001       # Mean of correspondence euclidean distances convergence threshold 
+    max_correspondence_distance: 0.5
+    transformation_epsilon: 0.001           # Translation convergence threshold in distance units
+    transformation_rotation_epsilon: 0.0001 # Rotation convergence threshold in cos(angle)
+    euclidean_fitness_epsilon: 0.0001       # Mean of correspondence euclidean distances convergence threshold
   icp: # Uses base
     use_reciprocal_correspondences: false
   gicp: # Uses icp
@@ -144,9 +151,15 @@ map_frame_id: "map"
     
 # Mapping
 mapping:
-  frame_extraction_number: 10
-  distance_threshold: 0.1                   # metres
-  rotation_threshold: 0.05235987755982988   # radians
+  frame_extraction_method: "NEARBY" # Options: NEARBY (default), PAST
+  frame_extraction_number: 20
+  distance_threshold: 0.1                 # metres
+  rotation_threshold: 0.05235987755982988 # radians
+  voxel_grid_filter:
+    enabled_local: true
+    enabled_global: true
+    leaf_size: 0.05
+    minimum_points_number_per_voxel: 1
 
 # Stereo Factors
 stereo_factors:
@@ -182,6 +195,10 @@ stereo_factors:
       c: 2.9846
       reweight_scheme: "BLOCK" # Options: BLOCK, SCALAR
   left_cam_frame: "camera"
+
+# Stereo Tracking
+stereo_tracking:
+  only_graph_frames: true # If true and registration factors enabled, only process frames at registration timestamps.
   new_feature_dist_threshold: 5.0
   detector:
     type: "FAST" # Options: FAST, GFTT, ORB, SIFT (requires OpenCV >= 4.4.0)
@@ -230,9 +247,11 @@ stereo_factors:
       flags: 0
       min_eig_threshold: 1.0e-4
   stereo_keypoint_matcher:
-    cost_function: "SAD" # Options: SAD, SSD, ZMSAD, LSSAD, INCC
+    cost_function: "SSD" # Options: SAD, SSD, ZMSAD, LSSAD, NNCC
     window_size:
-      width: 3
-      height: 3
+      width: 7
+      height: 7
     cost_threshold: 64.0
     vertical_pixel_threshold: 5.0
+    matching_filter: "RATIO_TEST" # Options: UNIDIRECTIONAL, BIDIRECTIONAL, RATIO_TEST
+    ratio: 0.1

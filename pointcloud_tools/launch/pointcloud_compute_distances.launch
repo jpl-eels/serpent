@@ -1,0 +1,14 @@
+<launch>
+    <arg name="input_source"    default="input_source"/>
+    <arg name="input_target"    default="input_target"/>
+    <arg name="output"          default="$(arg input_source)_distances"/>
+
+    <node pkg="pointcloud_tools" type="compute_distances" name="compute_distances" output="screen">
+        <remap from="~input_source" to="$(arg input_source)"/>
+        <remap from="~input_target" to="$(arg input_target)"/>
+        <remap from="~output"       to="$(arg output)"/>
+        <param name="distance_method"   value="POINT_TO_POINT"/>
+        <param name="source_point_type" value="PointXYZ"/>
+        <param name="target_point_type" value="PointXYZ"/>
+    </node>
+</launch>

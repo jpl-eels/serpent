@@ -4,31 +4,28 @@
 
     <!-- Launch Serpent Stereo Pipeline -->
     <include file="$(find serpent)/launch/serpent_stereo_pipeline.launch">
+        <arg name="pointcloud_topic"               value="/points"/>
         <arg name="stereo_left_cam_image_topic"    value="/$(arg stereo_camera)/left/image_raw"/>
         <arg name="stereo_left_cam_info_topic"     value="/$(arg stereo_camera)/left/camera_info"/>
         <arg name="stereo_right_cam_image_topic"   value="/$(arg stereo_camera)/right/image_raw"/>
         <arg name="stereo_right_cam_info_topic"    value="/$(arg stereo_camera)/right/camera_info"/>
 
-        <arg name="robot_file"              value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
-        <arg name="mission_file"            value="$(find simulator_prcp_missions)/config/serpent/mission/$(arg mission).yaml"/>
-        <arg name="filter_file"             value="$(find simulator_prcp_missions)/config/serpent/filter.yaml"/>
-        <arg name="format_file"             value="$(find simulator_prcp_missions)/config/serpent/format.yaml"/>
-        <arg name="normal_estimation_file"  value="$(find simulator_prcp_missions)/config/serpent/normal_estimation.yaml"/>
-        <arg name="tuning_file"             value="$(find simulator_prcp_missions)/config/serpent/tuning.yaml"/>
-        <arg name="debug_file"              value="$(find simulator_prcp_missions)/config/serpent/debug.yaml"/>
-        <arg name="threads"                 value="4"/>
+        <arg name="robot_file"                  value="$(find simulator_prcp_missions)/config/serpent/eels_head.yaml"/>
+        <arg name="mission_file"                value="$(find simulator_prcp_missions)/config/serpent/mission/$(arg mission).yaml"/>
+        <arg name="filter_file"                 value="$(find simulator_prcp_missions)/config/serpent/filter.yaml"/>
+        <arg name="format_file"                 value="$(find simulator_prcp_missions)/config/serpent/format.yaml"/>
+        <arg name="normal_estimation_file"      value="$(find simulator_prcp_missions)/config/serpent/normal_estimation.yaml"/>
+        <arg name="tuning_file"                 value="$(find simulator_prcp_missions)/config/serpent/tuning.yaml"/>
+        <arg name="debug_file"                  value="$(find simulator_prcp_missions)/config/serpent/debug.yaml"/>
+        <arg name="threads"                     value="4"/>
 
-        <arg name="use_gdb"                 value="false"/>
+        <arg name="use_gdb"                     value="false"/>
 
-        <arg name="play_rosbag"             value="true"/>
-        <arg name="rosbag"                  value="$(arg mission).bag"/>
-        <arg name="rosbag_data_dir"         value="$(env HOME)/data/jpl/datasets/simulator_prcp_gazebo"/>
-        <arg name="rosbag_rate"             value="1"/>
-        <arg name="rosbag_start"            value="0"/>
-        <arg name="rosbag_duration"         value=""/>
+        <arg name="play_rosbag"                 value="true"/>
+        <arg name="rosbag"                      value="$(arg mission).bag"/>
+        <arg name="rosbag_data_dir"             value="$(env HOME)/data/jpl/datasets/simulator_prcp_gazebo"/>
+        <arg name="rosbag_rate"                 value="1"/>
+        <arg name="rosbag_start"                value="0"/>
+        <arg name="rosbag_duration"             value=""/>
     </include>
-
-    <!-- RViz -->
-    <node pkg="rviz" type="rviz" name="rviz_stereo_markers"
-            args="-d $(find simulator_prcp_missions)/rviz/stereo_markers.rviz"/>
 </launch>

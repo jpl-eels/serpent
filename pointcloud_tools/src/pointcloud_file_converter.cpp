@@ -5,6 +5,8 @@
 #include <pcl_ros/point_cloud.h>
 #include <sensor_msgs/PointCloud2.h>
 
+namespace pct {
+
 PointcloudFileConverter::PointcloudFileConverter()
     : nh("~") {
     loader = nh.advertiseService("load_pointcloud", &PointcloudFileConverter::load, this);
@@ -77,4 +79,6 @@ bool PointcloudFileConverter::save(pointcloud_tools::message_to_file::Request& r
     response.result_msg = "Saved PCL pointcloud (" + std::to_string(pointcloud->width * pointcloud->height) +
                           " points) to " + request.filepath;
     return true;
+}
+
 }

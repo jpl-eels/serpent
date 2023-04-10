@@ -31,7 +31,3 @@ body_frames:
           x: 0.0
           y: 0.0
           z: 0.0
-
-# Stereo Camera
-stereo:
-  baseline: 0.1

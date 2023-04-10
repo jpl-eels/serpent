@@ -69,36 +69,36 @@ cv::Ptr<Feature2DType> create_from_params(const ros::NodeHandle& nh);
 
 template<>
 cv::Ptr<cv::FastFeatureDetector> create_from_params<cv::FastFeatureDetector>(const ros::NodeHandle& nh) {
-    const int threshold = nh.param<int>("stereo_factors/detector/fast/threshold", 10);
-    const bool nonmax_suppression = nh.param<bool>("stereo_factors/detector/fast/nonmax_suppression", true);
+    const int threshold = nh.param<int>("stereo_tracking/detector/fast/threshold", 10);
+    const bool nonmax_suppression = nh.param<bool>("stereo_tracking/detector/fast/nonmax_suppression", true);
     const cv::FastFeatureDetector::DetectorType type =
-            to_fast_type(nh.param<std::string>("stereo_factors/detector/fast/type", "TYPE_9_16"));
+            to_fast_type(nh.param<std::string>("stereo_tracking/detector/fast/type", "TYPE_9_16"));
     return cv::FastFeatureDetector::create(threshold, nonmax_suppression, type);
 }
 
 template<>
 cv::Ptr<cv::GFTTDetector> create_from_params<cv::GFTTDetector>(const ros::NodeHandle& nh) {
-    const int max_corners = nh.param<int>("stereo_factors/detector/gftt/max_corners", 1000);
-    const double quality_level = nh.param<double>("stereo_factors/detector/gftt/quality_level", 0.01);
-    const double min_distance = nh.param<double>("stereo_factors/detector/gftt/min_distance", 1.0);
-    const int block_size = nh.param<int>("stereo_factors/detector/gftt/block_size", 3);
-    const bool use_harris_detector = nh.param<bool>("stereo_factors/detector/gftt/use_harris_detector", false);
-    const double k = nh.param<double>("stereo_factors/detector/gftt/k", 0.04);
+    const int max_corners = nh.param<int>("stereo_tracking/detector/gftt/max_corners", 1000);
+    const double quality_level = nh.param<double>("stereo_tracking/detector/gftt/quality_level", 0.01);
+    const double min_distance = nh.param<double>("stereo_tracking/detector/gftt/min_distance", 1.0);
+    const int block_size = nh.param<int>("stereo_tracking/detector/gftt/block_size", 3);
+    const bool use_harris_detector = nh.param<bool>("stereo_tracking/detector/gftt/use_harris_detector", false);
+    const double k = nh.param<double>("stereo_tracking/detector/gftt/k", 0.04);
     return cv::GFTTDetector::create(max_corners, quality_level, min_distance, block_size, use_harris_detector, k);
 }
 
 template<>
 cv::Ptr<cv::ORB> create_from_params<cv::ORB>(const ros::NodeHandle& nh) {
-    const int num_features = nh.param<int>("stereo_factors/detector/orb/num_features", 500);
-    const float scale_factor = nh.param<float>("stereo_factors/detector/orb/scale_factor", 1.2);
-    const int num_levels = nh.param<int>("stereo_factors/detector/orb/num_levels", 8);
-    const int edge_threshold = nh.param<int>("stereo_factors/detector/orb/edge_threshold", 31);
-    const int first_level = nh.param<int>("stereo_factors/detector/orb/first_level", 0);
-    const int wta_k = nh.param<int>("stereo_factors/detector/orb/wta_k", 2);
+    const int num_features = nh.param<int>("stereo_tracking/detector/orb/num_features", 500);
+    const float scale_factor = nh.param<float>("stereo_tracking/detector/orb/scale_factor", 1.2);
+    const int num_levels = nh.param<int>("stereo_tracking/detector/orb/num_levels", 8);
+    const int edge_threshold = nh.param<int>("stereo_tracking/detector/orb/edge_threshold", 31);
+    const int first_level = nh.param<int>("stereo_tracking/detector/orb/first_level", 0);
+    const int wta_k = nh.param<int>("stereo_tracking/detector/orb/wta_k", 2);
     const cv::ORB::ScoreType score_type =
-            to_orb_score_type(nh.param<std::string>("stereo_factors/detector/orb/score_type", "HARRIS_SCORE"));
-    const int patch_size = nh.param<int>("stereo_factors/detector/orb/patch_size", 31);
-    const int fast_threshold = nh.param<int>("stereo_factors/detector/orb/fast_threshold", 20);
+            to_orb_score_type(nh.param<std::string>("stereo_tracking/detector/orb/score_type", "HARRIS_SCORE"));
+    const int patch_size = nh.param<int>("stereo_tracking/detector/orb/patch_size", 31);
+    const int fast_threshold = nh.param<int>("stereo_tracking/detector/orb/fast_threshold", 20);
     return cv::ORB::create(num_features, scale_factor, num_levels, edge_threshold, first_level, wta_k, score_type,
             patch_size, fast_threshold);
 }
@@ -106,11 +106,11 @@ cv::Ptr<cv::ORB> create_from_params<cv::ORB>(const ros::NodeHandle& nh) {
 #if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 4
 template<>
 cv::Ptr<cv::SIFT> create_from_params<cv::SIFT>(const ros::NodeHandle& nh) {
-    const int num_features = nh.param<int>("stereo_factors/detector/sift/num_features", 10);
-    const int num_octave_layers = nh.param<int>("stereo_factors/detector/sift/num_octave_layers", 3);
-    const double constrast_threshold = nh.param<double>("stereo_factors/detector/sift/constrast_threshold", 0.04);
-    const double edge_threshold = nh.param<double>("stereo_factors/detector/sift/edge_threshold", 10.0);
-    const double sigma = nh.param<double>("stereo_factors/detector/sift/sigma", 1.6);
+    const int num_features = nh.param<int>("stereo_tracking/detector/sift/num_features", 10);
+    const int num_octave_layers = nh.param<int>("stereo_tracking/detector/sift/num_octave_layers", 3);
+    const double constrast_threshold = nh.param<double>("stereo_tracking/detector/sift/constrast_threshold", 0.04);
+    const double edge_threshold = nh.param<double>("stereo_tracking/detector/sift/edge_threshold", 10.0);
+    const double sigma = nh.param<double>("stereo_tracking/detector/sift/sigma", 1.6);
     return cv::SIFT::create(num_features, num_octave_layers, constrast_threshold, edge_threshold, sigma);
 }
 #endif
@@ -124,7 +124,7 @@ void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string(
 
 pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline) {
-    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     pcl::PointXYZ pcl_point;
     pcl_point.x = point[0];
     pcl_point.y = point[1];
@@ -134,7 +134,7 @@ pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, c
 
 geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
         const Eigen::Matrix3f& intrinsic, const float baseline) {
-    const Eigen::Vector3f point = stereo_coordinate_to_point(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
+    const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     geometry_msgs::Point ros_point;
     ros_point.x = point[0];
     ros_point.y = point[1];
@@ -175,7 +175,7 @@ void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::S
 }
 
 StereoFactorFinder::StereoFactorFinder()
-    : nh("~"),
+    : nh("serpent"),
       it(nh),
       stereo_sync(10) {
     // Publishers
@@ -209,9 +209,6 @@ StereoFactorFinder::StereoFactorFinder()
         stereo_points_publisher = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("stereo/track_points", 1);
     }
 
-    // Stereo baseline
-    nh.param<float>("stereo/baseline", baseline, 0.1);
-
     // Components of tracker
     cv::Ptr<cv::Feature2D> detector;
     cv::Ptr<cv::SparseOpticalFlow> sparse_optical_flow;
@@ -219,7 +216,7 @@ StereoFactorFinder::StereoFactorFinder()
     cv::Ptr<StereoKeyPointMatcher> stereo_matcher;
 
     // Detector
-    const std::string feature_type = nh.param<std::string>("stereo_factors/detector/type", "ORB");
+    const std::string feature_type = nh.param<std::string>("stereo_tracking/detector/type", "ORB");
     if (feature_type == "FAST") {
         detector = create_from_params<cv::FastFeatureDetector>(nh);
     } else if (feature_type == "GFTT") {
@@ -240,23 +237,23 @@ StereoFactorFinder::StereoFactorFinder()
 
     // Stereo Filter
     stereo_filter = StereoMatchFilter::create(
-            nh.param<float>("stereo_factors/stereo_match_filter/vertical_pixel_threshold", 1.f));
+            nh.param<float>("stereo_tracking/stereo_match_filter/vertical_pixel_threshold", 1.f));
 
     // Sparse Optical Flow
     const std::string sparse_optical_flow_type =
-            nh.param<std::string>("stereo_factors/sparse_optical_flow/type", "PyrLK");
+            nh.param<std::string>("stereo_tracking/sparse_optical_flow/type", "PyrLK");
     if (sparse_optical_flow_type == "PyrLK") {
         const std::vector<int> win_size_vec =
-                nh.param<std::vector<int>>("stereo_factors/sparse_optical_flow/win_size", {{21, 21}});
+                nh.param<std::vector<int>>("stereo_tracking/sparse_optical_flow/win_size", {{21, 21}});
         const cv::Size win_size = cv::Size{win_size_vec.at(0), win_size_vec.at(1)};
-        const int max_level = nh.param<int>("stereo_factors/sparse_optical_flow/max_level", 3);
+        const int max_level = nh.param<int>("stereo_tracking/sparse_optical_flow/max_level", 3);
         const cv::TermCriteria term_criteria = cv::TermCriteria{
                 to_term_criteria_type(
-                        nh.param<std::string>("stereo_factors/sparse_optical_flow/term_criteria/type", "COUNT+EPS")),
-                nh.param<int>("stereo_factors/sparse_optical_flow/term_criteria/max_count", 30),
-                nh.param<double>("stereo_factors/sparse_optical_flow/term_criteria/epsilon", 0.01)};
-        const int flags = nh.param<int>("stereo_factors/sparse_optical_flow/flags", 0);
-        const double min_eig_threshold = nh.param<double>("stereo_factors/sparse_optical_flow/min_eig_threshold", 0);
+                        nh.param<std::string>("stereo_tracking/sparse_optical_flow/term_criteria/type", "COUNT+EPS")),
+                nh.param<int>("stereo_tracking/sparse_optical_flow/term_criteria/max_count", 30),
+                nh.param<double>("stereo_tracking/sparse_optical_flow/term_criteria/epsilon", 0.01)};
+        const int flags = nh.param<int>("stereo_tracking/sparse_optical_flow/flags", 0);
+        const double min_eig_threshold = nh.param<double>("stereo_tracking/sparse_optical_flow/min_eig_threshold", 0);
         sparse_optical_flow =
                 cv::SparsePyrLKOpticalFlow::create(win_size, max_level, term_criteria, flags, min_eig_threshold);
     } else if (sparse_optical_flow_type == "RLOF") {
@@ -268,20 +265,35 @@ StereoFactorFinder::StereoFactorFinder()
     }
 
     // Stereo KeyPoint Matcher
-    const cv::Size stereo_matcher_window{nh.param<int>("stereo_factors/stereo_keypoint_matcher/window_size/width", 3),
-            nh.param<int>("stereo_factors/stereo_keypoint_matcher/window_size/height", 3)};
+    const cv::Size stereo_matcher_window{nh.param<int>("stereo_tracking/stereo_keypoint_matcher/window_size/width", 3),
+            nh.param<int>("stereo_tracking/stereo_keypoint_matcher/window_size/height", 3)};
     const std::string stereo_matcher_cost_function_str =
-            nh.param<std::string>("stereo_factors/stereo_keypoint_matcher/cost_function", "SAD");
-    StereoKeyPointMatcher::MatchingCostFunction stereo_matcher_cost_function;
+            nh.param<std::string>("stereo_tracking/stereo_keypoint_matcher/cost_function", "SAD");
+    const float vertical_pixel_threshold =
+            nh.param<double>("stereo_tracking/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0);
+    const StereoKeyPointMatcher::MatchingFilter matching_filter = to_matching_filter(
+            nh.param<std::string>("stereo_tracking/stereo_keypoint_matcher/matching_filter", "RATIO_TEST"));
+    const double ratio = nh.param<double>("stereo_tracking/stereo_keypoint_matcher/ratio", 0.5);
     if (stereo_matcher_cost_function_str == "SAD") {
-        stereo_matcher_cost_function = &sum_of_absolute_differences;
+        stereo_matcher = SADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
+    } else if (stereo_matcher_cost_function_str == "SSD") {
+        stereo_matcher = SSDStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
+    } else if (stereo_matcher_cost_function_str == "ZMSAD") {
+        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
+    } else if (stereo_matcher_cost_function_str == "LSSAD") {
+        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
+    } else if (stereo_matcher_cost_function_str == "NNCC") {
+        stereo_matcher = NCCStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
+                matching_filter, ratio);
     } else {
         throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
     }
-    stereo_matcher = StereoKeyPointMatcher::create(stereo_matcher_cost_function, stereo_matcher_window,
-            nh.param<double>("stereo_factors/stereo_keypoint_matcher/vertical_pixel_threshold", 1.0));
     const double stereo_match_cost_threshold =
-            nh.param<double>("stereo_factors/stereo_keypoint_matcher/cost_threshold", 1.0);
+            nh.param<double>("stereo_tracking/stereo_keypoint_matcher/cost_threshold", 1.0);
 
     // Region of Interest
     cv::Rect2i roi;
@@ -293,7 +305,7 @@ StereoFactorFinder::StereoFactorFinder()
     }
 
     // Create tracker
-    const float new_feature_dist_threshold = nh.param<float>("stereo_factors/new_feature_dist_threshold", 5.0);
+    const float new_feature_dist_threshold = nh.param<float>("stereo_tracking/new_feature_dist_threshold", 5.0);
     tracker = std::make_unique<StereoFeatureTracker>(detector, sparse_optical_flow, stereo_filter, stereo_matcher,
             new_feature_dist_threshold, stereo_match_cost_threshold, nullptr, roi);
 
@@ -325,11 +337,19 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     const cv_bridge::CvImageConstPtr right_image = cv_bridge::toCvShare(right_image_msg);
 
     // Stereo distance filter needs to be created on the first image
-    if (tracker->frame_number() == -1 && nh.param<bool>("stereo_factors/stereo_distance_filter/enabled", false)) {
+    if (tracker->frame_number() == -1 && nh.param<bool>("stereo_tracking/stereo_distance_filter/enabled", false)) {
+        if (left_info->K[0] != right_info->K[0]) {
+            throw std::runtime_error("Left and right camera info focal lengths do not match.");
+        }
+        const double baseline = -right_info->P[3] / right_info->P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         auto stereo_distance_filter = StereoDistanceFilter::create(left_info->K[0], baseline,
-                nh.param<float>("stereo_factors/stereo_distance_filter/max_distance",
+                nh.param<float>("stereo_tracking/stereo_distance_filter/max_distance",
                         std::numeric_limits<float>::max()),
-                nh.param<float>("stereo_factors/stereo_distance_filter/min_distance", 0.0));
+                nh.param<float>("stereo_tracking/stereo_distance_filter/min_distance", 0.0));
         tracker->set_stereo_distance_filter(stereo_distance_filter);
     }
 
@@ -350,9 +370,8 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
     // Run processing pipeline
     const ros::WallTime tic = ros::WallTime::now();
     auto tracked_matches = tracker->process(left_image->image, right_image->image, stats_ref, intermediate_images_ref);
-    ROS_INFO_STREAM("Tracker processing completed in "
-                    << (ros::WallTime::now() - tic).toSec()
-                    << " seconds for stereo data at t = " << left_image->header.stamp);
+    ROS_INFO_STREAM("Tracker processing completed in " << (ros::WallTime::now() - tic).toSec()
+                                                       << " s for stereo data at t = " << left_image->header.stamp);
 
     // Optional printing and publishing of internal information
     if (print_stats) {
@@ -375,8 +394,12 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
         publish_image(tracked_matches_publisher, intermediate_images.tracked_matches, header);
     }
     if (publish_points) {
-        Eigen::Matrix3f intrinsic;
-        eigen_ros::from_ros(left_info->K, intrinsic);
+        const Eigen::Matrix3f intrinsic = eigen_ros::from_ros<Eigen::Matrix3f>(left_info->K);
+        const double baseline = -right_info->P[3] / right_info->P[0];  // Tx = -fx * b => b = -Tx / fx
+        if (baseline <= 0.0) {
+            throw std::runtime_error("Invalid stereo baseline: " + std::to_string(baseline) +
+                                     " (does the right camera info have Tx set correctly in its projection matrix?)");
+        }
         ROS_WARN_ONCE("Assumption: left_info and right_info are identical. Valid?");
         auto stereo_pointcloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
         pcl_conversions::toPCL(header, stereo_pointcloud->header);

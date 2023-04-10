@@ -12,4 +12,4 @@ P:
   fy: 400
   cx: 480
   cy: 320
-  Tx: -60.0 # 0 for monocular camera
+  baseline: 0.1 # 0.0 for monocular camera and left camera of a stereo pair

@@ -2,15 +2,16 @@
 #define SERPENT_GRAPH_MANAGER_HPP
 
 #include <gtsam/base/types.h>
+#include <gtsam/geometry/Cal3_S2Stereo.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/StereoCamera.h>
+#include <gtsam/geometry/StereoPoint2.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/ImuBias.h>
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/StereoFactor.h>
 #include <ros/time.h>
 
 #include <deque>
@@ -24,9 +25,14 @@ class RobotState {
 public:
     explicit RobotState(const ros::Time& timestamp = ros::Time(), const gtsam::Pose3& pose = gtsam::Pose3(),
             const gtsam::Velocity3& velocity = gtsam::Velocity3(),
-            const gtsam::imuBias::ConstantBias& imu_bias = gtsam::imuBias::ConstantBias());
+            const gtsam::imuBias::ConstantBias& imu_bias = gtsam::imuBias::ConstantBias(),
+            const double barometer_bias = 0.0);
     explicit RobotState(const ros::Time& timestamp, const gtsam::NavState& state,
-            const gtsam::imuBias::ConstantBias& imu_bias);
+            const gtsam::imuBias::ConstantBias& imu_bias, const double barometer_bias);
+
+    double barometer_bias() const;
+
+    double& barometer_bias();
 
     const gtsam::imuBias::ConstantBias& imu_bias() const;
 
@@ -48,9 +54,10 @@ public:
 
 private:
     ros::Time timestamp_;
-    gtsam::Pose3 pose_;                      // X
-    gtsam::Velocity3 velocity_;              // V
-    gtsam::imuBias::ConstantBias imu_bias_;  // B
+    gtsam::Pose3 pose_;
+    gtsam::Velocity3 velocity_;
+    gtsam::imuBias::ConstantBias imu_bias_;
+    double barometer_bias_;
 };
 
 /**
@@ -59,9 +66,61 @@ private:
  */
 class GraphManager {
 public:
+    /**
+     * @brief Barometric bias in metres.
+     *
+     * @param key
+     * @return double bias in metres
+     */
+    double barometer_bias(const int key) const;
+
+    /**
+     * @brief Barometric bias in metres.
+     *
+     * @param key
+     * @param offset
+     * @return double bias in metres
+     */
+    double barometer_bias(const std::string& key, const int offset) const;
+
+    /**
+     * @brief Create a barometric bias (between) factor as a zero-measurement between biases at new_key - 1 and new_key.
+     *
+     * @param new_key
+     * @param noise noise model for between factor, where standard devation / sigma is in metres.
+     */
+    void create_barometric_bias_factor(const int new_key, gtsam::SharedNoiseModel noise);
+
+    /**
+     * @brief Create a barometric factor for a new pressure measurement in kilopascals (kPa). Returns the height for
+     * that pressure.
+     *
+     * @param new_key
+     * @param pressure pressure measurement in kPa
+     * @param noise noise model for barometeric factor error, where standard devation / sigma is in metres.
+     * @return double height in metres
+     */
+    double create_barometric_factor(const int new_key, const double pressure, gtsam::SharedNoiseModel noise);
+
+    /**
+     * @brief Create a between pose factor between new_key - 1 and new_key.
+     *
+     * @param new_key
+     * @param transform SE(3) relative transform from new_key - 1 to new_key
+     * @param noise noise model for between pose factor, with standard devations / sigmas ordered rx, ry, rz, tx, ty, tz
+     */
+    void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise);
+
     void create_combined_imu_factor(const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements);
 
-    void create_between_pose_factor(const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise);
+    /**
+     * @brief Create a barometric bias prior. This bias is specified in metres.
+     *
+     * @param key
+     * @param barometer_bias vertical distance in metres
+     * @param noise
+     */
+    void create_prior_barometer_bias_factor(const int key, const double barometer_bias, gtsam::SharedNoiseModel noise);
 
     void create_prior_imu_bias_factor(const int key, const gtsam::imuBias::ConstantBias& imu_bias,
             gtsam::SharedNoiseModel noise);
@@ -73,6 +132,9 @@ public:
     /**
      * @brief Create the stereo factors and values for a specified key. Requires that:
      *  - the pose has been set for the specified key
+     *  - stereo features are not reacquired with the same id if lost
+     *
+     * Does not require that every consecutive key hold stereo features, i.e. handles missed keys.
      *
      * Throws std::runtime_error otherwise.
      *
@@ -131,7 +193,7 @@ public:
     void increment(const std::string& name);
 
     /**
-     * @brief Get the key value for a registered named key.
+     * @brief Get the key value for a named key.
      *
      * @param name
      * @return int
@@ -139,11 +201,11 @@ public:
     int key(const std::string& name, const int offset = 0) const;
 
     /**
-     * @brief Return the smallest key value of the registered named keys.
+     * @brief Return the smallest key value of the named keys with priority <= priority arg (highest = 0).
      *
-     * @return int
+     * @return int maximum priority of named keys used in the evaluation of the minimum key.
      */
-    int minimum_key() const;
+    int minimum_key(const unsigned int priority = std::numeric_limits<unsigned int>::max()) const;
 
     gtsam::NavState navstate(const int key) const;
 
@@ -154,6 +216,8 @@ public:
     gtsam::Pose3 pose(const std::string name, const int offset = 0) const;
 
     void print_errors(const double min_error) const;
+
+    unsigned int priority(const std::string key) const;
 
     void save(const std::string& file_prefix,
             const gtsam::GraphvizFormatting& formatting = gtsam::GraphvizFormatting{}) const;
@@ -177,6 +241,22 @@ public:
      */
     RobotState state(const std::string& name, const int offset = 0) const;
 
+    /**
+     * @brief Set the barometer bias in metres.
+     *
+     * @param key
+     * @param barometer_bias
+     */
+    void set_barometer_bias(const int key, const double barometer_bias);
+
+    /**
+     * @brief Set the barometer bias in metres.
+     *
+     * @param key
+     * @param bias
+     */
+    void set_barometer_bias(const std::string& key, const double barometer_bias, const int offset = 0);
+
     void set_body_to_stereo_left_cam_pose(const gtsam::Pose3& body_to_stereo_left_cam);
 
     void set_imu_bias(const int key, const gtsam::imuBias::ConstantBias& imu_bias);
@@ -189,7 +269,7 @@ public:
      * @param name
      * @param value
      */
-    void set_named_key(const std::string& name, const int value = 0);
+    void set_named_key(const std::string& name, const int key = 0, const unsigned int priority = 0);
 
     void set_navstate(const int key, const gtsam::NavState& navstate);
 
@@ -215,6 +295,10 @@ public:
 
     gtsam::Cal3_S2Stereo::shared_ptr stereo_calibration();
 
+    gtsam::StereoCamera stereo_camera(const std::string& key, const int offset = 0) const;
+
+    gtsam::StereoCamera stereo_camera(const int key) const;
+
     gtsam::Point3 stereo_landmark(const int id) const;
 
     /**
@@ -227,8 +311,8 @@ public:
 
     const ros::Duration time_between(const int key1, const int key2) const;
 
-    const ros::Duration time_between(const std::string& key1_name, const std::string& key2_name,
-            const int key1_offset = 0, const int key2_offset = 0) const;
+    const ros::Duration time_between(const std::string& key1, const std::string& key2, const int key1_offset = 0,
+            const int key2_offset = 0) const;
 
     const std::map<int, ros::Time>& timestamps() const;
 
@@ -241,7 +325,7 @@ public:
     const ros::Time& timestamp(const int key) const;
 
     /**
-     * @brief Get the timestamp associated with a registered key.
+     * @brief Get the timestamp associated with a named key.
      *
      * @param name
      * @return const ros::Time&
@@ -285,15 +369,56 @@ public:
     gtsam::Velocity3 velocity(const std::string name, const int offset = 0) const;
 
 protected:
+    /**
+     * @brief Structure to hold information about a named key. Named keys are used to keep track of the index for which
+     * data should be added to the graph.
+     *
+     */
+    struct NamedKeyInfo {
+        NamedKeyInfo(const int key = 0, const unsigned int priority = 0)
+            : key(key),
+              priority(priority) {}
+
+        // Key/index used to acquire gtsam::Key in graph
+        int key;
+
+        // Priority of the named key, used in various operations. 0 is maximum priority.
+        unsigned int priority;
+    };
+
     void add_factor(const int key, const boost::shared_ptr<gtsam::NonlinearFactor>& factor);
 
     gtsam::NonlinearFactorGraph all_factors() const;
 
-    template<typename ValueType>
-    void set(const gtsam::Key key, const ValueType& value);
+    /**
+     * @brief Extract (find and remove) from new factors all factors with key <= max_key.
+     *
+     * @param max_key
+     * @return gtsam::NonlinearFactorGraph
+     */
+    gtsam::NonlinearFactorGraph extract_new_factors(const int max_key);
 
-    // Registered keys
-    std::map<std::string, int> keys;
+    gtsam::Values extract_new_values(const int max_key);
+
+    gtsam::FastList<gtsam::Key> extract_unmarginalised_keys(const int max_key);
+
+    gtsam::NonlinearFactorGraph& factors(const int key);
+
+    gtsam::NonlinearFactorGraph& new_factors(const int key);
+
+    gtsam::FastList<gtsam::Key>& unmarginalised_keys(const int key);
+
+    template<gtsam::Key (*KeyFunc)(std::uint64_t), typename ValueType>
+    void add(const int key, const ValueType& value);
+
+    template<gtsam::Key (*KeyFunc)(std::uint64_t), typename ValueType>
+    void set(const int key, const ValueType& value);
+
+    template<typename ValueType>
+    void update(const gtsam::Key raw_key, const ValueType& value);
+
+    // Named keys
+    std::map<std::string, NamedKeyInfo> keys;
 
     // All Timestamps (key -> time)
     std::map<int, ros::Time> timestamps_;
@@ -313,11 +438,8 @@ protected:
     // Stereo Landmark Ids added to values [key = key when added, value = ids]
     std::map<int, std::vector<int>> stereo_landmark_ids;
 
-    // Values
-    gtsam::Values values_;
-
     /**
-     * @brief Factors (key -> graph of factors)
+     * @brief All factors (key -> graph of factors)
      *
      * Contains:
      * - robot state to robot state factors
@@ -326,14 +448,47 @@ protected:
      *      state)
      */
     std::map<int, gtsam::NonlinearFactorGraph> factors_;
+
+    // All values
+    gtsam::Values values_;
+
+    // New factors (key -> graph of factors) which have not yet been used in optimisation
+    std::map<int, gtsam::NonlinearFactorGraph> new_factors_;
+
+    // New values (key -> values) which have not yet been used in optimisation
+    gtsam::Values new_values_;
+
+    // New stereo landmark ids
+    std::map<int, std::vector<int>> new_stereo_landmark_ids;
+
+    // Unmarginalised keys
+    std::map<int, gtsam::FastList<gtsam::Key>> unmarginalised_keys_;
 };
 
 class ISAM2GraphManager : public GraphManager {
 public:
     explicit ISAM2GraphManager(const gtsam::ISAM2Params& isam2_params);
 
+    Eigen::Matrix<double, 1, 1> barometer_bias_variance(const int key) const;
+
+    Eigen::MatrixXd covariance(const gtsam::Key key) const;
+
+    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
+
+    int marginalisation_key() const;
+
+    /**
+     * @brief Marginalise all keys <= key which are not already marginalised.
+     *
+     * @param key
+     */
+    void marginalise(const int key);
+
     /**
      * @brief Perform an incremental optimisation up to max_key, and internally update all optimised values.
+     *
+     * If marginalisation is enabled, this function will marginalise keys according to the marginalisation window size
+     * if enabled (see set_marginalisation()).
      *
      * @param max_key
      * @return gtsam::ISAM2Result
@@ -345,13 +500,18 @@ public:
      *
      * @return int
      */
-    int opt_key();
-
-    Eigen::MatrixXd covariance(const gtsam::Key key) const;
-
-    Eigen::Matrix<double, 6, 6> imu_bias_covariance(const int key) const;
+    int opt_key() const;
 
     Eigen::Matrix<double, 6, 6> pose_covariance(const int key) const;
+
+    /**
+     * @brief Enable marginalisation in optimisation, so that the number of unmarginalised keys is equal to the
+     * marginalisation window size.
+     *
+     * @param enabled
+     * @param window_size
+     */
+    void set_marginalisation(const bool enabled, const unsigned int window_size);
 
     Eigen::Matrix3d velocity_covariance(const int key) const;
 
@@ -361,20 +521,18 @@ private:
 
     // Optimisation key (separate to user-specifiable named keys)
     int opt_key_;
+
+    //// Marginalisation
+    // Marginalisation enabled in optimisation
+    bool marginalisation;
+    // Last marginalised key (-1 if no marginalisation has occurred)
+    int marginalisation_key_;
+    // Window size for optimisation marginalisation
+    int marginalisation_window_size;
 };
 
-/* Implementation */
-
-template<typename ValueType>
-void GraphManager::set(const gtsam::Key key_, const ValueType& value) {
-    assert(key_ >= 0);
-    if (values_.exists(key_)) {
-        values_.update(key_, value);
-    } else {
-        values_.insert(key_, value);
-    }
 }
 
-}
+#include "serpent/impl/graph_manager.hpp"
 
 #endif

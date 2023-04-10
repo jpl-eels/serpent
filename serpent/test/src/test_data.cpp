@@ -25,12 +25,19 @@ gtsam::ISAM2Params test_isam2_params() {
     gtsam::ISAM2GaussNewtonParams optimization_params = gtsam::ISAM2GaussNewtonParams();
     optimization_params.setWildfireThreshold(1.0e-3);
     isam2_params.setOptimizationParams(optimization_params);
+    isam2_params.setFactorization("CHOLESKY");
     isam2_params.setRelinearizeThreshold(0.1);
+#if GTSAM_VERSION_NUMERIC >= 40200
+    isam2_params.relinearizeSkip = 10;
+    isam2_params.enableRelinearization = true;
+    isam2_params.evaluateNonlinearError = true;
+    isam2_params.cacheLinearizedFactors = true;
+#else
     isam2_params.setRelinearizeSkip(10);
     isam2_params.setEnableRelinearization(true);
     isam2_params.setEvaluateNonlinearError(true);
-    isam2_params.setFactorization("CHOLESKY");
     isam2_params.setCacheLinearizedFactors(true);
+#endif
     return isam2_params;
 }
 
@@ -68,7 +75,11 @@ gtsam::PreintegratedCombinedMeasurements test_preintegrated_measurements() {
 boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> test_preintegrated_params() {
     auto preintegrated_params = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(9.81);
     preintegrated_params->setIntegrationCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));
+#if GTSAM_VERSION_NUMERIC >= 40200
+    preintegrated_params->setBiasAccOmegaInit(Eigen::Matrix<double, 6, 6>::Identity() * std::pow(1.0e-3, 2.0));
+#else
     preintegrated_params->setBiasAccOmegaInt(Eigen::Matrix<double, 6, 6>::Identity() * std::pow(1.0e-3, 2.0));
+#endif
     preintegrated_params->setBiasAccCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));
     preintegrated_params->setBiasOmegaCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));
     preintegrated_params->setAccelerometerCovariance(Eigen::Matrix3d::Identity() * std::pow(1.0e-3, 2.0));

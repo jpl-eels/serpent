@@ -32,6 +32,13 @@ find_package(GTSAM REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
+# OpenMP required to compile fast_gicp for new point types.
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 catkin_python_setup()
 
 add_message_files(
@@ -77,39 +84,46 @@ catkin_package(
         PCL
 )
 
+set(LIBRARY ${PROJECT_NAME})
 set(NODE ${PROJECT_NAME}_node)
+set(FRONTEND_NODE ${PROJECT_NAME}_frontend_node)
+set(BACKEND_NODE ${PROJECT_NAME}_backend_node)
+set(STEREO_PIPELINE_NODE stereo_pipeline_node)
 
-set(NODE_SRC_FILES
-    src/graph_manager.cpp
-    src/frontend.cpp
-    src/mapping.cpp
-    src/match_filters.cpp
-    src/node.cpp
-    src/optimisation.cpp
-    src/pointcloud_filter.cpp
-    src/pointcloud_formatter.cpp
-    src/pointcloud_normal_estimation.cpp
-    src/registration_methods.cpp
-    src/registration.cpp
-    src/sensor_point_types.cpp
-    src/stereo_factor_finder.cpp
-    src/stereo_feature_tracker.cpp
-    src/stereo_keypoint_matcher.cpp
-    src/utilities.cpp
-)
-
-set(NODE_SYSTEM_INCLUDE_DIRS
+set(SYSTEM_INCLUDE_DIRS
     ${EIGEN3_INCLUDE_DIRS}
     ${GTSAM_INCLUDE_DIR}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
-set(NODE_SYSTEM_LIBRARIES
+set(SYSTEM_LIBRARIES
     ${EIGEN3_LIBRARIES}
     gtsam
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
+)
+
+# Library
+add_library(${LIBRARY} SHARED
+    src/frontend.cpp
+    src/match_filters.cpp
+    src/pointcloud_add_unit_vectors.cpp
+    src/pointcloud_filter.cpp
+    src/pointcloud_formatter.cpp
+    src/graph_manager.cpp
+    src/optimisation.cpp
+    src/point_types.cpp
+    src/registration_covariance.cpp
+    src/registration_methods.cpp
+    src/ros_conversion.cpp
+    src/sensor_point_types.cpp
+    src/stereo_cost_functions.cpp
+    src/stereo_factor_finder.cpp
+    src/stereo_feature_tracker.cpp
+    src/stereo_keypoint_matcher.cpp
+    src/utilities.cpp
+    src/window_functions.cpp
 )
 
 if(${ENABLE_GPROF})
@@ -117,8 +131,34 @@ if(${ENABLE_GPROF})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 endif()
 
+add_dependencies(${LIBRARY}
+    ${PROJECT_NAME}_generate_messages_cpp
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(${LIBRARY} SYSTEM PUBLIC
+    ${SYSTEM_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_include_directories(${LIBRARY} PUBLIC
+    include
+)
+
+target_link_libraries(${LIBRARY} PUBLIC
+    ${SYSTEM_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
+
+set_target_properties(${LIBRARY}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+# Complete node
 add_executable(${NODE}
-    ${NODE_SRC_FILES}
+    src/node.cpp
 )
 
 add_dependencies(${NODE}
@@ -127,7 +167,7 @@ add_dependencies(${NODE}
 )
 
 target_include_directories(${NODE} SYSTEM PUBLIC
-    ${NODE_SYSTEM_INCLUDE_DIRS}
+    ${SYSTEM_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -136,7 +176,8 @@ target_include_directories(${NODE} PUBLIC
 )
 
 target_link_libraries(${NODE} PUBLIC
-    ${NODE_SYSTEM_LIBRARIES}
+    ${LIBRARY}
+    ${SYSTEM_LIBRARIES}
     ${catkin_LIBRARIES}
 )
 
@@ -146,42 +187,105 @@ set_target_properties(${NODE}
         CXX_STANDARD_REQUIRED ON
 )
 
-# Stereo pipeline
-add_executable(stereo_pipeline_node
-    src/match_filters.cpp
-    src/stereo_factor_finder.cpp
-    src/stereo_feature_tracker.cpp
-    src/stereo_keypoint_matcher.cpp
-    src/stereo_pipeline_node.cpp
+# Frontend node
+add_executable(${FRONTEND_NODE}
+    src/frontend_node.cpp
 )
 
-add_dependencies(stereo_pipeline_node
+add_dependencies(${FRONTEND_NODE}
     ${PROJECT_NAME}_generate_messages_cpp
     ${catkin_EXPORTED_TARGETS}
 )
 
-target_include_directories(stereo_pipeline_node SYSTEM PUBLIC
-    ${NODE_SYSTEM_INCLUDE_DIRS}
+target_include_directories(${FRONTEND_NODE} SYSTEM PUBLIC
+    ${SYSTEM_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
 )
 
-target_include_directories(stereo_pipeline_node PUBLIC
+target_include_directories(${FRONTEND_NODE} PUBLIC
     include
 )
 
-target_link_libraries(stereo_pipeline_node PUBLIC
-    ${NODE_SYSTEM_LIBRARIES}
+target_link_libraries(${FRONTEND_NODE} PUBLIC
+    ${LIBRARY}
+    ${SYSTEM_LIBRARIES}
     ${catkin_LIBRARIES}
 )
 
-set_target_properties(stereo_pipeline_node
+set_target_properties(${FRONTEND_NODE}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+# Backend node
+add_executable(${BACKEND_NODE}
+    src/backend_node.cpp
+)
+
+add_dependencies(${BACKEND_NODE}
+    ${PROJECT_NAME}_generate_messages_cpp
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(${BACKEND_NODE} SYSTEM PUBLIC
+    ${SYSTEM_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_include_directories(${BACKEND_NODE} PUBLIC
+    include
+)
+
+target_link_libraries(${BACKEND_NODE} PUBLIC
+    ${LIBRARY}
+    ${SYSTEM_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
+
+set_target_properties(${BACKEND_NODE}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+# Stereo pipeline node
+add_executable(${STEREO_PIPELINE_NODE}
+    src/stereo_pipeline_node.cpp
+)
+
+add_dependencies(${STEREO_PIPELINE_NODE}
+    ${PROJECT_NAME}_generate_messages_cpp
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(${STEREO_PIPELINE_NODE} SYSTEM PUBLIC
+    ${SYSTEM_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+)
+
+target_include_directories(${STEREO_PIPELINE_NODE} PUBLIC
+    include
+)
+
+target_link_libraries(${STEREO_PIPELINE_NODE} PUBLIC
+    ${LIBRARY}
+    ${SYSTEM_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
+
+set_target_properties(${STEREO_PIPELINE_NODE}
     PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
 )
 
 # Required (before PCL headers) from PCL 1.7 onwards when using custom point types to include templated algorithms also
+target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
 target_compile_definitions(${NODE} PUBLIC PCL_NO_PRECOMPILE)
+target_compile_definitions(${FRONTEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
+target_compile_definitions(${BACKEND_NODE} PUBLIC PCL_NO_PRECOMPILE)
+target_compile_definitions(${STEREO_PIPELINE_NODE} PUBLIC PCL_NO_PRECOMPILE)
 
 # Testing
 if(CATKIN_ENABLE_TESTING)
@@ -189,8 +293,7 @@ if(CATKIN_ENABLE_TESTING)
         src/graph_manager.cpp
         src/utilities.cpp
         test/graph_manager.cpp
-        test/DEPRECATED_registration_degeneracy.cpp
-        test/registration_covariance_estimator.cpp
+        test/registration_covariance.cpp
         test/serpent.cpp
         test/test_main.cpp
         test/src/read_data.cpp
@@ -198,7 +301,7 @@ if(CATKIN_ENABLE_TESTING)
         test/src/test_utils.cpp
     )
     target_include_directories(test_${PROJECT_NAME} SYSTEM PUBLIC
-        ${NODE_SYSTEM_INCLUDE_DIRS}
+        ${SYSTEM_INCLUDE_DIRS}
         ${catkin_INCLUDE_DIRS}
     )
     target_include_directories(test_${PROJECT_NAME} PUBLIC
@@ -206,7 +309,7 @@ if(CATKIN_ENABLE_TESTING)
         test/include
     )
     target_link_libraries(test_${PROJECT_NAME}
-        ${NODE_SYSTEM_LIBRARIES}
+        ${SYSTEM_LIBRARIES}
         ${catkin_LIBRARIES}
     )
     target_compile_definitions(test_${PROJECT_NAME} PRIVATE DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test/data")

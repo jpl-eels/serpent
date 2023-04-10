@@ -8,8 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
     pcl_ros
     roscpp
     sensor_msgs
+    tf2_ros
 
     eigen_ext
+    eigen_ros
+    statistics_msgs
 )
 find_package(PCL REQUIRED)
 
@@ -24,7 +27,7 @@ generate_messages(
     # DEPENDENCIES
 )
 
-set(LIBRARY_NAME ${PROJECT_NAME})
+set(LIBRARY ${PROJECT_NAME})
 
 catkin_package(
     INCLUDE_DIRS
@@ -35,9 +38,12 @@ catkin_package(
         pcl_ros
         roscpp
         sensor_msgs
+        tf2_ros
 
         eigen_ext
-    LIBRARIES ${LIBRARY_NAME}
+        eigen_ros
+        statistics_msgs
+    LIBRARIES ${LIBRARY}
     DEPENDS
         PCL
 )
@@ -51,35 +57,40 @@ set(INCLUDE_DIRS
     include
 )
 
-set(LIBRARIES
+set(SYSTEM_LIBRARIES
     ${catkin_LIBRARIES}
     ${PCL_LIBRARIES}
 )
 
 # Library
-add_library(${LIBRARY_NAME}
+add_library(${LIBRARY}
     src/pclpointcloud2_utilities.cpp
+    src/point_types.cpp
 )
 
-add_dependencies(${LIBRARY_NAME}
+add_dependencies(${LIBRARY}
     ${catkin_EXPORTED_TARGETS}
 )
 
-target_include_directories(${LIBRARY_NAME} PUBLIC SYSTEM
+target_include_directories(${LIBRARY} PUBLIC SYSTEM
     ${SYSTEM_INCLUDE_DIRS}
 )
 
-target_include_directories(${LIBRARY_NAME} PUBLIC
+target_include_directories(${LIBRARY} PUBLIC
     ${INCLUDE_DIRS}
 )
 
-target_link_libraries(${LIBRARY_NAME}
-    ${LIBRARIES}
+target_link_libraries(${LIBRARY}
+    ${SYSTEM_LIBRARIES}
 )
 
-set(LIBRARIES ${LIBRARIES}
-    ${LIBRARY_NAME}
+set_target_properties(${LIBRARY}
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
+
+target_compile_definitions(${LIBRARY} PUBLIC PCL_NO_PRECOMPILE)
 
 # File converter
 add_executable(pointcloud_file_converter
@@ -101,7 +112,14 @@ target_include_directories(pointcloud_file_converter PUBLIC
 )
 
 target_link_libraries(pointcloud_file_converter
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
+)
+
+set_target_properties(pointcloud_file_converter
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
 )
 
 # Analyser
@@ -123,5 +141,68 @@ target_include_directories(pointcloud_analyser PUBLIC
 )
 
 target_link_libraries(pointcloud_analyser
-    ${LIBRARIES}
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
 )
+
+set_target_properties(pointcloud_analyser
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+# ComputeDistances
+add_executable(compute_distances
+    src/compute_distances_main.cpp
+)
+
+add_dependencies(compute_distances
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_include_directories(compute_distances PUBLIC SYSTEM
+    ${SYSTEM_INCLUDE_DIRS}
+)
+
+target_include_directories(compute_distances PUBLIC
+    ${INCLUDE_DIRS}
+)
+
+target_link_libraries(compute_distances
+    ${SYSTEM_LIBRARIES}
+    ${LIBRARY}
+)
+
+set_target_properties(compute_distances
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+)
+
+# Testing
+if(CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(test_${PROJECT_NAME}
+        test/main.cpp
+        test/pclpointcloud_transform.cpp
+        test/pclpointcloud_utilities.cpp
+        test/pclpointcloud2_utilities.cpp
+        test/src/test_instances.cpp
+    )
+    target_include_directories(test_${PROJECT_NAME} SYSTEM PUBLIC
+        ${SYSTEM_INCLUDE_DIRS}
+        ${catkin_INCLUDE_DIRS}
+    )
+    target_include_directories(test_${PROJECT_NAME} PUBLIC
+        include
+        test/include
+    )
+    target_link_libraries(test_${PROJECT_NAME}
+        ${SYSTEM_LIBRARIES}
+        ${LIBRARY}
+    )
+    set_target_properties(test_${PROJECT_NAME}
+        PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+    )
+endif(CATKIN_ENABLE_TESTING)

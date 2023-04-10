@@ -6,8 +6,9 @@
 
 namespace eigen_ros {
 
-BodyFramesTf::BodyFramesTf()
-    : nh("~") {
+BodyFramesTf::BodyFramesTf(const std::string& node_namespace)
+    : nh(node_namespace),
+      body_frames(node_namespace) {
     std::vector<geometry_msgs::TransformStamped> transforms;
     for (const std::string& frame : body_frames.frames()) {
         const std::string frame_id = body_frames.frame_id(frame);

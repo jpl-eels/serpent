@@ -35,7 +35,6 @@ private:
     // First pointcloud filter
     bool first_pointcloud_removal_enabled;
     bool first_pointcloud_removed;
-    
 };
 
 }

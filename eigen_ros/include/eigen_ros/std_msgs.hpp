@@ -2,10 +2,15 @@
 #define EIGEN_ROS_STD_MSGS_HPP
 
 #include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Header.h>
 
 #include <Eigen/Core>
 
 namespace eigen_ros {
+
+void from_ros(const std_msgs::Header& msg, ros::Time& timestamp, std::string& frame_id);
+
+void to_ros(std_msgs::Header& msg, const ros::Time& timestamp, const std::string& frame_id);
 
 template<typename Derived>
 void from_ros(const std_msgs::Float64MultiArray& msg, Eigen::MatrixBase<Derived>& matrix);
