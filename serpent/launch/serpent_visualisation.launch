@@ -1,0 +1,35 @@
+<launch>
+    <!-- Visualisation Arguments -->
+    <arg name="rviz"                            default="false"/>
+    <arg name="rqt"                             default="false"/>
+    <arg name="rviz_stereo"                     default="false"/>
+    <arg name="rqt_stereo"                      default="false"/>
+
+    <!-- Topics -->
+    <arg name="pointcloud_topic"                default="/pointcloud"/>
+    <arg name="stereo_left_cam_image_topic"     default="/stereo/left/image"/>
+    <arg name="stereo_right_cam_image_topic"    default="/stereo/right/image"/>
+    <arg name="stereo_left_cam_info_topic"      default="/stereo/left/camera_info"/>
+    <arg name="stereo_right_cam_info_topic"     default="/stereo/right/camera_info"/>
+
+    <!-- RVIZ -->
+    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+
+    <!-- RQT -->
+    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
+            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
+
+    <!-- RViz Stereo -->
+    <node if="$(arg rviz_stereo)" pkg="rviz" type="rviz" name="serpent_rviz_stereo"
+            args="-d $(find serpent)/rviz/stereo.rviz">
+        <remap from="/lidar_remap/points"         to="$(arg pointcloud_topic)"/>
+        <remap from="/left_remap/image_rect"      to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="/left_remap/camera_info"     to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="/right_remap/image_rect"     to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="/right_remap/camera_info"    to="$(arg stereo_right_cam_info_topic)"/>
+    </node>
+
+    <!-- RQT Stereo -->
+    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
+            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
+</launch>

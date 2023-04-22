@@ -1,13 +1,31 @@
-function pose_data = compute_pose_data(data, align_first_pose)
+function pose_data = compute_pose_data(data, time_bounds, ...
+    align_first_pose, align_trajectories, align_opt_params)
+    if align_first_pose && align_trajectories
+        error("Both align_first_pose and align_trajectories were " + ...
+            "true but only one can be.");
+    end
+    
+    % Extraction and filtering
     pose_data = struct;
     pose_data.gt.timestamps = extract_timestamps(data.gt.odom);
-    gt_poses = extract_poses(data.gt.odom);
-    pose_data.gt.positions = extract_positions(gt_poses);
+    pose_data.gt.poses = extract_poses(data.gt.odom);
+    if time_bounds.filter
+        start_t = pose_data.gt.timestamps(1) + time_bounds.start;
+        end_t = start_t + time_bounds.duration;
+        filter_indices = and(pose_data.gt.timestamps >= start_t, ...
+            pose_data.gt.timestamps <= end_t);
+        pose_data.gt.timestamps = pose_data.gt.timestamps(filter_indices);
+        pose_data.gt.poses = pose_data.gt.poses(filter_indices);
+    end
+
+    % Compute data
+    pose_data.gt.positions = extract_positions(pose_data.gt.poses);
     pose_data.gt.distances = vecnorm(pose_data.gt.positions, 2, 2);
-    gt_quaternions = extract_quaternions(gt_poses);
-    gt_axang = quat2axang(gt_quaternions);
+    pose_data.gt.quaternions = extract_quaternions(pose_data.gt.poses);
+    gt_axang = quat2axang(pose_data.gt.quaternions);
     pose_data.gt.rots_axang = gt_axang(:, 1:3) .* gt_axang(:, 4);
     pose_data.gt.angles = abs(gt_axang(:, 4));
+    pose_data.gt.length = compute_trajectory_length(pose_data.gt.poses);
 
     pose_data.num_odom = length(data.odoms);
     pose_data.names = data.names;
@@ -16,66 +34,34 @@ function pose_data = compute_pose_data(data, align_first_pose)
         odometry = data.odoms{i};
         entry = struct;
         entry.timestamps = extract_timestamps(odometry);
-        poses = extract_poses(odometry);
+        entry.poses = extract_poses(odometry);
 
         % Filtering
         gt_bounds_filter = ...
             entry.timestamps <= pose_data.gt.timestamps(end) & ...
             entry.timestamps >= pose_data.gt.timestamps(1);
         entry.timestamps = entry.timestamps(gt_bounds_filter);
-        poses = poses(gt_bounds_filter);
+        entry.poses = entry.poses(gt_bounds_filter);
 
-        % Align to first pose
+        % Alignment
         if align_first_pose
-            % Find gt transform at timestamp of first pose
-            gt_index = 1;
-            while pose_data.gt.timestamps(gt_index) < entry.timestamps(1)
-                gt_index = gt_index + 1;
-            end
-            if pose_data.gt.timestamps(gt_index) == entry.timestamps(1)
-                first_gt_T = pose_to_matrix(gt_poses(gt_index));
-                first_gt_position = first_gt_T(1:3, 4)';
-                first_gt_orientation = rotm2quat(first_gt_T(1:3, 1:3));
-            else
-                [first_gt_position, first_gt_orientation] = ...
-                    interp_transform(pose_data.gt.timestamps(gt_index - 1), ...
-                    pose_data.gt.timestamps(gt_index), ...
-                    gt_poses(gt_index - 1), gt_poses(gt_index), ...
-                    entry.timestamps(1));
-                first_gt_T = [quat2rotm(first_gt_orientation), ...
-                    first_gt_position'; 0 0 0 1];
-            end
-
-            % Align all poses
-            entry.positions = zeros(length(poses), 3);
-            quaternions = zeros(length(poses), 4);
-            entry.positions(1, :) = first_gt_position;
-            quaternions(1, :) = first_gt_orientation;
-            previous_T = pose_to_matrix(poses(1));
-            previous_aligned_T = [quat2rotm(first_gt_orientation), ...
-                first_gt_position'; 0 0 0 1];
-            poses(1) = matrix_to_pose(first_gt_T);
-            for j = 2:length(poses)
-                T = pose_to_matrix(poses(j));
-                relative_tf = previous_T \ T;
-                aligned_T = previous_aligned_T * relative_tf;
-                poses(j) = matrix_to_pose(aligned_T);
-                entry.positions(j, :) = extract_position(poses(j));
-                quaternions(j, :) = extract_quaternion(poses(j));
-                previous_T = T;
-                previous_aligned_T = aligned_T;
-            end
-        else
-            entry.positions = extract_positions(poses);
-            quaternions = extract_quaternions(poses);
+            entry = align_to_first_pose(pose_data.gt, entry);
+        elseif align_trajectories
+            entry = align_trajectory(pose_data.gt, entry, ...
+                align_opt_params);
         end
+
+        % Computation
+        entry.positions = extract_positions(entry.poses);
+        entry.quaternions = extract_quaternions(entry.poses);
         entry.distances = vecnorm(entry.positions, 2, 2);
-        axang = quat2axang(quaternions);
+        axang = quat2axang(entry.quaternions);
         entry.rots_axang = axang(:, 1:3) .* axang(:, 4);
         entry.angles = abs(axang(:, 4));
+        entry.length = compute_trajectory_length(entry.poses);
         [apes, ape_timestamps, rpes, rpe_timestamps] = ...
-            compute_pose_errors(pose_data.gt.timestamps, gt_poses, ...
-            entry.timestamps, poses);
+            compute_pose_errors(pose_data.gt.timestamps, ...
+            pose_data.gt.poses, entry.timestamps, entry.poses);
         entry.ape.timestamps = ape_timestamps;
         [position_apes, rot_axang_apes] = split_poses(apes);
         entry.ape.positions = position_apes;

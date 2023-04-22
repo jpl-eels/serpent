@@ -81,8 +81,11 @@ function [fig_trajectory, fig_trajectory_orientation, ...
     % Legend
     set(0, "CurrentFigure", fig_trajectory);
     legend(traj_names_with_gt, "Location", "best");
+    axis equal;
     set(0, "CurrentFigure", fig_trajectory_orientation);
     legend(traj_orient_names_with_gt, "Location", "best");
+    axis equal;
     set(0, "CurrentFigure", fig_trajectory_velocity);
     legend(traj_vel_names_with_gt, "Location", "best");
+    axis equal;
 end

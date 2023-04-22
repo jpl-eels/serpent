@@ -6,6 +6,7 @@
     <arg name="stereo_right_cam_image_topic"    default="/stereo/right/image"/>
     <arg name="stereo_left_cam_info_topic"      default="/stereo/left/camera_info"/>
     <arg name="stereo_right_cam_info_topic"     default="/stereo/right/camera_info"/>
+    <arg name="barometer_topic"                 default="/barometer"/>
     <arg name="robot_file"                      default="$(find serpent)/config/robot_default.yaml"/>
     <arg name="mission_file"                    default="$(find serpent)/config/mission_default.yaml"/>
     <arg name="filter_file"                     default="$(find serpent)/config/filter_default.yaml"/>
@@ -18,9 +19,11 @@
     <!-- Visualisation Arguments -->
     <arg name="rviz"                            default="false"/>
     <arg name="rqt"                             default="true"/>
+    <arg name="rviz_stereo"                     default="false"/>
     <arg name="rqt_stereo"                      default="false"/>
 
     <!-- Debugging Arguments -->
+    <arg name="run_track_distance_analysis"     default="false"/>
     <arg name="use_gdb"                         default="false"/>
     <arg name="use_callgrind"                   default="false"/>
     <env name="ROSCONSOLE_FORMAT" value="[${node}] [${function}:${line}]: ${message}"/>
@@ -36,6 +39,9 @@
     <param if="$(arg use_sim_time)" name="use_sim_time" value="true"/> 
 
     <!-- Debugging -->
+    <include if="$(arg run_track_distance_analysis)" file="$(find serpent)/launch/analyse_track_distances.launch">
+        <arg name="pointcloud_topic"    value="/serpent/frontend/deskewed_pointcloud"/>
+    </include>
     <arg name="program_name" value="serpent"/>
     <arg if="$(arg use_gdb)" name="launch_prefix" value="gdb -ex run --args"/>
     <arg if="$(eval arg('use_callgrind') and not arg('use_gdb'))" name="launch_prefix"
@@ -43,41 +49,28 @@
     <arg unless="$(eval arg('use_gdb') or arg('use_callgrind'))" name="launch_prefix" value=""/>
     <env name="GMON_OUT_PREFIX" value="$(arg program_name)" />
 
+    <!-- Parameter Configuration -->
+    <include file="$(find serpent)/launch/load_parameters.launch">
+        <arg name="robot_file"                 value="$(arg robot_file)"/>
+        <arg name="mission_file"               value="$(arg mission_file)"/>
+        <arg name="filter_file"                value="$(arg filter_file)"/>
+        <arg name="format_file"                value="$(arg format_file)"/>
+        <arg name="normal_estimation_file"     value="$(arg normal_estimation_file)"/>
+        <arg name="tuning_file"                value="$(arg tuning_file)"/>
+        <arg name="debug_file"                 value="$(arg debug_file)"/>
+        <arg name="threads"                    value="$(arg threads)"/>
+    </include>
+
     <node pkg="serpent" type="serpent_node" name="$(arg program_name)" output="screen"
             launch-prefix="$(arg launch_prefix)">
         <!-- Topics -->
-        <remap from="~input/imu"                        to="$(arg imu_topic)"/>
-        <remap from="~input/pointcloud"                 to="$(arg pointcloud_topic)"/>
-        <remap from="~input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
-        <remap from="~input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
-        <remap from="~input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
-        <remap from="~input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
-
-        <!-- Robot Configuration -->
-        <rosparam if="$(eval robot_file != '')"             command="load" file="$(arg robot_file)"/>
-
-        <!-- Mission Configuration -->
-        <rosparam if="$(eval mission_file != '')"           command="load" file="$(arg mission_file)"/>
-
-        <!-- Filter Configuration -->
-        <rosparam if="$(eval filter_file != '')"            command="load" file="$(arg filter_file)"/>
-
-        <!-- Format Configuration -->
-        <rosparam if="$(eval format_file != '')"            command="load" file="$(arg format_file)"/>
-
-        <!-- Normal Estimation Configuration -->
-        <rosparam if="$(eval normal_estimation_file != '')" command="load" file="$(arg normal_estimation_file)"/>
-
-        <!-- Tuning Configuration -->
-        <rosparam if="$(eval tuning_file != '')"            command="load" file="$(arg tuning_file)"/>
-
-        <!-- Debug Configuration -->
-        <rosparam if="$(eval debug_file != '')"             command="load" file="$(arg debug_file)"/>
-
-        <!-- Parameters -->
-        <rosparam subst_value="true">
-            threads: $(arg threads)
-        </rosparam>
+        <remap from="serpent/input/imu"                        to="$(arg imu_topic)"/>
+        <remap from="serpent/input/pointcloud"                 to="$(arg pointcloud_topic)"/>
+        <remap from="serpent/input/stereo/left/image"          to="$(arg stereo_left_cam_image_topic)"/>
+        <remap from="serpent/input/stereo/right/image"         to="$(arg stereo_right_cam_image_topic)"/>
+        <remap from="serpent/input/stereo/left/camera_info"    to="$(arg stereo_left_cam_info_topic)"/>
+        <remap from="serpent/input/stereo/right/camera_info"   to="$(arg stereo_right_cam_info_topic)"/>
+        <remap from="serpent/input/barometer"                  to="$(arg barometer_topic)"/>
     </node>
 
     <!-- Rosbag -->
@@ -89,14 +82,17 @@
         <arg name="duration" value="$(arg rosbag_duration)"/>
     </include>
 
-    <!-- RVIZ -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="serpent_rviz" args="-d $(find serpent)/rviz/serpent.rviz"/>
+    <!-- Visualisation -->
+    <include file="$(find serpent)/launch/serpent_visualisation.launch">
+        <arg name="rviz"        value="$(arg rviz)"/>
+        <arg name="rqt"         value="$(arg rqt)"/>
+        <arg name="rviz_stereo" value="$(arg rviz_stereo)"/>
+        <arg name="rqt_stereo"  value="$(arg rqt_stereo)"/>
 
-    <!-- RQT -->
-    <node if="$(arg rqt)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent.perspective"/>
-
-    <!-- RQT Stereo -->
-    <node if="$(arg rqt_stereo)" pkg="rqt_gui" type="rqt_gui" name="serpent_rqt_stereo" output="screen"
-            args="--perspective-file $(find serpent)/perspective/serpent_stereo_pipeline.perspective"/>
+        <arg name="pointcloud_topic"                value="$(arg pointcloud_topic)"/>
+        <arg name="stereo_left_cam_image_topic"     value="$(arg stereo_left_cam_image_topic)"/>
+        <arg name="stereo_right_cam_image_topic"    value="$(arg stereo_right_cam_image_topic)"/>
+        <arg name="stereo_left_cam_info_topic"      value="$(arg stereo_left_cam_info_topic)"/>
+        <arg name="stereo_right_cam_info_topic"     value="$(arg stereo_right_cam_info_topic)"/>
+    </include>
 </launch>

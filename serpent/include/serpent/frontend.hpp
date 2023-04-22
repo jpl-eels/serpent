@@ -9,6 +9,7 @@
 #include <pcl/PCLPointCloud2.h>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/FluidPressure.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -39,16 +40,46 @@ struct StereoData {
     sensor_msgs::CameraInfoConstPtr left_info;
     sensor_msgs::CameraInfoConstPtr right_info;
 
-    ros::Time timestamp() const {
+    inline ros::Time timestamp() const {
         return left_image->header.stamp;
     }
 };
+
+StereoData change_timestamp(const StereoData& data, const ros::Time& timestamp);
 
 class Frontend {
 public:
     explicit Frontend();
 
+    std::string output_pointcloud_topic() const;
+
 private:
+    /**
+     * @brief Barometer data callback.
+     * 
+     * @param pressure
+     */
+    void barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure);
+
+    /**
+     * @brief Check if barometer data can be interpolated and published. Called when new barometer data arrives or a new
+     * state timestamp is set.
+     *
+     * Assumes barometer data mutex is already acquired.
+     *
+     */
+    void barometer_try_publish();
+
+    /**
+     * @brief Obtain the orientation from an IMU measurement in the body frame. Performs the required IMU reference
+     * frame change (e.g. NED to NWU), and sensor to body transformation. Returns identity rotation if imu rotation is
+     * invalid.
+     *
+     * @param imu
+     * @return Eigen::Quaterniond
+     */
+    Eigen::Quaterniond body_frame_orientation(const eigen_ros::Imu& imu) const;
+
     /**
      * @brief IMU message callback
      *
@@ -57,6 +88,15 @@ private:
      * @param msg
      */
     void imu_callback(const sensor_msgs::Imu::ConstPtr& msg);
+
+    /**
+     * @brief Get an interpolated imu message at interp_timestamp. Requires that the IMU buffer contain an IMU
+     * measurement both before and after the timestamp.
+     *
+     * @param interp_timestamp
+     * @return Imu
+     */
+    eigen_ros::Imu interpolated_imu(const ros::Time interp_timestamp) const;
 
     /**
      * @brief Save optimised of previous scan and update integrator with new biases.
@@ -97,11 +137,13 @@ private:
 
     //// ROS Communication
     ros::NodeHandle nh;
+    ros::Publisher barometer_publisher;
     ros::Publisher deskewed_pointcloud_publisher;
     ros::Publisher imu_s2s_publisher;
     ros::Publisher initial_odometry_publisher;
     ros::Publisher odometry_publisher;
     ros::Publisher pose_publisher;
+    ros::Subscriber barometer_subscriber;
     ros::Subscriber imu_subscriber;
     ros::Subscriber pointcloud_subscriber;
     message_filters::Subscriber<serpent::ImuBiases> imu_biases_subscriber;
@@ -124,9 +166,15 @@ private:
             stereo_sync;
 
     //// Thread Management
-    mutable std::mutex imu_mutex;
-    mutable std::mutex optimised_odometry_mutex;
-    mutable std::mutex stereo_mutex;
+    // Protect imu_buffer
+    mutable std::mutex imu_data_mutex;
+    // Protect last_preint_imu_timestamp, preintegration_params, world_odometry, world_state, preintegrated_imu,
+    //  imu_biases, imu_bias_timestamp
+    mutable std::mutex preintegration_mutex;
+    // Protect stereo_buffer
+    mutable std::mutex stereo_data_mutex;
+    // Protect barometer_buffer, barometer_timestamp_buffer
+    mutable std::mutex barometer_data_mutex;
 
     // Body frames
     const eigen_ros::BodyFrames body_frames;
@@ -137,28 +185,41 @@ private:
     // Overwrite IMU covariance flag
     bool overwrite_imu_covariance;
     // Overwrite IMU accelerometer covariance
-    Eigen::Matrix3d overwrite_accelerometer_covariance;
+    Eigen::Matrix3d accelerometer_covariance;
     // Overwrite IMU accelerometer covariance
-    Eigen::Matrix3d overwrite_gyroscope_covariance;
-
-    //// IMU thread
-    // IMU FIFO buffer
-    std::deque<eigen_ros::Imu> imu_buffer;
-
-    //// PointCloud thread
-    // Initialisation has occurred
-    bool initialised;
-    // Previous pointcloud start time for pointcloud callback
-    ros::Time previous_pointcloud_start;
+    Eigen::Matrix3d gyroscope_covariance;
+    // Overwrite barometer variance flag
+    bool overwrite_barometer_variance;
+    // Overwrite barometer variance
+    double barometer_variance;
     // Deskew translation
     bool deskew_translation;
     // Deskew rotation
     bool deskew_rotation;
+    // Stereo processing enabled
+    bool stereo_enabled;
+    // Only republish graph stereo frames
+    bool only_graph_frames;
+    // Barometer enabled
+    bool barometer_enabled;
 
+    //// IMU data
+    // IMU FIFO buffer
+    std::deque<eigen_ros::Imu> imu_buffer;
+
+    //// PointCloud data
+    // Initialisation has occurred (initial odometry sent and first pointcloud deskewed)
+    bool initialised;
+    // Previous pointcloud
+    pcl::PCLPointCloud2::ConstPtr previous_pointcloud;
+    // Previous state time (corresponds to world_odometry.timestamp but is always available)
+    ros::Time previous_state_time;
+
+    //// Preintegration data
+    // Last timestamp for IMU preintegration (either last IMU or optimised odometry timestamp)
+    ros::Time last_preint_imu_timestamp;
     // Preintegration parameters
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> preintegration_params;
-
-    //// Optimised Odometry thread
     // Body frame with respect to world frame
     eigen_ros::Odometry world_odometry;
     // Body frame state for preintegration
@@ -170,19 +231,15 @@ private:
     // IMU bias timestamp
     ros::Time imu_bias_timestamp;
 
-    //// All threads
-    // Last timestamp for IMU preintegration (either last IMU timestamp or lidar timestamp after reset)
-    ros::Time last_preint_imu_timestamp;
+    //// Stereo data
+    // Stereo FIFO buffer
+    std::deque<StereoData> stereo_buffer;
 
-    //// Stereo
-    // Stereo processing enabled
-    bool stereo_enabled;
-    // Flag for stereo thread to publish next data
-    bool publish_next_stereo;
-    // Timestamp for stereo thread to publish next data
-    ros::Time publish_next_stereo_timestamp;
-    // Stereo data
-    std::deque<StereoData> stereo_data;
+    //// Barometer data
+    // Barometer FIFO buffer
+    std::deque<sensor_msgs::FluidPressure::ConstPtr> barometer_buffer;
+    // Barometer timestamp buffer holds the state timestamps for interpolation
+    std::deque<ros::Time> barometer_timestamp_buffer;
 };
 
 }

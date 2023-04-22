@@ -165,8 +165,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Find the right image keypoints for the filtered left image detected keypoints using stereo matching
     std::vector<double> stereo_match_costs;
-    const std::vector<int> right_keypoint_indices = stereo_matcher->keypoint_indices_in_right_image(new_keypoints[0],
-            images[0], images[1], new_keypoints[1], stereo_match_costs);
+    const std::vector<int> right_keypoint_indices = stereo_matcher->keypoint_indices_in_other_image(new_keypoints[0],
+            new_keypoints[1], images[0], images[1], true, stereo_match_costs);
     ROS_DEBUG_STREAM("Extracted keypoints in right image using stereo matcher");
 
     // Create the new stereo matches, filtering out high cost and invalid matches (note don't generate match ids yet,
@@ -197,7 +197,7 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         cv::drawMatches(images[0], new_filtered_keypoint_matches.keypoints[0], images[1],
                 new_filtered_keypoint_matches.keypoints[1], new_filtered_keypoint_matches.matches,
                 intermediate_images->get().new_matches, intermediate_images->get().new_match_colour,
-                intermediate_images->get().negative_match_colour, std::vector<char>(),
+                intermediate_images->get().negative_match_colour, std::vector<char>{},
                 intermediate_images->get().match_draw_flags);
     }
 

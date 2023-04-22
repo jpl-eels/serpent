@@ -6,6 +6,8 @@
 #include "pointcloud_tools/file_to_message.h"
 #include "pointcloud_tools/message_to_file.h"
 
+namespace pct {
+
 class PointcloudFileConverter {
 public:
     PointcloudFileConverter();
@@ -23,5 +25,7 @@ private:
     ros::ServiceServer saver;
     std::map<std::string, ros::Publisher> publishers;
 };
+
+}
 
 #endif
