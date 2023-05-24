@@ -291,7 +291,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
         tf_broadcaster.sendTransform(map_to_base_link_tf);
 
         // Publish T_W^{BL} pose with covariance
-        auto map_to_base_link_pose = eigen_ros::to_ros<geometry_msgs::PoseWithCovarianceStamped>(map_to_base_link);
+        auto map_to_base_link_pose = eigen_ros::to_ros<geometry_msgs::PoseWithCovarianceStamped>(
+                world_odometry.pose_stamped());  // map_to_base_link);
         map_to_base_link_pose.header.frame_id = optimised_odometry_msg->header.frame_id;
         pose_publisher.publish(map_to_base_link_pose);
     } catch (const std::exception& ex) {
