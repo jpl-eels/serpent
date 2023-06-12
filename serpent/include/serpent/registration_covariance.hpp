@@ -20,11 +20,7 @@
 
 namespace serpent {
 
-enum class CovarianceEstimationMethod {
-    CONSTANT,
-    CENSI,
-    LLS
-};
+enum class CovarianceEstimationMethod { CONSTANT, CENSI, LLS };
 
 enum class CovarianceEstimationModel {
     POINT_TO_POINT_LINEARISED,
@@ -33,12 +29,7 @@ enum class CovarianceEstimationModel {
     POINT_TO_PLANE_NONLINEAR
 };
 
-enum class PointCovarianceMethod {
-    CONSTANT,
-    VOXEL_SIZE,
-    RANGE,
-    RANGE_BIAS
-};
+enum class PointCovarianceMethod { CONSTANT, VOXEL_SIZE, RANGE, RANGE_BIAS };
 
 bool requires_unit_vectors(const CovarianceEstimationMethod cov_method, const PointCovarianceMethod point_method);
 

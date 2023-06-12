@@ -6,8 +6,7 @@
 
 namespace serpent {
 
-PointcloudAddUnitVectors::PointcloudAddUnitVectors(const std::string& input_topic)
-    : nh("serpent") {
+PointcloudAddUnitVectors::PointcloudAddUnitVectors(const std::string& input_topic) : nh("serpent") {
     // Publisher and subscribers
     pointcloud_subscriber =
             nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100, &PointcloudAddUnitVectors::add_unit_vectors, this);

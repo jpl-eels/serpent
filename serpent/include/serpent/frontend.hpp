@@ -30,10 +30,7 @@ namespace serpent {
 struct StereoData {
     StereoData(const sensor_msgs::ImageConstPtr left_image, const sensor_msgs::ImageConstPtr right_image,
             const sensor_msgs::CameraInfoConstPtr left_info, const sensor_msgs::CameraInfoConstPtr right_info)
-        : left_image(left_image),
-          right_image(right_image),
-          left_info(left_info),
-          right_info(right_info) {}
+        : left_image(left_image), right_image(right_image), left_info(left_info), right_info(right_info) {}
 
     sensor_msgs::ImageConstPtr left_image;
     sensor_msgs::ImageConstPtr right_image;
@@ -56,7 +53,7 @@ public:
 private:
     /**
      * @brief Barometer data callback.
-     * 
+     *
      * @param pressure
      */
     void barometer_callback(const sensor_msgs::FluidPressure::ConstPtr& pressure);

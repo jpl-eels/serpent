@@ -52,8 +52,8 @@ Frontend::Frontend()
     optimised_odometry_subscriber.subscribe(nh, "optimisation/odometry", 10);
     optimised_odometry_sync.connectInput(imu_biases_subscriber, optimised_odometry_subscriber);
     optimised_odometry_sync.registerCallback(boost::bind(&Frontend::optimised_odometry_callback, this, _1, _2));
-    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1,
-            &Frontend::pointcloud_callback, this);
+    pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(
+            "formatter/formatted_pointcloud", 1, &Frontend::pointcloud_callback, this);
 
     // Check base_link frame exists
     if (!body_frames.has_frame("base_link")) {
@@ -91,8 +91,8 @@ Frontend::Frontend()
         right_image_subcriber.subscribe(nh, "input/stereo/right/image", 10);
         left_info_subcriber.subscribe(nh, "input/stereo/left/camera_info", 10);
         right_info_subcriber.subscribe(nh, "input/stereo/right/camera_info", 10);
-        stereo_sync.connectInput(left_image_subcriber, right_image_subcriber, left_info_subcriber,
-                right_info_subcriber);
+        stereo_sync.connectInput(
+                left_image_subcriber, right_image_subcriber, left_info_subcriber, right_info_subcriber);
         stereo_sync.registerCallback(boost::bind(&Frontend::stereo_callback, this, _1, _2, _3, _4));
     }
 
@@ -178,8 +178,8 @@ void Frontend::barometer_try_publish() {
             }
 
             // Interpolate and publish
-            barometer_publisher.publish(interpolate_pressure(*barometer_buffer.front(), *barometer_buffer.at(1),
-                    barometer_timestamp_buffer.front()));
+            barometer_publisher.publish(interpolate_pressure(
+                    *barometer_buffer.front(), *barometer_buffer.at(1), barometer_timestamp_buffer.front()));
             barometer_timestamp_buffer.pop_front();
         }
     }
@@ -271,8 +271,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
 
     // Save optimised odometry
     world_odometry = eigen_ros::from_ros<eigen_ros::Odometry>(*optimised_odometry_msg);
-    world_state = gtsam::NavState(gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position,
-            world_odometry.twist.linear);
+    world_state = gtsam::NavState(
+            gtsam::Rot3(world_odometry.pose.orientation), world_odometry.pose.position, world_odometry.twist.linear);
 
     // Compute T_W^{BL} TF at t_i-1 for output (note that the odometry pose is T_W^B)
     try {
@@ -280,8 +280,8 @@ void Frontend::optimised_odometry_callback(const serpent::ImuBiases::ConstPtr& i
         eigen_ros::PoseStamped map_to_base_link = world_odometry.pose_stamped();
         if (body_frames.body_frame() != "base_link") {
             // Compute transform from map to base_link (including covariance): T_W^{BL} = T_W^B * T_B^{BL}
-            map_to_base_link = eigen_ros::apply_transform(map_to_base_link,
-                    body_frames.body_to_frame("base_link", world_odometry.timestamp));
+            map_to_base_link = eigen_ros::apply_transform(
+                    map_to_base_link, body_frames.body_to_frame("base_link", world_odometry.timestamp));
         }
 
         // Broadcast T_W^{BL} TF
@@ -431,8 +431,8 @@ void Frontend::pointcloud_callback(const pcl::PCLPointCloud2::ConstPtr& msg) {
             ROS_WARN_ONCE("TODO FIX: angular velocity and cov must be converted from IMU frame to body frame");
             const eigen_ros::Twist twist{linear_velocity, deskew_imu.angular_velocity, linear_twist_covariance,
                     deskew_imu.angular_velocity_covariance};
-            const eigen_ros::Odometry init_odometry{pose, twist, new_state_time, map_frame_id,
-                    body_frames.body_frame_id()};
+            const eigen_ros::Odometry init_odometry{
+                    pose, twist, new_state_time, map_frame_id, body_frames.body_frame_id()};
 
             // Publish initial state
             auto odometry_msg = boost::make_shared<nav_msgs::Odometry>();

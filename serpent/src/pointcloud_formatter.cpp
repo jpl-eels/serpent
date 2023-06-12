@@ -7,10 +7,7 @@
 
 namespace serpent {
 
-PointcloudFormatter::PointcloudFormatter()
-    : nh("serpent"),
-      body_frames("serpent"),
-      first_pointcloud_removed(false) {
+PointcloudFormatter::PointcloudFormatter() : nh("serpent"), body_frames("serpent"), first_pointcloud_removed(false) {
     // Publishers
     pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>("formatter/formatted_pointcloud", 1);
 
