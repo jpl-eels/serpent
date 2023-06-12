@@ -79,8 +79,8 @@ cv::KeyPoint StereoKeyPointMatcher::keypoint_in_other_image(const cv::KeyPoint& 
         cv::Point2i reverse_reference_image_top_left = search_image_top_left;
         while ((!find_in_right && reverse_reference_image_top_left.x >= 0) ||
                 (find_in_right && reverse_reference_image_top_left.x <= left_image.cols - window.width)) {
-            const double window_cost = cost_function(reference_image, search_image, reverse_reference_image_top_left,
-                    search_image_top_left, window);
+            const double window_cost = cost_function(
+                    reference_image, search_image, reverse_reference_image_top_left, search_image_top_left, window);
             if (reverse_reference_image_top_left.x != reference_image_top_left.x && window_cost < cost) {
                 matched = false;
                 break;
@@ -147,8 +147,8 @@ int StereoKeyPointMatcher::keypoint_index_in_other_image(const cv::KeyPoint& ima
             if (((find_in_right && search_image_keypoint.pt.x <= image_keypoint.pt.x) ||
                         (!find_in_right && search_image_keypoint.pt.x >= image_keypoint.pt.x)) &&
                     window_within_image(search_image, search_image_top_left, window)) {
-                const double window_cost = cost_function(reference_image, search_image, reference_image_top_left,
-                        search_image_top_left, window);
+                const double window_cost = cost_function(
+                        reference_image, search_image, reference_image_top_left, search_image_top_left, window);
                 if (window_cost < cost) {
                     second_cost = cost;
                     cost = window_cost;
@@ -173,8 +173,8 @@ std::vector<int> StereoKeyPointMatcher::keypoint_indices_in_other_image(
     std::vector<int> other_image_keypoint_indices(image_keypoints.size());
     costs.resize(other_image_keypoint_indices.size());
     for (std::size_t i = 0; i < other_image_keypoint_indices.size(); ++i) {
-        other_image_keypoint_indices[i] = keypoint_index_in_other_image(image_keypoints[i], other_image_keypoints,
-                left_image, right_image, find_in_right, costs[i]);
+        other_image_keypoint_indices[i] = keypoint_index_in_other_image(
+                image_keypoints[i], other_image_keypoints, left_image, right_image, find_in_right, costs[i]);
         if (matching_filter == MatchingFilter::BIDIRECTIONAL && other_image_keypoint_indices[i] != -1) {
             double reverse_cost;
             if (keypoint_index_in_other_image(other_image_keypoints[other_image_keypoint_indices[i]], image_keypoints,
@@ -226,8 +226,8 @@ cv::Ptr<ZeroMeanSADStereoKeyPointMatcher> ZeroMeanSADStereoKeyPointMatcher::crea
     return cv::makePtr<ZeroMeanSADStereoKeyPointMatcher>(window, vertical_pixel_threshold, matching_filter, ratio);
 }
 
-MatchingCostFunction ZeroMeanSADStereoKeyPointMatcher::generate_cost_function(const cv::Mat& reference_image,
-        const cv::Point2i& reference_top_left) const {
+MatchingCostFunction ZeroMeanSADStereoKeyPointMatcher::generate_cost_function(
+        const cv::Mat& reference_image, const cv::Point2i& reference_top_left) const {
     // Compute mean of reference image window
     const double reference_window_mean = window_mean(reference_image, reference_top_left, window);
 
@@ -247,8 +247,8 @@ cv::Ptr<LocallyScaledSADStereoKeyPointMatcher> LocallyScaledSADStereoKeyPointMat
     return cv::makePtr<LocallyScaledSADStereoKeyPointMatcher>(window, vertical_pixel_threshold, matching_filter, ratio);
 }
 
-MatchingCostFunction LocallyScaledSADStereoKeyPointMatcher::generate_cost_function(const cv::Mat& reference_image,
-        const cv::Point2i& reference_top_left) const {
+MatchingCostFunction LocallyScaledSADStereoKeyPointMatcher::generate_cost_function(
+        const cv::Mat& reference_image, const cv::Point2i& reference_top_left) const {
     // Compute mean of reference image window
     const double reference_window_mean = window_mean(reference_image, reference_top_left, window);
 
@@ -268,8 +268,8 @@ cv::Ptr<NCCStereoKeyPointMatcher> NCCStereoKeyPointMatcher::create(const cv::Siz
     return cv::makePtr<NCCStereoKeyPointMatcher>(window, vertical_pixel_threshold, matching_filter, ratio);
 }
 
-MatchingCostFunction NCCStereoKeyPointMatcher::generate_cost_function(const cv::Mat& reference_image,
-        const cv::Point2i& reference_top_left) const {
+MatchingCostFunction NCCStereoKeyPointMatcher::generate_cost_function(
+        const cv::Mat& reference_image, const cv::Point2i& reference_top_left) const {
     // Compute mean of reference image window
     const double reference_window_sum_squares = window_sum_squares(reference_image, reference_top_left, window);
 
@@ -279,5 +279,4 @@ MatchingCostFunction NCCStereoKeyPointMatcher::generate_cost_function(const cv::
             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
             std::placeholders::_5, reference_window_sum_squares);
 }
-
 }

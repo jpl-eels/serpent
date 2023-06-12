@@ -7,10 +7,7 @@
 
 namespace serpent {
 
-enum class SensorType {
-    OUSTER,
-    CUSTOM
-};
+enum class SensorType { OUSTER, CUSTOM };
 
 /**
  * @brief Convert string to sensor type

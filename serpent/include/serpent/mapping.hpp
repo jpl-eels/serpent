@@ -40,9 +40,9 @@ struct MapFrame {
     /**
      * @brief Given the inverse trasform to the target frame {L_t}: T_{L_t}^W, transform and return this map frame's
      * pointcloud in the {L_t} frame.
-     * 
-     * @param target_lidar_frame_inv 
-     * @return PointCloudPtr 
+     *
+     * @param target_lidar_frame_inv
+     * @return PointCloudPtr
      */
     PointCloudPtr transformed_pointcloud(const Eigen::Isometry3d& target_lidar_frame_inv) const;
 

@@ -27,15 +27,15 @@ void from_ros(const std::vector<serpent::StereoFeature>& msgs, std::map<int, gts
 
 void to_pcl(const std::map<int, gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud) {
     for (const auto& [id, point] : points) {
-        pointcloud.push_back(pcl::PointXYZ{static_cast<float>(point.x()), static_cast<float>(point.y()),
-                static_cast<float>(point.z())});
+        pointcloud.push_back(pcl::PointXYZ{
+                static_cast<float>(point.x()), static_cast<float>(point.y()), static_cast<float>(point.z())});
     }
 }
 
 void to_pcl(const std::vector<gtsam::Point3>& points, pcl::PointCloud<pcl::PointXYZ>& pointcloud) {
     for (const gtsam::Point3& point : points) {
-        pointcloud.push_back(pcl::PointXYZ{static_cast<float>(point.x()), static_cast<float>(point.y()),
-                static_cast<float>(point.z())});
+        pointcloud.push_back(pcl::PointXYZ{
+                static_cast<float>(point.x()), static_cast<float>(point.y()), static_cast<float>(point.z())});
     }
 }
 
@@ -48,9 +48,7 @@ gtsam::noiseModel::mEstimator::Base::ReweightScheme to_reweight_scheme(const std
     throw std::runtime_error("ReweightScheme \'" + reweight_scheme + "\' not recognised.");
 }
 
-Optimisation::Optimisation()
-    : nh("serpent"),
-      body_frames("serpent") {
+Optimisation::Optimisation() : nh("serpent"), body_frames("serpent") {
     // Publishers
     imu_biases_publisher = nh.advertise<serpent::ImuBiases>("optimisation/imu_biases", 1);
     imu_transform_publisher = nh.advertise<geometry_msgs::TransformStamped>("optimisation/imu_transform", 1);
@@ -60,8 +58,8 @@ Optimisation::Optimisation()
 
     // Subscribers
     imu_s2s_subscriber = nh.subscribe<serpent::ImuArray>("frontend/imu_s2s", 10, &Optimisation::imu_s2s_callback, this);
-    initial_odometry_subscriber = nh.subscribe<nav_msgs::Odometry>("frontend/initial_odometry", 1,
-            &Optimisation::initial_odometry_callback, this);
+    initial_odometry_subscriber = nh.subscribe<nav_msgs::Odometry>(
+            "frontend/initial_odometry", 1, &Optimisation::initial_odometry_callback, this);
 
     // Factor Configuration
     nh.param<bool>("optimisation/factors/imu", imu_factors_enabled, true);
@@ -87,16 +85,16 @@ Optimisation::Optimisation()
 
     // Optimisation subscribers
     if (registration_factors_enabled) {
-        registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("registration/transform", 10,
-                &Optimisation::registration_callback, this);
+        registration_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+                "registration/transform", 10, &Optimisation::registration_callback, this);
     }
     if (stereo_factors_enabled) {
-        stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>("stereo/features", 10,
-                &Optimisation::stereo_features_callback, this);
+        stereo_features_subscriber = nh.subscribe<serpent::StereoFeatures>(
+                "stereo/features", 10, &Optimisation::stereo_features_callback, this);
     }
     if (barometer_factors_enabled) {
-        barometer_subscriber = nh.subscribe<sensor_msgs::FluidPressure>("frontend/barometer", 10,
-                &Optimisation::barometer_callback, this);
+        barometer_subscriber = nh.subscribe<sensor_msgs::FluidPressure>(
+                "frontend/barometer", 10, &Optimisation::barometer_callback, this);
     }
 
     // Debugging
@@ -373,8 +371,8 @@ void Optimisation::barometer_callback(const sensor_msgs::FluidPressure::ConstPtr
         if (prior_barometer_noise == 0.0) {
             throw std::runtime_error("Prior barometer bias noise should not be zero.");
         }
-        gm->create_prior_barometer_bias_factor(gm->key("barometer"), height,
-                gtsam::noiseModel::Isotropic::Sigma(1, prior_barometer_noise));
+        gm->create_prior_barometer_bias_factor(
+                gm->key("barometer"), height, gtsam::noiseModel::Isotropic::Sigma(1, prior_barometer_noise));
         ROS_INFO_STREAM("Created prior factor: P(" << gm->key("barometer") << ") with height = " << height << " m");
     }
 
@@ -723,8 +721,8 @@ void Optimisation::stereo_features_callback(const serpent::StereoFeatures::Const
         features_in_future = false;
 
         // Pose at (the next) stereo key must be set in order to create landmarks.
-        ROS_INFO_STREAM_COND(!gm->has_pose("stereo", 1),
-                "Waiting for pose at key " << gm->key("stereo", 1) << " to be set.");
+        ROS_INFO_STREAM_COND(
+                !gm->has_pose("stereo", 1), "Waiting for pose at key " << gm->key("stereo", 1) << " to be set.");
         if (!protected_sleep(graph_mutex, 0.01, true, true, [this]() { return !gm->has_pose("stereo", 1); })) {
             return;
         };

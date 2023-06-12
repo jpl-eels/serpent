@@ -375,9 +375,7 @@ protected:
      *
      */
     struct NamedKeyInfo {
-        NamedKeyInfo(const int key = 0, const unsigned int priority = 0)
-            : key(key),
-              priority(priority) {}
+        NamedKeyInfo(const int key = 0, const unsigned int priority = 0) : key(key), priority(priority) {}
 
         // Key/index used to acquire gtsam::Key in graph
         int key;

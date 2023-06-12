@@ -122,8 +122,8 @@ void print_keypoint(const cv::KeyPoint& kp, const std::string& id = std::string(
                                << "\n\toctave: " << kp.octave << "\n\tclass_id: " << kp.class_id);
 }
 
-pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, const float v,
-        const Eigen::Matrix3f& intrinsic, const float baseline) {
+pcl::PointXYZ stereo_coordinate_to_pcl_point(
+        const float u_L, const float u_R, const float v, const Eigen::Matrix3f& intrinsic, const float baseline) {
     const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     pcl::PointXYZ pcl_point;
     pcl_point.x = point[0];
@@ -132,8 +132,8 @@ pcl::PointXYZ stereo_coordinate_to_pcl_point(const float u_L, const float u_R, c
     return pcl_point;
 }
 
-geometry_msgs::Point stereo_coordinate_to_ros_point(const float u_L, const float u_R, const float v,
-        const Eigen::Matrix3f& intrinsic, const float baseline) {
+geometry_msgs::Point stereo_coordinate_to_ros_point(
+        const float u_L, const float u_R, const float v, const Eigen::Matrix3f& intrinsic, const float baseline) {
     const Eigen::Vector3f point = stereo_backproject(Eigen::Vector3f{u_L, u_R, v}, intrinsic, baseline);
     geometry_msgs::Point ros_point;
     ros_point.x = point[0];
@@ -174,10 +174,7 @@ void to_ros(serpent::StereoTrackerStatistics& msg, const StereoFeatureTracker::S
     }
 }
 
-StereoFactorFinder::StereoFactorFinder()
-    : nh("serpent"),
-      it(nh),
-      stereo_sync(10) {
+StereoFactorFinder::StereoFactorFinder() : nh("serpent"), it(nh), stereo_sync(10) {
     // Publishers
     stereo_features_publisher = nh.advertise<serpent::StereoFeatures>("stereo/features", 1);
 
@@ -275,20 +272,20 @@ StereoFactorFinder::StereoFactorFinder()
             nh.param<std::string>("stereo_tracking/stereo_keypoint_matcher/matching_filter", "RATIO_TEST"));
     const double ratio = nh.param<double>("stereo_tracking/stereo_keypoint_matcher/ratio", 0.5);
     if (stereo_matcher_cost_function_str == "SAD") {
-        stereo_matcher = SADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
-                matching_filter, ratio);
+        stereo_matcher = SADStereoKeyPointMatcher::create(
+                stereo_matcher_window, vertical_pixel_threshold, matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "SSD") {
-        stereo_matcher = SSDStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
-                matching_filter, ratio);
+        stereo_matcher = SSDStereoKeyPointMatcher::create(
+                stereo_matcher_window, vertical_pixel_threshold, matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "ZMSAD") {
-        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
-                matching_filter, ratio);
+        stereo_matcher = ZeroMeanSADStereoKeyPointMatcher::create(
+                stereo_matcher_window, vertical_pixel_threshold, matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "LSSAD") {
-        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
-                matching_filter, ratio);
+        stereo_matcher = LocallyScaledSADStereoKeyPointMatcher::create(
+                stereo_matcher_window, vertical_pixel_threshold, matching_filter, ratio);
     } else if (stereo_matcher_cost_function_str == "NNCC") {
-        stereo_matcher = NCCStereoKeyPointMatcher::create(stereo_matcher_window, vertical_pixel_threshold,
-                matching_filter, ratio);
+        stereo_matcher = NCCStereoKeyPointMatcher::create(
+                stereo_matcher_window, vertical_pixel_threshold, matching_filter, ratio);
     } else {
         throw std::runtime_error(stereo_matcher_cost_function_str + " not yet implemented");
     }
@@ -347,8 +344,8 @@ void StereoFactorFinder::stereo_callback(const sensor_msgs::ImageConstPtr& left_
                                      " (does the right camera info have Tx set correctly in its projection matrix?)");
         }
         auto stereo_distance_filter = StereoDistanceFilter::create(left_info->K[0], baseline,
-                nh.param<float>("stereo_tracking/stereo_distance_filter/max_distance",
-                        std::numeric_limits<float>::max()),
+                nh.param<float>(
+                        "stereo_tracking/stereo_distance_filter/max_distance", std::numeric_limits<float>::max()),
                 nh.param<float>("stereo_tracking/stereo_distance_filter/min_distance", 0.0));
         tracker->set_stereo_distance_filter(stereo_distance_filter);
     }

@@ -58,8 +58,8 @@ TEST(serpent, isam2_optimise) {
     EXPECT_EQ(imu_measurements.size(), 10);
 
     // Priors
-    gtsam::NavState prior_state{gtsam::Rot3(1.0, 0.0, 0.0, 0.0), gtsam::Point3(0.0, 0.0, 0.0),
-            gtsam::Velocity3(0.0, 0.0, 0.0)};
+    gtsam::NavState prior_state{
+            gtsam::Rot3(1.0, 0.0, 0.0, 0.0), gtsam::Point3(0.0, 0.0, 0.0), gtsam::Velocity3(0.0, 0.0, 0.0)};
     new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(key), prior_state.pose(), prior_pose_noise);
     new_factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(key), prior_state.velocity(), prior_vel_noise);
     new_factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(key), zero_bias, prior_bias_noise);
@@ -90,8 +90,8 @@ TEST(serpent, isam2_optimise) {
 
     // IMU and Bias Between factors
     new_factors.emplace_shared<gtsam::ImuFactor>(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preintegrated_imu);
-    new_factors.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(B(key - 1), B(key), zero_bias,
-            between_bias_noise);
+    new_factors.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(
+            B(key - 1), B(key), zero_bias, between_bias_noise);
     new_values.insert(X(key), predicted.pose());
     new_values.insert(V(key), predicted.velocity());
     new_values.insert(B(key), zero_bias);

@@ -8,8 +8,7 @@
 namespace serpent {
 
 PointcloudFilter::PointcloudFilter(std::string input_topic)
-    : nh("serpent"),
-     final_output_topic("filter/filtered_pointcloud") {
+    : nh("serpent"), final_output_topic("filter/filtered_pointcloud") {
     const bool voxel_grid_enabled = nh.param<bool>("voxel_grid_filter/enabled", true);
     const bool body_filter_enabled = nh.param<bool>("body_filter/enabled", false);
     const bool range_filter_enabled = nh.param<bool>("range_filter/enabled", true);
@@ -74,8 +73,8 @@ PointcloudFilter::PointcloudFilter(std::string input_topic)
         sor_filter.setMeanK(nh.param<int>("statistical_outlier_removal_filter/mean_k", 1));
         sor_filter.setStddevMulThresh(nh.param<double>("statistical_outlier_removal_filter/stddev_mul_thresh", 0.0));
         statistical_outlier_pointcloud_publisher = nh.advertise<pcl::PCLPointCloud2>(output_topic, 1);
-        statistical_outlier_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(input_topic, 100,
-                &PointcloudFilter::statistical_outlier_callback, this);
+        statistical_outlier_pointcloud_subscriber = nh.subscribe<pcl::PCLPointCloud2>(
+                input_topic, 100, &PointcloudFilter::statistical_outlier_callback, this);
         input_topic = statistical_outlier_pointcloud_publisher.getTopic();
     }
 

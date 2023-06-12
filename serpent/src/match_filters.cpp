@@ -72,14 +72,12 @@ float StereoMatchFilter::vertical_pixel_threshold() const {
     return vertical_pixel_threshold_;
 }
 
-StereoDistanceFilter::StereoDistanceFilter(const float fx, const float baseline, const float max_distance,
-        const float min_distance)
-    : fx_b(fx * baseline),
-      max_distance(max_distance),
-      min_distance(min_distance) {}
+StereoDistanceFilter::StereoDistanceFilter(
+        const float fx, const float baseline, const float max_distance, const float min_distance)
+    : fx_b(fx * baseline), max_distance(max_distance), min_distance(min_distance) {}
 
-cv::Ptr<StereoDistanceFilter> StereoDistanceFilter::create(const float fx, const float baseline,
-        const float max_distance, const float min_distance) {
+cv::Ptr<StereoDistanceFilter> StereoDistanceFilter::create(
+        const float fx, const float baseline, const float max_distance, const float min_distance) {
     return cv::makePtr<StereoDistanceFilter>(fx, baseline, max_distance, min_distance);
 }
 
