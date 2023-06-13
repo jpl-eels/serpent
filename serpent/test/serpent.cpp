@@ -11,7 +11,7 @@
 #include <eigen_ros/eigen_ros.hpp>
 
 #include "serpent/ImuBiases.h"
-#include "serpent/utilities.hpp"
+#include "serpent/utils/utilities.hpp"
 #include "test/read_data.hpp"
 #include "test/test_utils.hpp"
 

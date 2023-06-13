@@ -1,4 +1,4 @@
-#include "serpent/registration_covariance.hpp"
+#include "serpent/front_end/lidar/registration_covariance.hpp"
 
 #include <gtest/gtest.h>
 
