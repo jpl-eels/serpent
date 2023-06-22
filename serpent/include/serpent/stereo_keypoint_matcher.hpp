@@ -23,11 +23,7 @@ public:
      *  * RATIO_TEST = one-way matching, where a keypoint is matched to the min-cost of valid keypoints if the ratio of
      * its cost to the cost of the second-best keypoint is less than a ratio, or there is only one valid keypoint.
      */
-    enum class MatchingFilter {
-        UNIDIRECTIONAL,
-        BIDIRECTIONAL,
-        RATIO_TEST
-    };
+    enum class MatchingFilter { UNIDIRECTIONAL, BIDIRECTIONAL, RATIO_TEST };
 
     /**
      * @brief Construct a stereo key point matcher.
@@ -133,9 +129,9 @@ protected:
 
 /**
  * @brief Convert string to StereoKeyPointMatcher::MatchingFilter.
- * 
- * @param matching_filter 
- * @return StereoKeyPointMatcher::MatchingFilter 
+ *
+ * @param matching_filter
+ * @return StereoKeyPointMatcher::MatchingFilter
  */
 StereoKeyPointMatcher::MatchingFilter to_matching_filter(const std::string& matching_filter);
 

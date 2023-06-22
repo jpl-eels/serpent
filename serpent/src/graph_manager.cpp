@@ -95,25 +95,25 @@ double GraphManager::create_barometric_factor(const int new_key, const double pr
 #endif
 }
 
-void GraphManager::create_between_pose_factor(const int new_key, const gtsam::Pose3& transform,
-        gtsam::SharedNoiseModel noise) {
+void GraphManager::create_between_pose_factor(
+        const int new_key, const gtsam::Pose3& transform, gtsam::SharedNoiseModel noise) {
     add_factor(new_key,
             boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(new_key - 1), X(new_key), transform, noise));
 }
 
-void GraphManager::create_combined_imu_factor(const int new_key,
-        const gtsam::PreintegratedCombinedMeasurements& measurements) {
+void GraphManager::create_combined_imu_factor(
+        const int new_key, const gtsam::PreintegratedCombinedMeasurements& measurements) {
     add_factor(new_key, boost::make_shared<gtsam::CombinedImuFactor>(X(new_key - 1), V(new_key - 1), X(new_key),
                                 V(new_key), B(new_key - 1), B(new_key), measurements));
 }
 
-void GraphManager::create_prior_barometer_bias_factor(const int key_, const double barometer_bias_,
-        gtsam::SharedNoiseModel noise) {
+void GraphManager::create_prior_barometer_bias_factor(
+        const int key_, const double barometer_bias_, gtsam::SharedNoiseModel noise) {
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<double>>(P(key_), barometer_bias_, noise));
 }
 
-void GraphManager::create_prior_imu_bias_factor(const int key_, const gtsam::imuBias::ConstantBias& imu_bias,
-        gtsam::SharedNoiseModel noise) {
+void GraphManager::create_prior_imu_bias_factor(
+        const int key_, const gtsam::imuBias::ConstantBias& imu_bias, gtsam::SharedNoiseModel noise) {
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(key_), imu_bias, noise));
 }
 
@@ -121,13 +121,13 @@ void GraphManager::create_prior_pose_factor(const int key_, const gtsam::Pose3& 
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(key_), pose, noise));
 }
 
-void GraphManager::create_prior_velocity_factor(const int key_, const gtsam::Velocity3& velocity,
-        gtsam::SharedNoiseModel noise) {
+void GraphManager::create_prior_velocity_factor(
+        const int key_, const gtsam::Velocity3& velocity, gtsam::SharedNoiseModel noise) {
     add_factor(key_, boost::make_shared<gtsam::PriorFactor<gtsam::Velocity3>>(V(key_), velocity, noise));
 }
 
-void GraphManager::create_stereo_factors_and_values(const int key_,
-        const std::map<int, gtsam::StereoPoint2>& features) {
+void GraphManager::create_stereo_factors_and_values(
+        const int key_, const std::map<int, gtsam::StereoPoint2>& features) {
     // Save the stereo features
     if (!stereo_features.emplace(key_, features).second) {
         throw std::runtime_error(
@@ -327,8 +327,8 @@ void GraphManager::set_imu_bias(const int key_, const gtsam::imuBias::ConstantBi
     set<B>(key_, imu_bias_);
 }
 
-void GraphManager::set_imu_bias(const std::string& key_, const gtsam::imuBias::ConstantBias& imu_bias_,
-        const int offset) {
+void GraphManager::set_imu_bias(
+        const std::string& key_, const gtsam::imuBias::ConstantBias& imu_bias_, const int offset) {
     set_imu_bias(key(key_, offset), imu_bias_);
 }
 
@@ -427,8 +427,8 @@ const ros::Duration GraphManager::time_between(const int key1, const int key2) c
     return timestamp(key2) - timestamp(key1);
 }
 
-const ros::Duration GraphManager::time_between(const std::string& key1, const std::string& key2, const int key1_offset,
-        const int key2_offset) const {
+const ros::Duration GraphManager::time_between(
+        const std::string& key1, const std::string& key2, const int key1_offset, const int key2_offset) const {
     return time_between(key(key1, key1_offset), key(key2, key2_offset));
 }
 
@@ -451,8 +451,8 @@ void GraphManager::update_from_values(const gtsam::Values& updated_values_) {
     }
 }
 
-void add_values(gtsam::Values& extracted_values, const gtsam::Values& values_, const gtsam::Key first,
-        const gtsam::Key last) {
+void add_values(
+        gtsam::Values& extracted_values, const gtsam::Values& values_, const gtsam::Key first, const gtsam::Key last) {
     auto it = values_.lower_bound(first);
     while (it->key >= first && it->key <= last) {
         extracted_values.insert(it->key, it->value);

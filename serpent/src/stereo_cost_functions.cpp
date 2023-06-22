@@ -124,8 +124,8 @@ double negative_normalised_cross_correlation(const cv::Mat& image1, const cv::Ma
     const double sum_squares1 = window_sum_squares(image1, image1_top_left, window);
 
     // Return negative of NNC
-    return negative_normalised_cross_correlation(image1, image2, image1_top_left, image2_top_left, window,
-            sum_squares1);
+    return negative_normalised_cross_correlation(
+            image1, image2, image1_top_left, image2_top_left, window, sum_squares1);
 }
 
 double negative_normalised_cross_correlation(const cv::Mat& image1, const cv::Mat& image2,

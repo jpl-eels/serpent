@@ -59,8 +59,8 @@ sensor_msgs::FluidPressure interpolate_pressure(const sensor_msgs::FluidPressure
     interpolated_pressure.header.frame_id = pressure1.header.frame_id;
     interpolated_pressure.fluid_pressure = interpolate(pressure1.fluid_pressure, pressure2.fluid_pressure,
             pressure1.header.stamp, pressure2.header.stamp, interpolation_time);
-    interpolated_pressure.variance = interpolate(pressure1.variance, pressure2.variance, pressure1.header.stamp,
-            pressure2.header.stamp, interpolation_time);
+    interpolated_pressure.variance = interpolate(
+            pressure1.variance, pressure2.variance, pressure1.header.stamp, pressure2.header.stamp, interpolation_time);
     return interpolated_pressure;
 }
 

@@ -126,13 +126,13 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
     }
 
     // Filter tracked matches by stereo geometry
-    previous_track_data.matches = stereo_filter->filter(new_track_hypotheses.keypoints[0],
-            new_track_hypotheses.keypoints[1], new_track_hypotheses.matches);
+    previous_track_data.matches = stereo_filter->filter(
+            new_track_hypotheses.keypoints[0], new_track_hypotheses.keypoints[1], new_track_hypotheses.matches);
     previous_track_data.match_ids = extract_match_ids(new_track_hypotheses.match_ids, stereo_filter->indices());
     ROS_DEBUG_STREAM("Filtered tracked matches by stereo geometry");
     if (stereo_distance_filter) {
-        previous_track_data.matches = stereo_distance_filter->filter(new_track_hypotheses.keypoints[0],
-                new_track_hypotheses.keypoints[1], previous_track_data.matches);
+        previous_track_data.matches = stereo_distance_filter->filter(
+                new_track_hypotheses.keypoints[0], new_track_hypotheses.keypoints[1], previous_track_data.matches);
         previous_track_data.match_ids =
                 extract_match_ids(previous_track_data.match_ids, stereo_distance_filter->indices());
         ROS_DEBUG_STREAM("Filtered tracked matches by stereo distance");
@@ -165,8 +165,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
 
     // Find the right image keypoints for the filtered left image detected keypoints using stereo matching
     std::vector<double> stereo_match_costs;
-    const std::vector<int> right_keypoint_indices = stereo_matcher->keypoint_indices_in_other_image(new_keypoints[0],
-            new_keypoints[1], images[0], images[1], true, stereo_match_costs);
+    const std::vector<int> right_keypoint_indices = stereo_matcher->keypoint_indices_in_other_image(
+            new_keypoints[0], new_keypoints[1], images[0], images[1], true, stereo_match_costs);
     ROS_DEBUG_STREAM("Extracted keypoints in right image using stereo matcher");
 
     // Create the new stereo matches, filtering out high cost and invalid matches (note don't generate match ids yet,
@@ -180,8 +180,8 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::process(const cv::
         new_filtered_keypoint_matches.matches =
                 stereo_distance_filter->filter(new_filtered_keypoint_matches.keypoints[0],
                         new_filtered_keypoint_matches.keypoints[1], new_filtered_keypoint_matches.matches);
-        new_filtered_keypoint_matches.keypoints = extract_matched_keypoints(new_filtered_keypoint_matches.keypoints,
-                new_filtered_keypoint_matches.matches);
+        new_filtered_keypoint_matches.keypoints = extract_matched_keypoints(
+                new_filtered_keypoint_matches.keypoints, new_filtered_keypoint_matches.matches);
         ROS_DEBUG_STREAM("Filtered " << new_filtered_keypoint_matches.size() << " by stereo distance from new matches");
     }
 
@@ -223,8 +223,8 @@ void StereoFeatureTracker::set_stereo_distance_filter(const cv::Ptr<StereoDistan
     stereo_distance_filter = stereo_distance_filter_;
 }
 
-void StereoFeatureTracker::append_keypoint_matches(const LRKeyPointMatches& new_keypoint_matches,
-        LRKeyPointMatches& track_data) {
+void StereoFeatureTracker::append_keypoint_matches(
+        const LRKeyPointMatches& new_keypoint_matches, LRKeyPointMatches& track_data) {
     // Append the matches, correcting the match indices
     for (std::size_t i = 0; i < new_keypoint_matches.size(); ++i) {
         track_data.matches.emplace_back(track_data.keypoints[0].size(), track_data.keypoints[1].size(),
@@ -259,8 +259,8 @@ std::vector<cv::KeyPoint> StereoFeatureTracker::extract_keypoints(const cv::Mat&
     return keypoints;
 }
 
-StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_matched_keypoints(const LRKeyPoints& keypoints,
-        LRMatches& matches) const {
+StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_matched_keypoints(
+        const LRKeyPoints& keypoints, LRMatches& matches) const {
     LRKeyPoints matched_keypoints;
     for (auto& match : matches) {
         matched_keypoints[0].push_back(keypoints[0][match.queryIdx]);
@@ -271,8 +271,8 @@ StereoFeatureTracker::LRKeyPoints StereoFeatureTracker::extract_matched_keypoint
     return matched_keypoints;
 }
 
-StereoFeatureTracker::LRMatchIds StereoFeatureTracker::extract_match_ids(const LRMatchIds& match_ids,
-        const std::vector<std::size_t>& indices) const {
+StereoFeatureTracker::LRMatchIds StereoFeatureTracker::extract_match_ids(
+        const LRMatchIds& match_ids, const std::vector<std::size_t>& indices) const {
     LRMatchIds extracted_match_ids;
     for (const std::size_t index : indices) {
         extracted_match_ids.emplace_back(match_ids[index]);
@@ -280,8 +280,8 @@ StereoFeatureTracker::LRMatchIds StereoFeatureTracker::extract_match_ids(const L
     return extracted_match_ids;
 }
 
-std::vector<cv::KeyPoint> StereoFeatureTracker::remove_close_keypoints(const std::vector<cv::KeyPoint>& keypoints,
-        const std::vector<cv::KeyPoint>& reference_keypoints) const {
+std::vector<cv::KeyPoint> StereoFeatureTracker::remove_close_keypoints(
+        const std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::KeyPoint>& reference_keypoints) const {
     // Brute force solution
     std::vector<cv::KeyPoint> filtered_keypoints;
     for (const cv::KeyPoint& kp : keypoints) {
@@ -299,8 +299,8 @@ std::vector<cv::KeyPoint> StereoFeatureTracker::remove_close_keypoints(const std
     return filtered_keypoints;
 }
 
-StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::track_previous_keypoints(const LRImages& images,
-        LRKeyPoints& all_sof_keypoints, LRF2FMatches& f2f_matches) const {
+StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::track_previous_keypoints(
+        const LRImages& images, LRKeyPoints& all_sof_keypoints, LRF2FMatches& f2f_matches) const {
     LRKeyPointMatches new_track_hypotheses;
     std::array<cv::Mat, 2> sof_points_mats;
     std::array<cv::Mat, 2> sof_status_mats;
@@ -355,5 +355,4 @@ StereoFeatureTracker::LRKeyPointMatches StereoFeatureTracker::track_previous_key
 
     return new_track_hypotheses;
 }
-
 }

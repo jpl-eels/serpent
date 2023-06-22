@@ -36,7 +36,7 @@ void set_gicp_parameters(const ros::NodeHandle& nh, const std::string& prefix,
 
 template<typename PointIn, typename PointOut>
 void set_lsq_parameters(const ros::NodeHandle& nh, const std::string& prefix,
-        typename fast_gicp::LsqRegistration<PointIn, PointOut>& lsq) ;
+        typename fast_gicp::LsqRegistration<PointIn, PointOut>& lsq);
 
 template<typename PointIn, typename PointOut>
 void set_fast_gicp_parameters(const ros::NodeHandle& nh, const std::string& prefix,
