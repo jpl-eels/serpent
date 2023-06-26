@@ -28,7 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
     pointcloud_tools
 )
 find_package(Eigen3 REQUIRED)
-find_package(GTSAM REQUIRED)
+find_package(GTSAM 4.2.0 EXACT REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
 
