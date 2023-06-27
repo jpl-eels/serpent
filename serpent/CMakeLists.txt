@@ -105,25 +105,15 @@ set(SYSTEM_LIBRARIES
 )
 
 # Library
-add_library(${LIBRARY} SHARED
-    src/frontend.cpp
-    src/match_filters.cpp
-    src/pointcloud_add_unit_vectors.cpp
-    src/pointcloud_filter.cpp
-    src/pointcloud_formatter.cpp
-    src/graph_manager.cpp
-    src/optimisation.cpp
-    src/point_types.cpp
-    src/registration_covariance.cpp
-    src/registration_methods.cpp
-    src/ros_conversion.cpp
-    src/sensor_point_types.cpp
-    src/stereo_cost_functions.cpp
-    src/stereo_factor_finder.cpp
-    src/stereo_feature_tracker.cpp
-    src/stereo_keypoint_matcher.cpp
-    src/utilities.cpp
-    src/window_functions.cpp
+file(GLOB_RECURSE front_end_srcs "src/front_end/*.cpp")
+file(GLOB_RECURSE back_end_srcs "src/back_end/*.cpp")
+file(GLOB_RECURSE mapping_srcs "src/mapping/*.cpp")
+file(GLOB_RECURSE utils_srcs "src/utils/*.cpp")
+add_library(${LIBRARY} SHARED 
+    ${front_end_srcs}
+    ${back_end_srcs}
+    ${mapping_srcs}
+    ${utils_srcs}
 )
 
 if(${ENABLE_GPROF})
@@ -158,7 +148,7 @@ set_target_properties(${LIBRARY}
 
 # Complete node
 add_executable(${NODE}
-    src/node.cpp
+    src/nodes/node.cpp
 )
 
 add_dependencies(${NODE}
@@ -189,7 +179,7 @@ set_target_properties(${NODE}
 
 # Frontend node
 add_executable(${FRONTEND_NODE}
-    src/frontend_node.cpp
+    src/nodes/frontend_node.cpp
 )
 
 add_dependencies(${FRONTEND_NODE}
@@ -220,7 +210,7 @@ set_target_properties(${FRONTEND_NODE}
 
 # Backend node
 add_executable(${BACKEND_NODE}
-    src/backend_node.cpp
+    src/nodes/backend_node.cpp
 )
 
 add_dependencies(${BACKEND_NODE}
@@ -251,7 +241,7 @@ set_target_properties(${BACKEND_NODE}
 
 # Stereo pipeline node
 add_executable(${STEREO_PIPELINE_NODE}
-    src/stereo_pipeline_node.cpp
+    src/nodes/stereo_pipeline_node.cpp
 )
 
 add_dependencies(${STEREO_PIPELINE_NODE}
@@ -290,8 +280,8 @@ target_compile_definitions(${STEREO_PIPELINE_NODE} PUBLIC PCL_NO_PRECOMPILE)
 # Testing
 if(CATKIN_ENABLE_TESTING)
     catkin_add_gtest(test_${PROJECT_NAME}
-        src/graph_manager.cpp
-        src/utilities.cpp
+        src/back_end/graph_manager.cpp
+        src/utils/utilities.cpp
         test/graph_manager.cpp
         test/registration_covariance.cpp
         test/serpent.cpp

@@ -1,4 +1,4 @@
-#include "serpent/graph_manager.hpp"
+#include "serpent/back_end/graph_manager.hpp"
 
 #include <gtest/gtest.h>
 #include <gtsam/inference/Symbol.h>
