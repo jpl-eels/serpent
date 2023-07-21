@@ -264,7 +264,8 @@ bool Mapping<PointT>::publish_map_service_callback(std_srvs::Empty::Request&, st
     // Assemble pointcloud
     auto pointcloud = boost::make_shared<PointCloud>();
     if (!map.empty()) {
-        pointcloud->header.stamp = pcl_conversions::toPCL(last_frame().pose.timestamp);
+        pointcloud->header.stamp =
+                pcl_conversions::toPCL(ros::Time::now());  // pcl_conversions::toPCL(last_frame().pose.timestamp);
         pointcloud->header.frame_id = map_frame_id;
         for (const auto& map_frame_pair : map) {
             const auto& map_frame = map_frame_pair.second;
