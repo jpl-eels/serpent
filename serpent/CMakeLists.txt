@@ -30,9 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 # GTSAM_42_* variables are set by core_config 
 # They point to core_config's source build of gtsam required by serpent
-set(GTSAM_INCLUDE_DIR $ENV{GTSAM_42_INCLUDE_DIR})
-set(GTSAM_DIR $ENV{GTSAM_42_DIR})
-find_package(GTSAM 4.2.0 EXACT REQUIRED)
+find_package(GTSAM 4.2.0 EXACT REQUIRED PATHS $ENV{GTSAM_42_PATH})
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED) # >=4.4.0 required for SIFT
 find_package(PCL REQUIRED)
